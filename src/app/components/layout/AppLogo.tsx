@@ -21,7 +21,7 @@ const AppLogo = ({
   width,
   height,
   href = '/',
-  withTitle = true,
+  withTitle = false,
   className,
 }: AppLogoProps) => {
   const logoSrc = withTitle ? LogoWithTitle : Logo;
