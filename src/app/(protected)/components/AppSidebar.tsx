@@ -4,7 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import appLogo from '@/assets/images/logo-with-title.svg';
+import AppLogo from '@/app/components/layout/AppLogo';
 import {
   LayoutDashboard,
   Mail,
@@ -33,7 +33,11 @@ const NAV_ITEMS = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Invitations', href: '/invitations', icon: Mail },
   { label: 'Users', href: '/users', icon: Users },
-  { label: 'Courses & Contents', href: '/courses-and-contents', icon: BookOpen },
+  {
+    label: 'Courses & Contents',
+    href: '/courses-and-contents',
+    icon: BookOpen,
+  },
   { label: 'Escalations', href: '/escalations', icon: AlertCircle },
 ] as const;
 
@@ -59,9 +63,7 @@ const AppSidebar: React.FC<AppSidebarProps> = ({
       <div>
         {/* Logo row */}
         <div className="mb-8 flex items-center justify-between px-1">
-          <Link href="/dashboard" className="flex items-center gap-2">
-            <Image src={appLogo} alt="KodeBuddy" height={28} />
-          </Link>
+          <AppLogo withTitle height={28} href="/dashboard" />
           <button
             type="button"
             onClick={onToggle}
@@ -75,7 +77,8 @@ const AppSidebar: React.FC<AppSidebarProps> = ({
         {/* Nav items */}
         <nav className="flex flex-col gap-1">
           {NAV_ITEMS.map(({ label, href, icon: Icon }) => {
-            const isActive = pathname === href || pathname?.startsWith(`${href}/`);
+            const isActive =
+              pathname === href || pathname?.startsWith(`${href}/`);
             return (
               <Link
                 key={href}
