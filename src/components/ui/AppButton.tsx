@@ -9,7 +9,7 @@ export interface AppButtonProps {
   onClick?: () => void;
   variant?: 'contained' | 'outlined' | 'text';
   color?: 'primary' | 'secondary' | 'error' | 'success' | 'warning' | 'neutral';
-  size?: 'small' | 'medium' | 'large';
+  size?: 'small' | 'medium' | 'large' | 'icon';
   loading?: boolean;
   startIcon?: React.ReactNode;
   endIcon?: React.ReactNode;
@@ -65,12 +65,14 @@ const SIZE_CLASSES: Record<NonNullable<AppButtonProps['size']>, string> = {
   small: 'text-sm px-5 py-1.5 min-h-[34px]',
   medium: 'text-sm px-7 py-2.5 min-h-[42px]',
   large: 'text-base px-8 py-3 min-h-[48px]',
+  icon:  'p-0 w-10 h-10',
 };
 
 const SPINNER_SIZE: Record<NonNullable<AppButtonProps['size']>, number> = {
   small: 16,
   medium: 18,
   large: 20,
+  icon: 18,
 };
 const RADIUS_CLASSES: Record<NonNullable<AppButtonProps['radius']>, string> = {
   none: 'rounded-none',
