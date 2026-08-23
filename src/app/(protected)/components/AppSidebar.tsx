@@ -6,16 +6,23 @@ import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import AppLogo from '@/components/layout/AppLogo';
 import {
-  LayoutDashboard,
-  Mail,
-  Users,
+  LayoutGrid,
   BookOpen,
-  AlertCircle,
+  ClipboardList,
+  Lightbulb,
+  Bot,
+  BarChart3,
+  Users,
+  FileText,
+  GraduationCap,
   Settings,
   PanelLeft,
 } from 'lucide-react';
 
+export type AppSidebarRole = 'learner' | 'admin';
+
 export interface AppSidebarProps {
+  role?: AppSidebarRole;
   user?: {
     name: string;
     email: string;
@@ -29,17 +36,29 @@ function cx(...classes: Array<string | false | undefined>) {
   return classes.filter(Boolean).join(' ');
 }
 
-const NAV_ITEMS = [
-  { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { label: 'Invitations', href: '/invitations', icon: Mail },
-  { label: 'Users', href: '/users', icon: Users },
-  {
-    label: 'Courses & Contents',
-    href: '/courses-and-contents',
-    icon: BookOpen,
-  },
-  { label: 'Escalations', href: '/escalations', icon: AlertCircle },
-] as const;
+const NAV_ITEMS_BY_ROLE: Record<
+  AppSidebarRole,
+  ReadonlyArray<{ label: string; href: string; icon: React.ElementType }>
+> = {
+  learner: [
+    { label: 'Dashboard', href: '/dashboard', icon: LayoutGrid },
+    { label: 'Learn', href: '/learn', icon: BookOpen },
+    { label: 'Assignments', href: '/assignments', icon: ClipboardList },
+    { label: 'Resources', href: '/resources', icon: Lightbulb },
+    { label: 'Kodebuddy AI', href: '/kodebuddy-ai', icon: Bot },
+    { label: 'Progress', href: '/progress', icon: BarChart3 },
+  ],
+  admin: [
+    { label: 'Dashboard', href: '/admin/dashboard', icon: LayoutGrid },
+    { label: 'Users', href: '/admin/users', icon: Users },
+    { label: 'Cohorts', href: '/admin/cohorts', icon: GraduationCap },
+    {
+      label: 'Courses & Contents',
+      href: '/admin/courses-and-contents',
+      icon: FileText,
+    },
+  ],
+};
 
 const DEFAULT_USER: NonNullable<AppSidebarProps['user']> = {
   name: 'Ayomide Ben',
@@ -47,11 +66,13 @@ const DEFAULT_USER: NonNullable<AppSidebarProps['user']> = {
 };
 
 const AppSidebar: React.FC<AppSidebarProps> = ({
+  role = 'learner',
   user = DEFAULT_USER,
   onToggle,
   className,
 }) => {
   const pathname = usePathname();
+  const navItems = NAV_ITEMS_BY_ROLE[role];
 
   return (
     <aside
@@ -76,7 +97,7 @@ const AppSidebar: React.FC<AppSidebarProps> = ({
 
         {/* Nav items */}
         <nav className="flex flex-col gap-1">
-          {NAV_ITEMS.map(({ label, href, icon: Icon }) => {
+          {navItems.map(({ label, href, icon: Icon }) => {
             const isActive =
               pathname === href || pathname?.startsWith(`${href}/`);
             return (
@@ -120,7 +141,7 @@ const AppSidebar: React.FC<AppSidebarProps> = ({
           </div>
         </div>
         <Link
-          href="/settings"
+          href={role === 'learner' ? '/settings' : '/admin/settings'}
           className="flex items-center gap-3 rounded-btn px-3 py-2 b2-m text-text-secondary hover:bg-primary-light hover:text-primary"
         >
           <Settings size={18} />
