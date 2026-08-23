@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import { Lato } from 'next/font/google';
+import { Suspense } from 'react';
 import './globals.css';
+import Provider from './provider';
 
 const lato = Lato({
   weight: ['400', '700'],
@@ -20,7 +22,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${lato.variable} antialiased`}>{children}</body>
+      <body className={`${lato.variable} antialiased`}>
+        <Suspense>
+          <Provider>{children}</Provider>
+        </Suspense>
+      </body>
     </html>
   );
 }
