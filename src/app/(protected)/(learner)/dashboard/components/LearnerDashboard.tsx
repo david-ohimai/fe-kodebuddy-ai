@@ -1,6 +1,6 @@
 import { AppCard } from '@/components/ui/AppCard';
 
-export default function DashboardPage() {
+export default function LearnerDashboard() {
   return (
     <div className="flex flex-col gap-2">
       <h1 className="h4-b text-text">Welcome back 👋</h1>

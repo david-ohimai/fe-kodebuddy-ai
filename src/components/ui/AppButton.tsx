@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
 import { Loader2 } from 'lucide-react';
 
 export interface AppButtonProps {
@@ -19,6 +20,7 @@ export interface AppButtonProps {
   type?: 'button' | 'submit' | 'reset';
   radius?: 'none' | 'sm' | 'md' | 'lg' | 'xl' | '2xl' | 'full';
   ariaLabel?: string;
+  href?: string;
 }
 
 function cx(...classes: Array<string | false | undefined>) {
@@ -36,7 +38,8 @@ const COLOR_VARIANT_CLASSES: Record<
   },
   secondary: {
     contained: 'bg-secondary text-secondary-dark hover:brightness-95',
-    outlined: 'border border-secondary text-secondary-dark hover:bg-secondary-light',
+    outlined:
+      'border border-secondary text-secondary-dark hover:bg-secondary-light',
     text: 'text-secondary-dark hover:bg-secondary-light',
   },
   error: {
@@ -65,7 +68,7 @@ const SIZE_CLASSES: Record<NonNullable<AppButtonProps['size']>, string> = {
   small: 'text-sm px-5 py-1.5 min-h-[34px]',
   medium: 'text-sm px-7 py-2.5 min-h-[42px]',
   large: 'text-base px-8 py-3 min-h-[48px]',
-  icon:  'p-0 w-10 h-10',
+  icon: 'p-0 w-10 h-10',
 };
 
 const SPINNER_SIZE: Record<NonNullable<AppButtonProps['size']>, number> = {
@@ -100,8 +103,48 @@ const AppButton: React.FC<AppButtonProps> = ({
   type = 'button',
   radius = 'md',
   ariaLabel,
+  href,
 }) => {
   const isDisabled = disabled || loading;
+
+  const classes = cx(
+    'inline-flex items-center justify-center gap-2 font-primary font-semibold whitespace-nowrap transition-colors',
+    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
+    SIZE_CLASSES[size],
+    RADIUS_CLASSES[radius],
+    fullWidth && 'w-full',
+    isDisabled
+      ? 'bg-disabled text-muted border border-disabled cursor-not-allowed'
+      : COLOR_VARIANT_CLASSES[color][variant],
+    className,
+  );
+
+  const content = loading ? (
+    <Loader2
+      size={SPINNER_SIZE[size]}
+      className="animate-spin"
+      aria-hidden="true"
+    />
+  ) : (
+    <>
+      {startIcon}
+      {children || label}
+      {endIcon}
+    </>
+  );
+
+  if (href && !isDisabled) {
+    return (
+      <Link
+        href={href}
+        onClick={onClick}
+        aria-label={ariaLabel}
+        className={classes}
+      >
+        {content}
+      </Link>
+    );
+  }
 
   return (
     <button
@@ -110,30 +153,11 @@ const AppButton: React.FC<AppButtonProps> = ({
       disabled={isDisabled}
       aria-label={ariaLabel}
       aria-busy={loading}
-      className={cx(
-        'inline-flex items-center justify-center gap-2 font-primary font-semibold whitespace-nowrap transition-colors',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
-        SIZE_CLASSES[size],
-        RADIUS_CLASSES[radius],
-        fullWidth && 'w-full',
-        isDisabled
-          ? 'bg-disabled text-muted border border-disabled cursor-not-allowed'
-          : COLOR_VARIANT_CLASSES[color][variant],
-        className,
-      )}
+      className={classes}
     >
-      {loading ? (
-        <Loader2 size={SPINNER_SIZE[size]} className="animate-spin" aria-hidden="true" />
-      ) : (
-        <>
-          {startIcon}
-          {children || label}
-          {endIcon}
-        </>
-      )}
+      {content}
     </button>
   );
 };
 
 export default AppButton;
-
