@@ -14,7 +14,10 @@ import {
   X,
 } from 'lucide-react';
 
+export type AppSidebarRole = 'learner' | 'admin';
+
 export interface AppSidebarProps {
+  role?: AppSidebarRole;
   user?: {
     name: string;
     email: string;
@@ -85,7 +88,7 @@ const AppSidebar: React.FC<AppSidebarProps> = ({
             </button>
           </div>
 
-          {/* Nav items */}
+      
           <nav className="flex flex-col gap-1">
             {NAV_ITEMS.map(({ label, href, icon: Icon }) => {
               const isActive =
@@ -126,7 +129,7 @@ const AppSidebar: React.FC<AppSidebarProps> = ({
               </span>
             )}
             <div className="flex flex-col leading-tight">
-              <span className="b2-b text-[#1f2937]">{user.name}</span>
+              <span className="b2-b text-text">{user.name}</span>
               <span className="f1-r text-muted">{user.email}</span>
             </div>
           </div>
