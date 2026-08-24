@@ -1,12 +1,9 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Image from 'next/image';
-import SearchIcon from '@mui/icons-material/Search';
-import CalendarTodayOutlinedIcon from '@mui/icons-material/CalendarTodayOutlined';
-import NotificationsNoneOutlinedIcon from '@mui/icons-material/NotificationsNoneOutlined';
-import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
-import { Menu } from 'lucide-react';
+import { Search, Calendar, Bell, ChevronDown, Menu } from 'lucide-react';
+import AppButton from '@/components/ui/AppButton';
 
 export interface AppTopbarProps {
   userName: string;
@@ -41,7 +38,7 @@ function formatOrdinalDate(date: Date) {
 
 const AppTopbar: React.FC<AppTopbarProps> = ({
   userName,
-  userRole = 'Admin',
+  userRole = 'Learner',
   avatarSrc,
   date = new Date(),
   searchPlaceholder = 'Search KodeBuddy...',
@@ -50,6 +47,8 @@ const AppTopbar: React.FC<AppTopbarProps> = ({
   onMenuClick,
   className,
 }) => {
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+
   return (
     <header
       className={cx(
@@ -57,18 +56,25 @@ const AppTopbar: React.FC<AppTopbarProps> = ({
         className,
       )}
     >
-      <button
-        type="button"
+      <AppButton
+        variant="outlined"
+        color="neutral"
+        size="icon"
         onClick={onMenuClick}
-        aria-label="Open menu"
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-input border border-disabled text-text-secondary hover:bg-primary-light hover:text-primary lg:hidden"
+        ariaLabel="Open sidebar"
+        className="!h-9 !w-9 !rounded-input !border-disabled !text-text-secondary hover:!bg-primary-light hover:!text-primary lg:hidden"
       >
         <Menu size={18} />
-      </button>
+      </AppButton>
 
-      {/* Search */}
-      <div className="flex min-w-0 flex-1 items-center gap-2 rounded-input border border-disabled px-3 py-2 sm:max-w-md">
-        <SearchIcon fontSize="small" className="shrink-0 text-muted" />
+      <div
+        className={cx(
+          'min-w-0 items-center gap-2 rounded-input border border-disabled px-3 py-2',
+          'w-full flex-1 sm:max-w-md sm:flex-none',
+          mobileSearchOpen ? 'flex' : 'hidden sm:flex',
+        )}
+      >
+        <Search size={18} className="shrink-0 text-muted" />
         <input
           type="text"
           placeholder={searchPlaceholder}
@@ -77,21 +83,35 @@ const AppTopbar: React.FC<AppTopbarProps> = ({
         />
       </div>
 
-    
+      <AppButton
+        variant="outlined"
+        color="neutral"
+        size="icon"
+        onClick={() => setMobileSearchOpen((v) => !v)}
+        ariaLabel="Toggle search"
+        className="!h-9 !w-9 !rounded-input !border-disabled !text-text-secondary hover:!bg-primary-light hover:!text-primary sm:hidden"
+      >
+        <Search size={18} />
+      </AppButton>
+
       <div className="flex shrink-0 items-center gap-2 sm:gap-4">
-        <div className="hidden items-center gap-2 rounded-input border border-disabled px-3 py-2 text-text-secondary sm:flex">
-          <CalendarTodayOutlinedIcon sx={{ fontSize: 16 }} />
-          <span className="b2-m">{formatOrdinalDate(date)}</span>
+        <div className="hidden items-center gap-2 rounded-input border border-disabled px-3 py-2 text-text-secondary lg:flex">
+          <Calendar size={16} />
+          <span className="b2-m whitespace-nowrap">
+            {formatOrdinalDate(date)}
+          </span>
         </div>
 
-        <button
-          type="button"
+        <AppButton
+          variant="outlined"
+          color="neutral"
+          size="icon"
           onClick={onNotificationsClick}
-          aria-label="Notifications"
-          className="flex h-9 w-9 items-center justify-center rounded-input border border-disabled text-text-secondary hover:bg-primary-light hover:text-primary"
+          ariaLabel="Notifications"
+          className="!h-9 !w-9 !rounded-input !border-disabled !text-text-secondary hover:!bg-primary-light hover:!text-primary"
         >
-          <NotificationsNoneOutlinedIcon fontSize="small" />
-        </button>
+          <Bell size={18} />
+        </AppButton>
 
         <button type="button" className="flex items-center gap-2">
           {avatarSrc ? (
@@ -100,10 +120,10 @@ const AppTopbar: React.FC<AppTopbarProps> = ({
               alt={userName}
               width={36}
               height={36}
-              className="h-9 w-9 rounded-full object-cover"
+              className="h-9 w-9 shrink-0 rounded-full object-cover"
             />
           ) : (
-            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary-light b2-b text-primary">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-light b2-b text-primary">
               {userName.charAt(0)}
             </span>
           )}
@@ -111,7 +131,7 @@ const AppTopbar: React.FC<AppTopbarProps> = ({
             <span className="b2-b text-text">{userName}</span>
             <span className="f1-r text-muted">{userRole}</span>
           </span>
-          <KeyboardArrowDownIcon fontSize="small" className="text-muted" />
+          <ChevronDown size={16} className="hidden text-muted sm:block" />
         </button>
       </div>
     </header>

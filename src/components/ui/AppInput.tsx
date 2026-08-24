@@ -8,7 +8,7 @@ export interface AppInputProps extends Omit<
   React.InputHTMLAttributes<HTMLInputElement>,
   'size'
 > {
-  label?: string;
+  label?: React.ReactNode;
   error?: string;
   hint?: string;
   icon?: LucideIcon;

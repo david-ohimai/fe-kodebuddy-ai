@@ -1,5 +1,5 @@
-import AdminDashboardView from './components/AdminDashboardView';
+import { redirect } from 'next/navigation';
 
-export default function AdminDashboardPage() {
-  return <AdminDashboardView />;
+export default function AdminIndexPage() {
+  redirect('/admin/dashboard');
 }
