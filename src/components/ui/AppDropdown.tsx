@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
+import { ChevronDown } from 'lucide-react';
 
 export interface AppDropdownOption {
   label: string;
@@ -41,8 +41,8 @@ const AppDropdown: React.FC<AppDropdownProps> = ({
           </option>
         ))}
       </select>
-      <KeyboardArrowDownIcon
-        fontSize="small"
+      <ChevronDown
+        size={18}
         className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-muted"
       />
     </div>

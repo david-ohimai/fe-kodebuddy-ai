@@ -1,11 +1,10 @@
 'use client';
 
 import React from 'react';
-import SearchIcon from '@mui/icons-material/Search';
+import { Search } from 'lucide-react';
 import AppDropdown, { AppDropdownOption } from '@/components/ui/AppDropdown';
 
 export interface TableHeaderFilter {
-  /** Unique key for this filter, used as the React list key */
   id: string;
   value: string;
   options: AppDropdownOption[];
@@ -40,7 +39,7 @@ const TableHeader: React.FC<TableHeaderProps> = ({
       )}
     >
       <div className="flex w-full max-w-xs items-center gap-2 rounded-input border border-disabled bg-background px-3 py-2">
-        <SearchIcon fontSize="small" className="text-muted" />
+        <Search size={18} className="text-muted" />
         <input
           type="text"
           value={searchValue}
@@ -49,7 +48,6 @@ const TableHeader: React.FC<TableHeaderProps> = ({
           className="b2-r w-full bg-transparent text-[#1f2937] placeholder:text-muted focus:outline-none"
         />
       </div>
-
 
       {filters.length > 0 && (
         <div className="flex items-center gap-3">

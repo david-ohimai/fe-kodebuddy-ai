@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import AppButton from '@/components/ui/AppButton';
 import { AppCard } from '@/components/ui/AppCard';
-import activity from '@/assets/images/activity.png';
+import activity from '@/assets/images/activity.webp';
 
 interface ActivityItem {
   id: string;
