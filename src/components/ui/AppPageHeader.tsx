@@ -27,7 +27,7 @@ const PageHeader: React.FC<PageHeaderProps> = ({
       )}
     >
       <div>
-        <h1 className="h5-b text-[#1f2937]">{title}</h1>
+        <h1 className="h5-b text-text">{title}</h1>
         {subtitle && <p className="b2-r text-text-secondary">{subtitle}</p>}
       </div>
 
