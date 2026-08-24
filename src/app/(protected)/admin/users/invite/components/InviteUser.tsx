@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { ArrowLeft, User, Mail, ShieldCheck } from 'lucide-react';
-import envelopeImg from '@/assets/images/envelope.png';
+import envelopeImg from '@/assets/images/envelope.webp';
 import AppButton from '@/components/ui/AppButton';
 import AppInput from '@/components/ui/AppInput';
 import AppDropdown from '@/components/ui/AppDropdown';

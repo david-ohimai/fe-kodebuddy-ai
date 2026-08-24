@@ -1,6 +1,6 @@
 import React from 'react';
 import Image from 'next/image';
-import onboardingCompleteIcon from '@/assets/images/account-ready.webp';
+import onboardingCompleteIcon from '@/assets/images/envelope.webp';
 
 export default function AllSetStep() {
   return (
