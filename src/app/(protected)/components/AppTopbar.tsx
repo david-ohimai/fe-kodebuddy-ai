@@ -1,10 +1,12 @@
 'use client';
 
 import React from 'react';
+import Image from 'next/image';
 import SearchIcon from '@mui/icons-material/Search';
 import CalendarTodayOutlinedIcon from '@mui/icons-material/CalendarTodayOutlined';
 import NotificationsNoneOutlinedIcon from '@mui/icons-material/NotificationsNoneOutlined';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
+import { Menu } from 'lucide-react';
 
 export interface AppTopbarProps {
   userName: string;
@@ -15,6 +17,7 @@ export interface AppTopbarProps {
   searchPlaceholder?: string;
   onSearch?: (value: string) => void;
   onNotificationsClick?: () => void;
+  onMenuClick?: () => void;
   className?: string;
 }
 
@@ -38,35 +41,45 @@ function formatOrdinalDate(date: Date) {
 
 const AppTopbar: React.FC<AppTopbarProps> = ({
   userName,
-  userRole = 'Learner',
+  userRole = 'Admin',
   avatarSrc,
   date = new Date(),
   searchPlaceholder = 'Search KodeBuddy...',
   onSearch,
   onNotificationsClick,
+  onMenuClick,
   className,
 }) => {
   return (
     <header
       className={cx(
-        'flex items-center justify-between gap-4 border-b border-disabled bg-background px-6 py-3',
+        'flex items-center justify-between gap-3 border-b border-disabled bg-background px-4 py-3 sm:px-6',
         className,
       )}
     >
+      <button
+        type="button"
+        onClick={onMenuClick}
+        aria-label="Open menu"
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-input border border-disabled text-text-secondary hover:bg-primary-light hover:text-primary lg:hidden"
+      >
+        <Menu size={18} />
+      </button>
+
       {/* Search */}
-      <div className="flex w-full max-w-md items-center gap-2 rounded-input border border-disabled px-3 py-2">
-        <SearchIcon fontSize="small" className="text-muted" />
+      <div className="flex min-w-0 flex-1 items-center gap-2 rounded-input border border-disabled px-3 py-2 sm:max-w-md">
+        <SearchIcon fontSize="small" className="shrink-0 text-muted" />
         <input
           type="text"
           placeholder={searchPlaceholder}
           onChange={(e) => onSearch?.(e.target.value)}
-          className="b2-r w-full bg-transparent text-[#1f2937] placeholder:text-muted focus:outline-none"
+          className="b2-r w-full min-w-0 bg-transparent text-text placeholder:text-muted focus:outline-none"
         />
       </div>
 
-      {/* Right cluster */}
-      <div className="flex items-center gap-4">
-        <div className="flex items-center gap-2 rounded-input border border-disabled px-3 py-2 text-text-secondary">
+    
+      <div className="flex shrink-0 items-center gap-2 sm:gap-4">
+        <div className="hidden items-center gap-2 rounded-input border border-disabled px-3 py-2 text-text-secondary sm:flex">
           <CalendarTodayOutlinedIcon sx={{ fontSize: 16 }} />
           <span className="b2-m">{formatOrdinalDate(date)}</span>
         </div>
@@ -82,9 +95,11 @@ const AppTopbar: React.FC<AppTopbarProps> = ({
 
         <button type="button" className="flex items-center gap-2">
           {avatarSrc ? (
-            <img
+            <Image
               src={avatarSrc}
               alt={userName}
+              width={36}
+              height={36}
               className="h-9 w-9 rounded-full object-cover"
             />
           ) : (
@@ -92,8 +107,8 @@ const AppTopbar: React.FC<AppTopbarProps> = ({
               {userName.charAt(0)}
             </span>
           )}
-          <span className="flex flex-col items-start leading-tight">
-            <span className="b2-b text-[#1f2937]">{userName}</span>
+          <span className="hidden flex-col items-start leading-tight sm:flex">
+            <span className="b2-b text-text">{userName}</span>
             <span className="f1-r text-muted">{userRole}</span>
           </span>
           <KeyboardArrowDownIcon fontSize="small" className="text-muted" />

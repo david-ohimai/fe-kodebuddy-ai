@@ -1,28 +1,41 @@
+'use client';
+
+import { useState } from 'react';
 import AppSidebar from '../components/AppSidebar';
 import AppTopbar from '../components/AppTopbar';
 
-export default function AdminLayout({
+export default function ProtectedLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
   const user = {
     name: 'Ayomide Ben',
     email: 'learner1@example.com',
   };
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      {/* Sidebar */}
-      <AppSidebar role="admin" user={user} />
+    <div className="flex h-screen overflow-hidden bg-gray-50">
+      <AppSidebar
+        user={user}
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+      />
 
-      {/* Main section */}
-      <div className="flex min-w-0 flex-1 flex-col">
-        {/* Topbar */}
-        <AppTopbar userName={user.name} userEmail={user.email} />
+  
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+        <AppTopbar
+          userName={user.name}
+          userEmail={user.email}
+          onMenuClick={() => setSidebarOpen(true)}
+        />
 
-        {/* Page content */}
-        <main className="flex-1 p-6 md:p-8">{children}</main>
+    
+        <main className="flex-1 overflow-y-auto p-6 md:p-8">
+          {children}
+        </main>
       </div>
     </div>
   );
