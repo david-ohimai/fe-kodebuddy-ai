@@ -9,7 +9,7 @@ import {
   LayoutDashboard,
   GraduationCap,
   Users,
-  BookOpen,
+  FileText,
   Settings,
   X,
 } from 'lucide-react';
@@ -34,12 +34,12 @@ function cx(...classes: Array<string | false | undefined>) {
 
 const NAV_ITEMS = [
   { label: 'Dashboard', href: '/admin', icon: LayoutDashboard },
-  { label: 'Users', href: '/users', icon: Users },
-  { label: 'Cohorts', href: '/cohorts', icon: GraduationCap },
+  { label: 'Users', href: '/admin/user', icon: Users },
+  { label: 'Cohorts', href: '/admin/cohorts', icon: GraduationCap },
   {
     label: 'Courses & Contents',
-    href: '/courses-and-contents',
-    icon: BookOpen,
+    href: '/admin/courses-and-contents',
+    icon: FileText,
   },
 ] as const;
 
@@ -48,13 +48,30 @@ const DEFAULT_USER: NonNullable<AppSidebarProps['user']> = {
   email: 'learner3@example.com',
 };
 
+function getActiveHref(pathname: string | null, items: readonly { href: string }[]) {
+  if (!pathname) return null;
+
+  let bestMatch: string | null = null;
+
+  for (const item of items) {
+    const isMatch = pathname === item.href || pathname.startsWith(`${item.href}/`);
+    if (isMatch && (bestMatch === null || item.href.length > bestMatch.length)) {
+      bestMatch = item.href;
+    }
+  }
+
+  return bestMatch;
+}
+
 const AppSidebar: React.FC<AppSidebarProps> = ({
+  role = 'learner',
   user = DEFAULT_USER,
   isOpen = false,
   onClose,
   className,
 }) => {
   const pathname = usePathname();
+  const activeHref = getActiveHref(pathname, NAV_ITEMS);
 
   return (
     <>
@@ -87,12 +104,9 @@ const AppSidebar: React.FC<AppSidebarProps> = ({
               <X size={18} />
             </button>
           </div>
-
-      
           <nav className="flex flex-col gap-1">
             {NAV_ITEMS.map(({ label, href, icon: Icon }) => {
-              const isActive =
-                pathname === href || pathname?.startsWith(`${href}/`);
+              const isActive = href === activeHref;
               return (
                 <Link
                   key={href}

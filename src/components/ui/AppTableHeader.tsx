@@ -35,7 +35,7 @@ const TableHeader: React.FC<TableHeaderProps> = ({
   return (
     <div
       className={cx(
-        'flex flex-col gap-3 rounded-card bg-gray-50 p-3 sm:flex-row sm:items-center sm:justify-between',
+        'flex flex-col gap-3 rounded-card  p-3 sm:flex-row sm:items-center sm:justify-between',
         className,
       )}
     >
@@ -46,10 +46,9 @@ const TableHeader: React.FC<TableHeaderProps> = ({
           value={searchValue}
           placeholder={searchPlaceholder}
           onChange={(e) => onSearchChange?.(e.target.value)}
-          className="b2-r w-full bg-transparent text-[#1f2937] placeholder:text-muted focus:outline-none"
+          className="b2-r w-full bg-transparent text-text placeholder:text-muted focus:outline-none"
         />
       </div>
-
 
       {filters.length > 0 && (
         <div className="flex items-center gap-3">

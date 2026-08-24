@@ -4,7 +4,7 @@ import { useState } from 'react';
 import AppSidebar from '../components/AppSidebar';
 import AppTopbar from '../components/AppTopbar';
 
-export default function ProtectedLayout({
+export default function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
