@@ -9,7 +9,7 @@ import {
   LayoutDashboard,
   GraduationCap,
   Users,
-  BookOpen,
+  FileText,
   Settings,
   X,
 } from 'lucide-react';
@@ -39,7 +39,7 @@ const NAV_ITEMS = [
   {
     label: 'Courses & Contents',
     href: '/admin/courses-and-contents',
-    icon: BookOpen,
+    icon: FileText,
   },
 ] as const;
 
