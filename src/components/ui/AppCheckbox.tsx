@@ -4,8 +4,10 @@ import React, { forwardRef, useId } from 'react';
 import { Check } from 'lucide-react';
 import { cx } from '@/lib/utils/cx';
 
-export interface AppCheckboxProps
-  extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'type'> {
+export interface AppCheckboxProps extends Omit<
+  React.InputHTMLAttributes<HTMLInputElement>,
+  'type'
+> {
   label?: React.ReactNode;
   error?: string;
 }
@@ -34,6 +36,7 @@ const AppCheckbox = forwardRef<HTMLInputElement, AppCheckboxProps>(
               className={cx(
                 'flex h-4.5 w-4.5 items-center justify-center rounded-[5px] border transition-colors',
                 'peer-checked:border-primary peer-checked:bg-primary',
+                'peer-checked:[&>svg]:opacity-100',
                 'peer-focus-visible:ring-2 peer-focus-visible:ring-primary/40 peer-focus-visible:ring-offset-1',
                 error ? 'border-error' : 'border-disabled',
                 className,
@@ -42,10 +45,7 @@ const AppCheckbox = forwardRef<HTMLInputElement, AppCheckboxProps>(
               <Check
                 size={12}
                 strokeWidth={3}
-                className={cx(
-                  'text-white transition-opacity',
-                  checked ? 'opacity-100' : 'opacity-0',
-                )}
+                className="text-white opacity-0 transition-opacity"
               />
             </span>
           </span>

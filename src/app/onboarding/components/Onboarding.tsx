@@ -8,7 +8,7 @@ import PersonalizeStep from './PersonalizeStep';
 import SetupLoadingStep from './SetupLoadingStep';
 import AllSetStep from './AllSetStep';
 
-// KodeBuddy Backend API has no endpoint yet for saving learner preferences (learning goal / interests).
+// No API endpoint yet for saving learner preferences (learning goal / interests).
 // So this step is UI-only for now - pending when the endpoints are available.
 
 type Step = 'personalize' | 'loading' | 'all-set';
@@ -52,7 +52,7 @@ export default function Onboarding() {
   }
 
   return (
-    <AuthWrapper showCopyright>
+    <AuthWrapper>
       <PersonalizeStep onContinue={handleContinue} />
     </AuthWrapper>
   );
