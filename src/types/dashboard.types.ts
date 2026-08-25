@@ -5,3 +5,12 @@ export type DashboardUser = {
   email: string;
   avatarSrc?: string;
 };
+export interface CourseSummaryDto {
+  id: number;
+  title: string;
+}
+
+export interface CourseSummary {
+  id: number;
+  title: string;
+}
