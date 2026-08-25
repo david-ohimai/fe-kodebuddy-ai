@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import Image from 'next/image';
 import {
   Users,
   BookOpen,
@@ -12,6 +11,7 @@ import {
 } from 'lucide-react';
 import AppButton from '@/components/ui/AppButton';
 import { AppCard } from '@/components/ui/AppCard';
+import AppEmptyState from '@/components/ui/AppEmptyState';
 import activity from '@/assets/images/activity.webp';
 
 interface ActivityItem {
@@ -176,20 +176,12 @@ const AdminDashboardView: React.FC = () => {
             ))}
           </ul>
         ) : (
-          <div className="flex flex-col items-center px-6 py-14 text-center">
-            <Image
-              src={activity}
-              alt=""
-              width={154}
-              height={100}
-              className="mb-4"
-            />
-            <p className="b1-b text-text">No activity yet</p>
-            <p className="b2-r mt-1 max-w-sm text-muted">
-              Activity will appear here as you add users, courses and manage the
-              platform.
-            </p>
-          </div>
+          <AppEmptyState
+            image={activity}
+            title="No activity yet"
+            description="Activity will appear here as you add users, courses and manage the platform."
+            className="!min-h-0 py-14"
+          />
         )}
       </AppCard>
     </div>

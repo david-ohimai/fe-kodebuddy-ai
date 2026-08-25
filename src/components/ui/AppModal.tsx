@@ -22,7 +22,9 @@ export interface AppModalProps {
   primaryButton?: AppButtonProps;
   secondaryButton?: AppButtonProps;
   hideCloseOnBackdrop?: boolean;
+  width?: string;
   maxWidth?: string;
+  height?: string;
   children?: React.ReactNode;
 }
 
@@ -36,9 +38,13 @@ export default function AppModal({
   primaryButton,
   secondaryButton,
   hideCloseOnBackdrop = false,
+  width = '100%',
   maxWidth = '500px',
+  height = '280px',
   children,
 }: AppModalProps) {
+  const isAutoHeight = height === 'auto';
+
   const handleClose = (
     _event: object,
     reason: 'backdropClick' | 'escapeKeyDown',
@@ -65,8 +71,11 @@ export default function AppModal({
     >
       <Box
         sx={{
-          width: '100%',
+          width,
           maxWidth,
+          height: isAutoHeight ? 'auto' : height,
+          maxHeight: isAutoHeight ? '90vh' : undefined,
+          overflowY: isAutoHeight ? 'auto' : undefined,
           bgcolor: 'background.paper',
           borderRadius: '12px',
           boxShadow: '0 10px 30px rgba(0, 0, 0, 0.15)',
@@ -75,13 +84,18 @@ export default function AppModal({
             xs: 3,
             sm: 4,
           },
+          py: isAutoHeight ? { xs: 4, sm: 5 } : undefined,
         }}
       >
-        <div className="mx-auto flex w-full max-w-[400px] h-[280px] flex-col justify-center items-center text-center">
+        <div
+          className={`mx-auto flex w-full max-w-100 flex-col items-center justify-center text-center ${
+            isAutoHeight ? '' : 'h-full'
+          }`}
+        >
           {icon && <div className="mb-5 flex justify-center">{icon}</div>}
 
           {title && (
-            <h2 id="app-modal-title" className="mb-2 h5-b ">
+            <h2 id="app-modal-title" className="mb-2 h5-b">
               {title}
             </h2>
           )}
@@ -89,7 +103,7 @@ export default function AppModal({
           {description && (
             <p
               id="app-modal-description"
-              className="mb-3 text-text-secondary b1-m max-w-[383] leading-6 "
+              className="b1-m mb-3 max-w-[383px] leading-6 text-text-secondary"
             >
               {description}
             </p>
@@ -100,7 +114,7 @@ export default function AppModal({
               <Link
                 href={link.href}
                 onClick={link.onClick}
-                className="mb-6 b2-b text-primary underline underline-offset-4"
+                className="b2-b mb-6 text-primary underline underline-offset-4"
               >
                 {link.label}
               </Link>
@@ -108,7 +122,7 @@ export default function AppModal({
               <button
                 type="button"
                 onClick={link.onClick}
-                className="mb-6 b2-b text-primary underline underline-offset-4"
+                className="b2-b mb-6 text-primary underline underline-offset-4"
               >
                 {link.label}
               </button>
