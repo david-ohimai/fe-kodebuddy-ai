@@ -1,3 +1,7 @@
+// No email-invite endpoint — the only related endpoint is PATCH /profile/users/{user_id}/role,
+// which changes an *existing* user's role, not invites someone new by email.
+// Revisit once the backend adds a real invite mechanism.
+
 'use client';
 
 import React, { useState } from 'react';

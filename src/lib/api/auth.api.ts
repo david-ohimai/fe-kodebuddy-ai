@@ -1,6 +1,3 @@
-//   Base URL: https://kodebuddy-ai-be.onrender.com
-//   Docs:  https://kodebuddy-ai-be.onrender.com/docs
-
 import { apiFetch } from './client';
 import type {
   AuthUser,
@@ -13,7 +10,7 @@ import type {
   UserResponseDto,
 } from '@/types/auth.types';
 
-function mapUser(dto: UserDto): AuthUser {
+export function mapUser(dto: UserDto): AuthUser {
   return {
     id: dto.id,
     email: dto.email,
