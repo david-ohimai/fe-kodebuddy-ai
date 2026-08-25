@@ -2,7 +2,16 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
-import { Search, Calendar, Bell, ChevronDown, Menu } from 'lucide-react';
+import Link from 'next/link';
+import {
+  Search,
+  Calendar,
+  Bell,
+  ChevronDown,
+  Menu,
+  Settings,
+  LogOut,
+} from 'lucide-react';
 import AppButton from '@/components/ui/AppButton';
 
 export interface AppTopbarProps {
@@ -10,11 +19,13 @@ export interface AppTopbarProps {
   userEmail?: string;
   userRole?: string;
   avatarSrc?: string;
+  settingsHref?: string;
   date?: Date;
   searchPlaceholder?: string;
   onSearch?: (value: string) => void;
   onNotificationsClick?: () => void;
   onMenuClick?: () => void;
+  onLogoutClick?: () => void;
   className?: string;
 }
 
@@ -40,14 +51,17 @@ const AppTopbar: React.FC<AppTopbarProps> = ({
   userName,
   userRole = 'Learner',
   avatarSrc,
+  settingsHref,
   date = new Date(),
   searchPlaceholder = 'Search KodeBuddy...',
   onSearch,
   onNotificationsClick,
   onMenuClick,
+  onLogoutClick,
   className,
 }) => {
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   return (
     <header
@@ -113,26 +127,78 @@ const AppTopbar: React.FC<AppTopbarProps> = ({
           <Bell size={18} />
         </AppButton>
 
-        <button type="button" className="flex items-center gap-2">
-          {avatarSrc ? (
-            <Image
-              src={avatarSrc}
-              alt={userName}
-              width={36}
-              height={36}
-              className="h-9 w-9 shrink-0 rounded-full object-cover"
-            />
-          ) : (
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-light b2-b text-primary">
-              {userName.charAt(0)}
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setMenuOpen((v) => !v)}
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+            className="flex items-center gap-2 rounded-btn p-1 transition-colors hover:bg-primary-light"
+          >
+            {avatarSrc ? (
+              <Image
+                src={avatarSrc}
+                alt={userName}
+                width={36}
+                height={36}
+                className="h-9 w-9 shrink-0 rounded-full object-cover"
+              />
+            ) : (
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-light b2-b text-primary">
+                {userName.charAt(0)}
+              </span>
+            )}
+            <span className="hidden flex-col items-start leading-tight sm:flex">
+              <span className="b2-b text-text">{userName}</span>
+              <span className="f1-r text-muted">{userRole}</span>
             </span>
+            <ChevronDown
+              size={16}
+              className={cx(
+                'hidden text-muted transition-transform sm:block',
+                menuOpen && 'rotate-180',
+              )}
+            />
+          </button>
+
+          {menuOpen && (
+            <>
+              <div
+                role="presentation"
+                onClick={() => setMenuOpen(false)}
+                className="fixed inset-0 z-40"
+              />
+              <div
+                role="menu"
+                className="absolute right-0 top-full z-50 mt-2 w-52 overflow-hidden rounded-card border border-disabled bg-background py-1.5 shadow-lg"
+              >
+                {settingsHref && (
+                  <Link
+                    href={settingsHref}
+                    role="menuitem"
+                    onClick={() => setMenuOpen(false)}
+                    className="flex items-center gap-2.5 px-4 py-2.5 b2-m text-text-secondary transition-colors hover:bg-primary-light hover:text-primary"
+                  >
+                    <Settings size={17} />
+                    Settings
+                  </Link>
+                )}
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onLogoutClick?.();
+                  }}
+                  className="flex w-full items-center gap-2.5 px-4 py-2.5 b2-m text-text-secondary transition-colors hover:bg-error-light hover:text-error"
+                >
+                  <LogOut size={17} />
+                  Log out
+                </button>
+              </div>
+            </>
           )}
-          <span className="hidden flex-col items-start leading-tight sm:flex">
-            <span className="b2-b text-text">{userName}</span>
-            <span className="f1-r text-muted">{userRole}</span>
-          </span>
-          <ChevronDown size={16} className="hidden text-muted sm:block" />
-        </button>
+        </div>
       </div>
     </header>
   );
