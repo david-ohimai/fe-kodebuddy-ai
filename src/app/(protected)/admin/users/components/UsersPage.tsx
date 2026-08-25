@@ -1,11 +1,11 @@
 'use client';
 
 import React, { useState } from 'react';
-import Image from 'next/image';
 import { UserPlus } from 'lucide-react';
 import AppButton from '@/components/ui/AppButton';
 import { AppCard } from '@/components/ui/AppCard';
 import TableHeader from '@/components/ui/AppTableHeader';
+import AppEmptyState from '@/components/ui/AppEmptyState';
 import noUsersImg from '@/assets/images/no-users.webp';
 
 const ROLE_OPTIONS = [
@@ -75,20 +75,11 @@ export default function UsersPage() {
         {hasUsers ? (
           <div />
         ) : (
-          <div className="flex flex-col items-center px-6 py-16 text-center">
-            <Image
-              src={noUsersImg}
-              alt=""
-              width={154}
-              height={100}
-              className="mb-4"
-            />
-            <p className="b1-b text-text">No users yet</p>
-            <p className="b2-r mt-1 max-w-sm text-muted">
-              Invite a Trainer or Mentor to start building your KodeBuddy
-              community.
-            </p>
-          </div>
+          <AppEmptyState
+            image={noUsersImg}
+            title="No users yet"
+            description="Invite a Trainer or Mentor to start building your KodeBuddy community."
+          />
         )}
       </AppCard>
     </div>
