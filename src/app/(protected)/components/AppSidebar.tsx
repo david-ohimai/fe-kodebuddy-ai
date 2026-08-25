@@ -2,11 +2,10 @@
 
 import React from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import AppLogo from '@/components/layout/AppLogo';
 import AppButton from '@/components/ui/AppButton';
-import type { DashboardRole, DashboardUser } from '@/types/dashboard.types';
+import type { DashboardRole } from '@/types/dashboard.types';
 import {
   LayoutDashboard,
   BookOpen,
@@ -18,17 +17,18 @@ import {
   FileText,
   GraduationCap,
   Settings,
+  LogOut,
   PanelLeft,
   X,
 } from 'lucide-react';
 
 export interface AppSidebarProps {
   role?: DashboardRole;
-  user?: DashboardUser;
   collapsed?: boolean;
   onToggleCollapsed?: () => void;
   isOpen?: boolean;
   onClose?: () => void;
+  onLogoutClick?: () => void;
   className?: string;
 }
 
@@ -47,6 +47,7 @@ const NAV_ITEMS_BY_ROLE: Record<
     { label: 'Resources', href: '/resources', icon: Lightbulb },
     { label: 'Kodebuddy AI', href: '/kodebuddy-ai', icon: Bot },
     { label: 'Progress', href: '/progress', icon: BarChart3 },
+    { label: 'Settings', href: '/settings', icon: Settings },
   ],
   admin: [
     { label: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
@@ -57,26 +58,21 @@ const NAV_ITEMS_BY_ROLE: Record<
       href: '/admin/courses-and-contents',
       icon: FileText,
     },
+    { label: 'Settings', href: '/admin/settings', icon: Settings },
   ],
-};
-
-const DEFAULT_USER: DashboardUser = {
-  name: 'Ayomide Ben',
-  email: 'learner3@example.com',
 };
 
 const AppSidebar: React.FC<AppSidebarProps> = ({
   role = 'learner',
-  user = DEFAULT_USER,
   collapsed = false,
   onToggleCollapsed,
   isOpen = false,
   onClose,
+  onLogoutClick,
   className,
 }) => {
   const pathname = usePathname();
   const navItems = NAV_ITEMS_BY_ROLE[role];
-  const settingsHref = role === 'learner' ? '/settings' : '/admin/settings';
   const homeHref = role === 'learner' ? '/dashboard' : '/admin/dashboard';
 
   return (
@@ -162,48 +158,19 @@ const AppSidebar: React.FC<AppSidebarProps> = ({
           </nav>
         </div>
 
-        <div className="flex flex-col gap-3 border-t border-disabled pt-4">
-          <div
+        <div className="border-t border-disabled pt-3">
+          <button
+            type="button"
+            onClick={onLogoutClick}
+            title={collapsed ? 'Log out' : undefined}
             className={cx(
-              'flex items-center gap-3 px-1',
-              collapsed && 'lg:justify-center',
-            )}
-          >
-            {user.avatarSrc ? (
-              <Image
-                src={user.avatarSrc}
-                alt={user.name}
-                width={32}
-                height={32}
-                className="shrink-0 rounded-full object-cover"
-              />
-            ) : (
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-light b2-b text-primary">
-                {user.name.charAt(0)}
-              </span>
-            )}
-            <div
-              className={cx(
-                'flex flex-col leading-tight',
-                collapsed && 'lg:hidden',
-              )}
-            >
-              <span className="b2-b text-text">{user.name}</span>
-              <span className="f1-r text-muted">{user.email}</span>
-            </div>
-          </div>
-          <Link
-            href={settingsHref}
-            onClick={onClose}
-            title={collapsed ? 'Settings' : undefined}
-            className={cx(
-              'flex items-center gap-3 rounded-btn px-3 py-2 b2-m text-text-secondary hover:bg-primary-light hover:text-primary',
+              'flex w-full items-center gap-3 rounded-btn px-3 py-2.5 b2-m text-text-secondary transition-colors hover:bg-error-light hover:text-error',
               collapsed && 'lg:justify-center lg:px-2',
             )}
           >
-            <Settings size={18} className="shrink-0" />
-            <span className={cx(collapsed && 'lg:hidden')}>Settings</span>
-          </Link>
+            <LogOut size={18} className="shrink-0" />
+            <span className={cx(collapsed && 'lg:hidden')}>Log out</span>
+          </button>
         </div>
       </aside>
     </>
