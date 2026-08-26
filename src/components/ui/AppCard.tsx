@@ -7,7 +7,12 @@ function cx(...classes: Array<string | false | undefined | null>) {
 }
 
 export type AppCardVariant =
-  'default' | 'primary' | 'secondary' | 'success' | 'warning' | 'error';
+  | 'default'
+  | 'primary'
+  | 'secondary'
+  | 'success'
+  | 'warning'
+  | 'error';
 
 const TINT: Record<AppCardVariant, string> = {
   default: 'bg-disabled text-text-secondary',
@@ -43,7 +48,7 @@ function AppCardRoot({
   onClick,
 }: AppCardProps) {
   const classes = cx(
-    'bg-background border border-muted/20 rounded-card',
+    'bg-background border border-disabled rounded-card',
     PADDING[padding],
     interactive &&
       'transition-all duration-150 hover:border-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 cursor-pointer',

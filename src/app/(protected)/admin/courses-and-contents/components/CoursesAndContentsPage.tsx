@@ -32,8 +32,9 @@ const CoursesAndContentsView: React.FC = () => {
   const [status, setStatus] = useState('all');
   const { showSuccess } = useToast();
   const [view, setView] = useState<'list' | 'add' | 'details'>('list');
-  const [selectedCourse, setSelectedCourse] =
-    useState<CourseOverview | null>(null);
+  const [selectedCourse, setSelectedCourse] = useState<CourseOverview | null>(
+    null,
+  );
 
   const hasCourses = courses.length > 0;
 
@@ -57,10 +58,8 @@ const CoursesAndContentsView: React.FC = () => {
             }),
             createdBy: 'Admin user',
           };
-
           setSelectedCourse(createdCourse);
           setView('details');
-
           showSuccess(
             'Course saved as draft successfully.',
             `"${title}" is ready to build on.`,
@@ -120,12 +119,11 @@ const CoursesAndContentsView: React.FC = () => {
         {hasCourses ? (
           <ul>{/* TODO: course rows go here once data is wired up */}</ul>
         ) : (
+        
           <AppEmptyState
             image={noCourses}
             title="No courses yet"
             description="Create your first course to start building content for Kodebuddy."
-            actionLabel="Add course"
-            onAction={() => setView('add')}
           />
         )}
       </AppCard>
