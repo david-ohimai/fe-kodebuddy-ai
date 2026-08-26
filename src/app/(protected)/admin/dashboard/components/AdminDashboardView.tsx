@@ -1,20 +1,31 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Users,
   BookOpen,
   GraduationCap,
-  UserPlus,
+  UserCog,
   FileText,
   Lightbulb,
 } from 'lucide-react';
 import AppButton from '@/components/ui/AppButton';
 import { AppCard } from '@/components/ui/AppCard';
 import AppEmptyState from '@/components/ui/AppEmptyState';
+import AppSpinner from '@/components/ui/AppSpinner';
+import { useToast } from '@/components/ui/ToastProvider';
 import activity from '@/assets/images/activity.webp';
 import { useCurrentUserContext } from '@/lib/auth/CurrentUserContext';
+import * as profileApi from '@/lib/api/profile.api';
+import * as coursesApi from '@/lib/api/courses.api';
+import * as cohortsApi from '@/lib/api/cohorts.api';
 
+// NOTE: there is no activity/audit-log endpoint anywhere in the backend
+// API, so "Recent Activity" has no real data source yet — it always
+// shows the empty state below. This is intentionally NOT tied to
+// `hasData` (whether any users exist): those are two different
+// questions, and conflating them was the earlier bug where this section
+// rendered an empty box instead of the empty state once users existed.
 interface ActivityItem {
   id: string;
   actor: string;
@@ -25,77 +36,117 @@ interface ActivityItem {
 
 interface DashboardStats {
   totalUsers: number;
-  usersBreakdown?: string;
   activeCourses: number;
-  coursesSubtext?: string;
   activeCohorts: number;
-  cohortsSubtext?: string;
 }
 
 function cx(...classes: Array<string | false | undefined | null>) {
   return classes.filter(Boolean).join(' ');
 }
 
-const stats: DashboardStats = {
-  totalUsers: 0,
-  activeCourses: 0,
-  activeCohorts: 0,
-};
-
-const activities: ActivityItem[] = [];
-
 const AdminDashboardView: React.FC = () => {
   const { user } = useCurrentUserContext();
+  const { showError } = useToast();
   const firstName =
     user?.fullName?.trim().split(' ')[0] ||
     user?.email.split('@')[0] ||
     'there';
 
+  const [stats, setStats] = useState<DashboardStats>({
+    totalUsers: 0,
+    activeCourses: 0,
+    activeCohorts: 0,
+  });
+  const [loading, setLoading] = useState(true);
+  const activities: ActivityItem[] = [];
+
+  useEffect(() => {
+    let cancelled = false;
+
+    Promise.allSettled([
+      profileApi.listUsers(),
+      coursesApi.listCourses(),
+      cohortsApi.listCohorts(),
+    ]).then(([usersResult, coursesResult, cohortsResult]) => {
+      if (cancelled) return;
+
+      setStats({
+        totalUsers:
+          usersResult.status === 'fulfilled' ? usersResult.value.length : 0,
+        activeCourses:
+          coursesResult.status === 'fulfilled'
+            ? coursesResult.value.filter((c) => c.isActive).length
+            : 0,
+        activeCohorts:
+          cohortsResult.status === 'fulfilled'
+            ? cohortsResult.value.filter((c) => c.isOpen).length
+            : 0,
+      });
+      setLoading(false);
+
+      const failed = [usersResult, coursesResult, cohortsResult].some(
+        (r) => r.status === 'rejected',
+      );
+      if (failed) {
+        showError(
+          'Some dashboard data could not load',
+          'Part of the dashboard may be showing incomplete numbers. Try refreshing shortly.',
+        );
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const hasData = stats.totalUsers > 0;
+  const hasActivity = activities.length > 0;
 
   const STAT_CARDS = [
     {
       icon: Users,
       label: 'Total users',
       value: stats.totalUsers,
-      subtext: hasData
-        ? stats.usersBreakdown
-        : 'All learners, trainers & mentors',
+      subtext: 'All learners, trainers & mentors',
     },
     {
       icon: BookOpen,
       label: 'Active courses',
       value: stats.activeCourses,
-      subtext: hasData ? stats.coursesSubtext : 'Courses published',
+      subtext: 'Courses published',
     },
     {
       icon: GraduationCap,
-      label: hasData ? 'Active cohorts' : 'Active Cohorts',
+      label: 'Active Cohorts',
       value: stats.activeCohorts,
-      subtext: hasData ? stats.cohortsSubtext : 'active cohorts',
+      subtext: 'active cohorts',
     },
   ];
 
-  const actionButtons = (
-    <div className="mx-auto flex w-full max-w-xs flex-col gap-3 [@media(min-width:470px)]:w-fit [@media(min-width:470px)]:max-w-none [@media(min-width:470px)]:flex-row">
+  const actionButtonsContent = (
+    <>
       <AppButton
-        startIcon={<UserPlus size={18} />}
+        href="/admin/users/assign-role"
+        startIcon={<UserCog size={18} />}
         fullWidth
         radius="full"
-        className="[@media(min-width:470px)]:w-auto"
+        className="sm:w-auto"
       >
-        Invite trainer/mentor
+        Assign role
       </AppButton>
       <AppButton
+        href="/admin/courses-and-contents"
         variant="outlined"
         startIcon={<FileText size={18} />}
         fullWidth
         radius="full"
-        className="[@media(min-width:470px)]:w-auto"
+        className="sm:w-auto"
       >
         Create courses
       </AppButton>
-    </div>
+    </>
   );
 
   return (
@@ -109,7 +160,11 @@ const AdminDashboardView: React.FC = () => {
               : 'Your admin workspace is ready. Start by setting up your platform.'}
           </p>
         </div>
-        {hasData && actionButtons}
+        {hasData && (
+          <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:justify-end">
+            {actionButtonsContent}
+          </div>
+        )}
       </div>
 
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -119,13 +174,13 @@ const AdminDashboardView: React.FC = () => {
               <Icon />
             </AppCard.Icon>
             <p className="b2-m text-text-secondary">{label}</p>
-            <p className="h3-b mt-1 text-text">{value}</p>
+            <p className="h3-b mt-1 text-text">{loading ? '—' : value}</p>
             <p className="f1-r mt-1 text-muted">{subtext}</p>
           </AppCard>
         ))}
       </div>
 
-      {!hasData && (
+      {!loading && !hasData && (
         <AppCard
           padding="lg"
           className="mb-6 flex flex-col items-center py-14 text-center"
@@ -137,10 +192,12 @@ const AdminDashboardView: React.FC = () => {
             Add your team, create your first course and organise learners into
             cohorts to get started.
           </p>
-          <div className="mt-6 w-full">{actionButtons}</div>
+          <div className="mx-auto mt-6 flex w-full max-w-xs flex-col gap-3 [@media(min-width:470px)]:w-fit [@media(min-width:470px)]:max-w-none [@media(min-width:470px)]:flex-row">
+            {actionButtonsContent}
+          </div>
           <p className="f1-r mt-4 flex items-center gap-1.5 text-muted">
             <Lightbulb size={14} />
-            Invite trainers or mentors first, then create courses and add
+            Assign Trainer or Mentor roles first, then create courses and add
             content later.
           </p>
         </AppCard>
@@ -149,14 +206,18 @@ const AdminDashboardView: React.FC = () => {
       <AppCard padding="none">
         <div className="flex items-center justify-between border-b border-muted/20 px-6 py-4">
           <h3 className="b1-b text-text">Recent Activity</h3>
-          {hasData && (
+          {hasActivity && (
             <button type="button" className="b2-m text-primary hover:underline">
               View all
             </button>
           )}
         </div>
 
-        {hasData ? (
+        {loading ? (
+          <div className="flex min-h-[200px] items-center justify-center">
+            <AppSpinner size={32} />
+          </div>
+        ) : hasActivity ? (
           <ul>
             {activities.map((item, i) => (
               <li

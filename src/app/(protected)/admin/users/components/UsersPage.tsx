@@ -7,7 +7,7 @@ import {
   ShieldCheck,
   Star,
   User,
-  UserPlus,
+  UserCog,
 } from 'lucide-react';
 import AppButton from '@/components/ui/AppButton';
 import { AppCard } from '@/components/ui/AppCard';
@@ -152,11 +152,11 @@ export default function UsersPage() {
         subtitle="View and manage learners, trainers and mentors."
         actions={
           <AppButton
-            href="/admin/users/invite"
-            startIcon={<UserPlus size={18} strokeWidth={2} />}
+            href="/admin/users/assign-role"
+            startIcon={<UserCog size={18} strokeWidth={2} />}
             radius="full"
           >
-            Invite users
+            Assign role
           </AppButton>
         }
       />
