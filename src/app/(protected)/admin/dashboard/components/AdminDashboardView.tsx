@@ -13,6 +13,7 @@ import AppButton from '@/components/ui/AppButton';
 import { AppCard } from '@/components/ui/AppCard';
 import AppEmptyState from '@/components/ui/AppEmptyState';
 import activity from '@/assets/images/activity.webp';
+import { useCurrentUserContext } from '@/lib/auth/CurrentUserContext';
 
 interface ActivityItem {
   id: string;
@@ -35,8 +36,6 @@ function cx(...classes: Array<string | false | undefined | null>) {
   return classes.filter(Boolean).join(' ');
 }
 
-const firstName = 'Ayomide';
-
 const stats: DashboardStats = {
   totalUsers: 0,
   activeCourses: 0,
@@ -46,6 +45,12 @@ const stats: DashboardStats = {
 const activities: ActivityItem[] = [];
 
 const AdminDashboardView: React.FC = () => {
+  const { user } = useCurrentUserContext();
+  const firstName =
+    user?.fullName?.trim().split(' ')[0] ||
+    user?.email.split('@')[0] ||
+    'there';
+
   const hasData = stats.totalUsers > 0;
 
   const STAT_CARDS = [
@@ -97,11 +102,7 @@ const AdminDashboardView: React.FC = () => {
     <div>
       <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
         <div>
-          <h1 className="h5-b text-text">
-            {hasData
-              ? `Welcome back, ${firstName}`
-              : `Welcome to KodeBuddy ${firstName} !`}
-          </h1>
+          <h1 className="h5-b text-text">Welcome back, {firstName}! 👋</h1>
           <p className="b2-r mt-1 text-text-secondary">
             {hasData
               ? "Here's what's happening on KodeBuddy today."
