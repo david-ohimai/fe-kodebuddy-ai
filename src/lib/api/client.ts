@@ -68,6 +68,29 @@ interface ApiFetchOptions extends Omit<RequestInit, 'body'> {
   auth?: boolean;
 }
 
+function delay(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+const NETWORK_RETRY_ATTEMPTS = 2;
+const NETWORK_RETRY_DELAY_MS = 2000;
+
+async function fetchWithRetry(
+  url: string,
+  init: RequestInit,
+  attempt = 0,
+): Promise<Response> {
+  try {
+    return await fetch(url, init);
+  } catch (cause) {
+    if (attempt < NETWORK_RETRY_ATTEMPTS) {
+      await delay(NETWORK_RETRY_DELAY_MS);
+      return fetchWithRetry(url, init, attempt + 1);
+    }
+    throw new NetworkError(cause);
+  }
+}
+
 function extractErrorMessage(payload: unknown, status: number): string {
   if (payload && typeof payload === 'object') {
     const record = payload as Record<string, unknown>;
@@ -95,12 +118,13 @@ export async function apiFetch<TResponse = unknown>(
 
   let response: Response;
   try {
-    response = await fetch(`${API_BASE_URL}${path}`, {
+    response = await fetchWithRetry(`${API_BASE_URL}${path}`, {
       ...rest,
       headers: requestHeaders,
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
   } catch (cause) {
+    if (cause instanceof NetworkError) throw cause;
     throw new NetworkError(cause);
   }
 
@@ -124,4 +148,8 @@ export function getErrorMessage(err: unknown, fallback: string): string {
   if (err instanceof ApiError) return err.message;
   if (err instanceof NetworkError) return err.message;
   return fallback;
+}
+
+export function warmUpBackend() {
+  fetch(`${API_BASE_URL}/health`).catch(() => {});
 }
