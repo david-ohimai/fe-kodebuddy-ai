@@ -21,8 +21,8 @@ const COLOR_STYLES: Record<
   { bg: string; text: string; border: string }
 > = {
   default: {
-    bg: 'var(--muted)',
-    text: 'var(--text)',
+    bg: 'var(--border)',
+    text: 'var(--text-secondary)',
     border: 'var(--muted)',
   },
   primary: {

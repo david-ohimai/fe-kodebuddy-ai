@@ -15,12 +15,13 @@
   --error-light: #fef2f2;
   --error-dark: #EF4444;
   --success: #2ad926;
-  --success-light: #eafbe9;
-  --success-dark: #188118;
+  --success-light: #F0FDF4;
+  --success-dark: #40B869;
   --text: #111827;
   --text-secondary: #6b7280;
   --muted: #9ca3af;
   --disabled: #e6f2fb;
+  --border:#E5E7EB;
 
   --font-app-font: 'Lato', sans-serif;
 
@@ -97,6 +98,7 @@
   --color-text-secondary: var(--text-secondary);
   --color-muted: var(--muted);
   --color-disabled: var(--disabled);
+  --color-border: var(--border)
 
   --font-primary: var(--font-app-font);
 

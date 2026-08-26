@@ -1,47 +1,40 @@
 'use client';
 
 import React from 'react';
-import Link from 'next/link';
 import Modal from '@mui/material/Modal';
 import Box from '@mui/material/Box';
-import AppButton, { AppButtonProps } from './AppButton';
-
-type ModalLink = {
-  label?: string;
-  href?: string;
-  onClick?: () => void;
-};
+import IconButton from '@mui/material/IconButton';
+import CloseIcon from '@mui/icons-material/Close';
 
 export interface AppModalProps {
   open: boolean;
   onClose: () => void;
-  icon?: React.ReactNode;
+
   title?: React.ReactNode;
   description?: React.ReactNode;
-  link?: ModalLink;
-  primaryButton?: AppButtonProps;
-  secondaryButton?: AppButtonProps;
-  hideCloseOnBackdrop?: boolean;
-  width?: string;
-  maxWidth?: string;
-  height?: string;
   children?: React.ReactNode;
+  footer?: React.ReactNode;
+  header?: React.ReactNode;
+
+  showCloseButton?: boolean;
+  hideCloseOnBackdrop?: boolean;
+
+  maxWidth?: string | number;
+  contentClassName?: string;
 }
 
 export default function AppModal({
   open,
   onClose,
-  icon,
   title,
   description,
-  link,
-  primaryButton,
-  secondaryButton,
-  hideCloseOnBackdrop = false,
-  width = '100%',
-  maxWidth = '500px',
-  height = '280px',
   children,
+  footer,
+  header,
+  showCloseButton = true,
+  hideCloseOnBackdrop = false,
+  maxWidth = 500,
+  contentClassName = '',
 }: AppModalProps) {
   const isAutoHeight = height === 'auto';
 
@@ -56,12 +49,14 @@ export default function AppModal({
     onClose();
   };
 
+  const hasHeader = Boolean(header || title || description);
+
   return (
     <Modal
       open={open}
       onClose={handleClose}
-      aria-labelledby="app-modal-title"
-      aria-describedby="app-modal-description"
+      aria-labelledby={title ? 'app-modal-title' : undefined}
+      aria-describedby={description ? 'app-modal-description' : undefined}
       sx={{
         display: 'flex',
         alignItems: 'center',
@@ -73,90 +68,85 @@ export default function AppModal({
         sx={{
           width,
           maxWidth,
-          height: isAutoHeight ? 'auto' : height,
-          maxHeight: isAutoHeight ? '90vh' : undefined,
-          overflowY: isAutoHeight ? 'auto' : undefined,
-          bgcolor: 'background.paper',
-          borderRadius: '12px',
+          maxHeight: 'calc(100vh - 32px)',
+          bgcolor: 'var(--background)',
+          borderRadius: 'var(--radius-card)',
           boxShadow: '0 10px 30px rgba(0, 0, 0, 0.15)',
           outline: 'none',
-          px: {
-            xs: 3,
-            sm: 4,
-          },
-          py: isAutoHeight ? { xs: 4, sm: 5 } : undefined,
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+          position: 'relative',
         }}
+        className={contentClassName}
       >
-        <div
-          className={`mx-auto flex w-full max-w-100 flex-col items-center justify-center text-center ${
-            isAutoHeight ? '' : 'h-full'
-          }`}
-        >
-          {icon && <div className="mb-5 flex justify-center">{icon}</div>}
-
-          {title && (
-            <h2 id="app-modal-title" className="mb-2 h5-b">
-              {title}
-            </h2>
-          )}
-
-          {description && (
-            <p
-              id="app-modal-description"
-              className="b1-m mb-3 max-w-[383px] leading-6 text-text-secondary"
-            >
-              {description}
-            </p>
-          )}
-
-          {link?.label &&
-            (link.href ? (
-              <Link
-                href={link.href}
-                onClick={link.onClick}
-                className="b2-b mb-6 text-primary underline underline-offset-4"
-              >
-                {link.label}
-              </Link>
+        {hasHeader && (
+          <div className="relative shrink-0 border-b border-disabled px-6 py-5">
+            {header ? (
+              header
             ) : (
-              <button
-                type="button"
-                onClick={link.onClick}
-                className="b2-b mb-6 text-primary underline underline-offset-4"
+              <>
+                {title && (
+                  <h2
+                    id="app-modal-title"
+                    className="h5-b pr-8 text-text"
+                  >
+                    {title}
+                  </h2>
+                )}
+
+                {description && (
+                  <p
+                    id="app-modal-description"
+                    className="mt-1 b2-r text-text-secondary"
+                  >
+                    {description}
+                  </p>
+                )}
+              </>
+            )}
+
+            {showCloseButton && (
+              <IconButton
+                onClick={onClose}
+                aria-label="Close modal"
+                size="small"
+                className="absolute right-4 top-4 p-1"
               >
-                {link.label}
-              </button>
-            ))}
-
-          {children && <div className="mb-6 w-full">{children}</div>}
-
-          {(primaryButton || secondaryButton) && (
-            <div className="flex w-full items-center justify-between gap-2">
-              {secondaryButton?.label && (
-                <AppButton
-                  variant="outlined"
-                  color="neutral"
-                  size="medium"
-                  radius="full"
-                  {...secondaryButton}
-                  disabled={secondaryButton.disabled || secondaryButton.loading}
-                  className={`flex-1 ${secondaryButton.className ?? ''}`}
+                <CloseIcon
+                  fontSize="small"
+                  className="text-text"
                 />
-              )}
+              </IconButton>
+            )}
+          </div>
+        )}
 
-              {primaryButton?.label && (
-                <AppButton
-                  variant="contained"
-                  size="medium"
-                  radius="full"
-                  {...primaryButton}
-                  disabled={primaryButton.disabled || primaryButton.loading}
-                  className={`flex-1 ${primaryButton.className ?? ''}`}
-                />
-              )}
-            </div>
-          )}
-        </div>
+        {children && (
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            {children}
+          </div>
+        )}
+
+        {footer && (
+          <div className="shrink-0 border-t border-disabled px-6 py-4">
+            {footer}
+          </div>
+        )}
+
+        {!hasHeader && showCloseButton && (
+          <IconButton
+            onClick={onClose}
+            aria-label="Close modal"
+            size="small"
+            className="absolute right-4 top-4 p-1"
+          >
+            <CloseIcon
+              fontSize="small"
+              className="text-text"
+            />
+          </IconButton>
+        )}
       </Box>
     </Modal>
   );
