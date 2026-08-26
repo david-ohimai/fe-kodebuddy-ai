@@ -12,7 +12,11 @@ import AppButton from '@/components/ui/AppButton';
 import { useToast } from '@/components/ui/ToastProvider';
 import { signInSchema } from '@/lib/validations/auth.schema';
 import * as authApi from '@/lib/api/auth.api';
-import { ApiError, setAccessToken, setRefreshToken } from '@/lib/api/client';
+import {
+  getErrorMessage,
+  setAccessToken,
+  setRefreshToken,
+} from '@/lib/api/client';
 import type { SignInFormValues } from '@/types/auth.types';
 
 export default function SignIn() {
@@ -37,12 +41,14 @@ export default function SignIn() {
       });
       setAccessToken(res.accessToken);
       setRefreshToken(res.refreshToken);
-      router.push('/dashboard');
+      router.push(
+        res.user.role === 'admin' ? '/admin/dashboard' : '/dashboard',
+      );
     } catch (err) {
-      const message =
-        err instanceof ApiError
-          ? err.message
-          : 'Could not sign in. Please check your details and try again.';
+      const message = getErrorMessage(
+        err,
+        'Could not sign in. Please check your details and try again.',
+      );
       showError('Sign in failed', message);
     }
   };

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import DashboardShell from './DashboardShell';
 import AppSpinner from '@/components/ui/AppSpinner';
 import { useCurrentUser } from '@/lib/auth/useCurrentUser';
+import { CurrentUserProvider } from '@/lib/auth/CurrentUserContext';
 import type { DashboardRole } from '@/types/dashboard.types';
 
 export interface ProtectedShellProps {
@@ -19,13 +20,12 @@ export default function ProtectedShell({
   const router = useRouter();
   const { user, loading } = useCurrentUser();
 
-  const isAuthorized = !user || role !== 'admin' || user.role === 'admin';
+  const isAuthorized = !user || (role === 'admin') === (user.role === 'admin');
 
   useEffect(() => {
-    if (user && !isAuthorized) {
-      router.replace('/dashboard');
-    }
-  }, [user, isAuthorized, router]);
+    if (!user || isAuthorized) return;
+    router.replace(role === 'admin' ? '/dashboard' : '/admin/dashboard');
+  }, [user, isAuthorized, role, router]);
 
   if (loading || !user || !isAuthorized) {
     return (
@@ -36,14 +36,16 @@ export default function ProtectedShell({
   }
 
   return (
-    <DashboardShell
-      role={role}
-      user={{
-        name: user.fullName || user.email,
-        email: user.email,
-      }}
-    >
-      {children}
-    </DashboardShell>
+    <CurrentUserProvider value={{ user, loading }}>
+      <DashboardShell
+        role={role}
+        user={{
+          name: user.fullName || user.email,
+          email: user.email,
+        }}
+      >
+        {children}
+      </DashboardShell>
+    </CurrentUserProvider>
   );
 }

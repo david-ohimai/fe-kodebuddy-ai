@@ -1,25 +1,21 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { BookOpen, BarChart3, CalendarClock, Clock, Send } from 'lucide-react';
 import { AppCard } from '@/components/ui/AppCard';
-import AppButton from '@/components/ui/AppButton';
-import AppSpinner from '@/components/ui/AppSpinner';
-import AppInlineEmpty from '@/components/ui/AppInlineEmpty';
-import { useToast } from '@/components/ui/ToastProvider';
-import { useCurrentUser } from '@/lib/auth/useCurrentUser';
-import * as coursesApi from '@/lib/api/courses.api';
-import { getErrorMessage } from '@/lib/api/client';
-import type { CourseSummary } from '@/types/dashboard.types';
+import { useCurrentUserContext } from '@/lib/auth/CurrentUserContext';
 
-function AskKodeBuddyWidget() {
-  const [question, setQuestion] = useState('');
+export default function LearnerDashboard() {
+  const { user } = useCurrentUserContext();
+  const firstName =
+    user?.fullName?.trim().split(' ')[0] ||
+    user?.email.split('@')[0] ||
+    'there';
 
   return (
-    <AppCard padding="md" className="!bg-[#0B1220] text-white">
-      <p className="b2-b text-white">Ask KodeBuddy</p>
-      <p className="f1-r mt-1 text-white/60">
-        Quick help with your code or concepts.
+    <div className="flex flex-col gap-2">
+      <h1 className="h4-b text-text">Welcome back, {firstName}! 👋</h1>
+      <p className="b1-r mb-4 text-text-secondary">
+        Your learner dashboard is coming soon — this is a placeholder landing
+        spot for the auth &amp; onboarding flow.
       </p>
       <textarea
         value={question}
