@@ -75,7 +75,7 @@ export default function OnboardingCarousel({
   return (
     <div
       className={cx(
-        'relative aspect-[350/490] w-full max-w-[700px] overflow-hidden rounded-app',
+        'relative aspect-[350/490] w-full max-w-[600px] overflow-hidden rounded-app',
         className,
       )}
     >
