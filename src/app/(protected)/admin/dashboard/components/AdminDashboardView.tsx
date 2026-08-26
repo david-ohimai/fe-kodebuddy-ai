@@ -20,12 +20,6 @@ import * as profileApi from '@/lib/api/profile.api';
 import * as coursesApi from '@/lib/api/courses.api';
 import * as cohortsApi from '@/lib/api/cohorts.api';
 
-// NOTE: there is no activity/audit-log endpoint anywhere in the backend
-// API, so "Recent Activity" has no real data source yet — it always
-// shows the empty state below. This is intentionally NOT tied to
-// `hasData` (whether any users exist): those are two different
-// questions, and conflating them was the earlier bug where this section
-// rendered an empty box instead of the empty state once users existed.
 interface ActivityItem {
   id: string;
   actor: string;
@@ -98,7 +92,6 @@ const AdminDashboardView: React.FC = () => {
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const hasData = stats.totalUsers > 0;
