@@ -10,6 +10,11 @@ export interface AppPaginationProps {
   onChange: (page: number) => void;
   siblingCount?: number;
   scrollToTop?: boolean;
+  className?: string;
+}
+
+function cx(...classes: Array<string | false | undefined>) {
+  return classes.filter(Boolean).join(' ');
 }
 
 const DOTS = '...' as const;
@@ -32,7 +37,10 @@ function getPageRange(
   const showRightDots = rightSibling < totalPages - 1;
 
   if (!showLeftDots && showRightDots) {
-    const leftRange = Array.from({ length: 3 + siblingCount * 2 }, (_, i) => i + 1);
+    const leftRange = Array.from(
+      { length: 3 + siblingCount * 2 },
+      (_, i) => i + 1,
+    );
     return [...leftRange, DOTS, totalPages];
   }
 
@@ -57,6 +65,7 @@ export default function AppPagination({
   onChange,
   siblingCount = 1,
   scrollToTop = false,
+  className,
 }: AppPaginationProps) {
   const pageRange = useMemo(
     () => getPageRange(currentPage, totalPages, siblingCount),
@@ -77,8 +86,13 @@ export default function AppPagination({
   };
 
   return (
-    <nav aria-label="Pagination" className="flex items-center justify-center mt-10 mb-4">
-      {/* ── Desktop ── */}
+    <nav
+      aria-label="Pagination"
+      className={cx(
+        'flex items-center justify-center',
+        className ?? 'mt-10 mb-4',
+      )}
+    >
       <ul className="hidden md:flex items-center gap-2">
         <li>
           <AppButton
@@ -131,7 +145,6 @@ export default function AppPagination({
         </li>
       </ul>
 
-      {/* ── Mobile ── */}
       <div className="flex md:hidden items-center gap-6">
         <AppButton
           size="icon"

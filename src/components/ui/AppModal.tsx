@@ -36,8 +36,6 @@ export default function AppModal({
   maxWidth = 500,
   contentClassName = '',
 }: AppModalProps) {
-  const isAutoHeight = height === 'auto';
-
   const handleClose = (
     _event: object,
     reason: 'backdropClick' | 'escapeKeyDown',
@@ -66,7 +64,7 @@ export default function AppModal({
     >
       <Box
         sx={{
-          width,
+          width: '100%',
           maxWidth,
           maxHeight: 'calc(100vh - 32px)',
           bgcolor: 'var(--background)',
@@ -87,10 +85,7 @@ export default function AppModal({
             ) : (
               <>
                 {title && (
-                  <h2
-                    id="app-modal-title"
-                    className="h5-b pr-8 text-text"
-                  >
+                  <h2 id="app-modal-title" className="h5-b pr-8 text-text">
                     {title}
                   </h2>
                 )}
@@ -113,19 +108,14 @@ export default function AppModal({
                 size="small"
                 className="absolute right-4 top-4 p-1"
               >
-                <CloseIcon
-                  fontSize="small"
-                  className="text-text"
-                />
+                <CloseIcon fontSize="small" className="text-text" />
               </IconButton>
             )}
           </div>
         )}
 
         {children && (
-          <div className="min-h-0 flex-1 overflow-y-auto">
-            {children}
-          </div>
+          <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
         )}
 
         {footer && (
@@ -141,10 +131,7 @@ export default function AppModal({
             size="small"
             className="absolute right-4 top-4 p-1"
           >
-            <CloseIcon
-              fontSize="small"
-              className="text-text"
-            />
+            <CloseIcon fontSize="small" className="text-text" />
           </IconButton>
         )}
       </Box>
