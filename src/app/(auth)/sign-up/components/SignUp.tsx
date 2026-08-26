@@ -47,7 +47,7 @@ export default function SignUp() {
 
   if (step === 'account-ready') {
     return (
-      <AuthWrapper>
+      <AuthWrapper showLogo={false}>
         <AccountReadyStep onContinue={() => router.push('/onboarding')} />
       </AuthWrapper>
     );

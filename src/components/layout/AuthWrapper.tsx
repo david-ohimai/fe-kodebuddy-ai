@@ -13,6 +13,7 @@ export interface AuthWrapperProps {
   footerText?: string;
   footerLink?: { label: string; href: string };
   showCopyright?: boolean;
+  showLogo?: boolean;
   contentClassName?: string;
   leftPanel?: 'carousel' | 'image' | 'none';
   leftImage?: StaticImageData;
@@ -27,13 +28,14 @@ export default function AuthWrapper({
   footerText,
   footerLink,
   showCopyright = false,
+  showLogo = true,
   contentClassName,
   leftPanel = 'carousel',
   leftImage,
   leftImageAlt = '',
 }: AuthWrapperProps) {
   return (
-    <div className="flex min-h-screen w-full bg-background">
+    <div className="relative flex min-h-screen w-full bg-background">
       {leftPanel === 'carousel' && (
         <div className="hidden shrink-0 p-4 lg:block lg:w-1/2">
           <OnboardingCarousel className="h-[calc(100vh-2rem)]" />
@@ -59,9 +61,11 @@ export default function AuthWrapper({
         )}
 
         <div className={cx('mx-auto w-full max-w-[420px]', contentClassName)}>
-          <div className="mb-6 flex justify-center">
-            <AppLogo href="/" width={48} height={44} />
-          </div>
+          {showLogo && (
+            <div className="mb-6 flex justify-center">
+              <AppLogo href="/" width={48} height={44} />
+            </div>
+          )}
 
           {title && <h1 className="h5-b text-center text-text">{title}</h1>}
 
@@ -87,13 +91,13 @@ export default function AuthWrapper({
             </div>
           )}
         </div>
-
-        {showCopyright && (
-          <p className="f1-r absolute bottom-5 left-5 text-muted sm:left-8">
-            © KodeBuddy {new Date().getFullYear()}
-          </p>
-        )}
       </div>
+
+      {showCopyright && (
+        <p className="f1-r absolute bottom-5 left-5 text-muted sm:left-8">
+          © KodeBuddy {new Date().getFullYear()}
+        </p>
+      )}
     </div>
   );
 }

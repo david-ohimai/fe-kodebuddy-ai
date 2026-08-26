@@ -12,7 +12,6 @@ export interface AppModalProps {
 
   title?: React.ReactNode;
   description?: React.ReactNode;
-
   children?: React.ReactNode;
   footer?: React.ReactNode;
   header?: React.ReactNode;
@@ -37,6 +36,8 @@ export default function AppModal({
   maxWidth = 500,
   contentClassName = '',
 }: AppModalProps) {
+  const isAutoHeight = height === 'auto';
+
   const handleClose = (
     _event: object,
     reason: 'backdropClick' | 'escapeKeyDown',
@@ -65,7 +66,7 @@ export default function AppModal({
     >
       <Box
         sx={{
-          width: '100%',
+          width,
           maxWidth,
           maxHeight: 'calc(100vh - 32px)',
           bgcolor: 'var(--background)',
