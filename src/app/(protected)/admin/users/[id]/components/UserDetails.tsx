@@ -13,10 +13,10 @@ import {
   AlertTriangle,
   X,
   CheckCircle2,
-  Lightbulb,
 } from 'lucide-react';
 import { AppCard } from '@/components/ui/AppCard';
-import AppButton from '@/components/ui/AppButton';
+import AppInfoCard from '@/components/ui/AppInfoCard';
+import AppActionsCard from '@/components/ui/AppActionsCard';
 import AppDropdown from '@/components/ui/AppDropdown';
 import AppPill from '@/components/ui/AppPill';
 import AppSpinner from '@/components/ui/AppSpinner';
@@ -68,26 +68,6 @@ function formatDate(iso: string) {
 }
 
 type ModalKind = 'role' | 'suspend' | 'reactivate' | 'both' | null;
-
-function InfoRow({
-  icon: Icon,
-  label,
-  children,
-}: {
-  icon: React.ElementType;
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="flex items-center justify-between gap-4 py-3">
-      <span className="b2-r flex items-center gap-2 text-text-secondary">
-        <Icon size={16} className="shrink-0 text-muted" />
-        {label}
-      </span>
-      <span className="b2-m text-right text-text">{children}</span>
-    </div>
-  );
-}
 
 export default function UserDetails({ userId }: UserDetailsProps) {
   const { user: currentUser } = useCurrentUserContext();
@@ -215,6 +195,29 @@ export default function UserDetails({ userId }: UserDetailsProps) {
     }
   };
 
+  const infoHeader = (
+    <div className="flex items-center gap-3">
+      <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-primary-light h4-b text-primary">
+        {displayName.charAt(0).toUpperCase()}
+      </span>
+      <div className="min-w-0">
+        <p className="b1-b truncate text-text">{displayName}</p>
+        <p className="f1-r truncate text-muted">{user.email}</p>
+        <div className="mt-1.5 flex items-center gap-2">
+          <AppPill
+            label={ROLE_LABEL[user.role]}
+            color={ROLE_PILL_COLOR[user.role]}
+            border
+          />
+          <AppPill
+            label={user.isActive ? 'Active' : 'Suspended'}
+            color={user.isActive ? 'success' : 'error'}
+          />
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="flex flex-col gap-4">
       <div>
@@ -228,164 +231,115 @@ export default function UserDetails({ userId }: UserDetailsProps) {
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <AppCard padding="md">
-          <h2 className="b1-b mb-4 text-text">User Information</h2>
-
-          <div className="mb-4 flex items-center gap-3">
-            <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-primary-light h4-b text-primary">
-              {displayName.charAt(0).toUpperCase()}
-            </span>
-            <div className="min-w-0">
-              <p className="b1-b truncate text-text">{displayName}</p>
-              <p className="f1-r truncate text-muted">{user.email}</p>
-              <div className="mt-1.5 flex items-center gap-2">
+        <AppInfoCard
+          title="User Information"
+          header={infoHeader}
+          fields={[
+            { icon: UserIcon, label: 'Full name', value: displayName },
+            {
+              icon: Mail,
+              label: 'Email address',
+              value: (
+                <a
+                  href={`mailto:${user.email}`}
+                  className="text-primary hover:underline"
+                >
+                  {user.email}
+                </a>
+              ),
+            },
+            {
+              icon: Shield,
+              label: 'Role',
+              value: (
                 <AppPill
                   label={ROLE_LABEL[user.role]}
                   color={ROLE_PILL_COLOR[user.role]}
                   border
                 />
+              ),
+            },
+            {
+              icon: Users,
+              label: 'Account status',
+              value: (
                 <AppPill
                   label={user.isActive ? 'Active' : 'Suspended'}
                   color={user.isActive ? 'success' : 'error'}
                 />
-              </div>
-            </div>
-          </div>
+              ),
+            },
+            {
+              icon: Calendar,
+              label: 'Date joined',
+              value: formatDate(user.createdAt),
+            },
+            { icon: Clock, label: 'Last active', value: '—' },
+          ]}
+        />
 
-          <div className="divide-y divide-disabled border-t border-disabled">
-            <InfoRow icon={UserIcon} label="Full name">
-              {displayName}
-            </InfoRow>
-            <InfoRow icon={Mail} label="Email address">
-              <a
-                href={`mailto:${user.email}`}
-                className="text-primary hover:underline"
-              >
-                {user.email}
-              </a>
-            </InfoRow>
-            <InfoRow icon={Shield} label="Role">
-              <AppPill
-                label={ROLE_LABEL[user.role]}
-                color={ROLE_PILL_COLOR[user.role]}
-                border
-              />
-            </InfoRow>
-            <InfoRow icon={Users} label="Account status">
-              <AppPill
-                label={user.isActive ? 'Active' : 'Suspended'}
-                color={user.isActive ? 'success' : 'error'}
-              />
-            </InfoRow>
-            <InfoRow icon={Calendar} label="Date joined">
-              {formatDate(user.createdAt)}
-            </InfoRow>
-            <InfoRow icon={Clock} label="Last active">
-              —
-            </InfoRow>
-          </div>
-        </AppCard>
-
-        <AppCard padding="md">
-          <h2 className="b1-b mb-4 text-text">Admin actions</h2>
-
-          {isSelf ? (
-            <p className="b2-r text-muted">
-              You can&apos;t change your own role or account status from here.
-            </p>
-          ) : (
-            <div className="flex flex-col gap-6">
-              <div>
-                <div className="mb-3 flex items-start gap-3">
-                  <AppCard.Icon variant="primary">
-                    <Users />
-                  </AppCard.Icon>
-                  <div>
-                    <p className="b2-b text-text">Change role</p>
-                    <p className="f1-r text-muted">
-                      Update the user&apos;s role on the platform.
-                    </p>
-                  </div>
-                </div>
-
-                {canEditRole ? (
-                  <>
-                    <label className="f1-m mb-1.5 block text-text-secondary">
-                      Select role
-                    </label>
-                    <AppDropdown
-                      value={selectedRole}
-                      options={ROLE_OPTIONS}
-                      onChange={(value) => setSelectedRole(value as UserRole)}
-                      ariaLabel="Select role"
-                      className="w-full"
-                    />
-                  </>
-                ) : (
-                  <p className="f1-r text-muted">
-                    Admin roles can&apos;t be changed from this page.
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <div className="mb-3 flex items-start gap-3">
-                  <AppCard.Icon variant="warning">
-                    <Users />
-                  </AppCard.Icon>
-                  <div>
-                    <p className="b2-b text-text">Change account status</p>
-                    <p className="f1-r text-muted">
-                      Update the user&apos;s account status.
-                    </p>
-                  </div>
-                </div>
-
-                <label className="f1-m mb-1.5 block text-text-secondary">
-                  Select status
-                </label>
-                <AppDropdown
-                  value={selectedStatus}
-                  options={STATUS_OPTIONS}
-                  onChange={(value) =>
-                    setSelectedStatus(value as 'active' | 'suspended')
-                  }
-                  ariaLabel="Select status"
-                  className="w-full"
-                />
-              </div>
-
-              <div className="flex items-start gap-2.5 rounded-input bg-primary-light px-4 py-3">
-                <Lightbulb size={16} className="mt-0.5 shrink-0 text-primary" />
-                <p className="f1-r text-primary-dark">
-                  You can review your changes before confirming. Suspended users
-                  cannot log in or access the platform until reactivated.
+        <AppActionsCard
+          title="Admin actions"
+          emptyState={
+            isSelf ? (
+              <p className="b2-r text-muted">
+                You can&apos;t change your own role or account status from here.
+              </p>
+            ) : undefined
+          }
+          sections={[
+            {
+              icon: Users,
+              iconVariant: 'primary',
+              title: 'Change role',
+              description: "Update the user's role on the platform.",
+              control: canEditRole ? (
+                <>
+                  <label className="f1-m mb-1.5 block text-text-secondary">
+                    Select role
+                  </label>
+                  <AppDropdown
+                    value={selectedRole}
+                    options={ROLE_OPTIONS}
+                    onChange={(value) => setSelectedRole(value as UserRole)}
+                    ariaLabel="Select role"
+                    className="w-full"
+                  />
+                </>
+              ) : (
+                <p className="f1-r text-muted">
+                  Admin roles can&apos;t be changed from this page.
                 </p>
-              </div>
-
-              {isDirty && (
-                <div className="flex items-center gap-2">
-                  <AppButton
-                    variant="outlined"
-                    color="neutral"
-                    radius="full"
-                    onClick={handleCancel}
-                    className="flex-1"
-                  >
-                    Cancel
-                  </AppButton>
-                  <AppButton
-                    radius="full"
-                    onClick={handleConfirmClick}
-                    className="flex-1"
-                  >
-                    Confirm change
-                  </AppButton>
-                </div>
-              )}
-            </div>
-          )}
-        </AppCard>
+              ),
+            },
+            {
+              icon: Users,
+              iconVariant: 'warning',
+              title: 'Change account status',
+              description: "Update the user's account status.",
+              control: (
+                <>
+                  <label className="f1-m mb-1.5 block text-text-secondary">
+                    Select status
+                  </label>
+                  <AppDropdown
+                    value={selectedStatus}
+                    options={STATUS_OPTIONS}
+                    onChange={(value) =>
+                      setSelectedStatus(value as 'active' | 'suspended')
+                    }
+                    ariaLabel="Select status"
+                    className="w-full"
+                  />
+                </>
+              ),
+            },
+          ]}
+          hint="You can review your changes before confirming. Suspended users cannot log in or access the platform until reactivated."
+          showFooterActions={!isSelf && isDirty}
+          onCancel={handleCancel}
+          onConfirm={handleConfirmClick}
+        />
       </div>
 
       <AppConfirmModal

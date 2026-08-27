@@ -13,6 +13,7 @@ import AppButton from '@/components/ui/AppButton';
 import { AppCard } from '@/components/ui/AppCard';
 import PageHeader from '@/components/ui/AppPageHeader';
 import TableHeader from '@/components/ui/AppTableHeader';
+import AppTable, { type AppTableColumn } from '@/components/ui/AppTable';
 import AppPagination from '@/components/ui/AppPagination';
 import AppEmptyState from '@/components/ui/AppEmptyState';
 import AppPill from '@/components/ui/AppPill';
@@ -145,6 +146,86 @@ export default function UsersPage() {
 
   const hasUsers = pagedUsers.length > 0;
 
+  const columns: AppTableColumn<AuthUser>[] = [
+    {
+      key: 'user',
+      header: 'User',
+      render: (u) => {
+        const isSelf = u.id === currentUser?.id;
+        return (
+          <div className="flex items-center gap-3">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-light b2-b text-primary">
+              {(u.fullName || u.email).charAt(0).toUpperCase()}
+            </span>
+            <div className="min-w-0">
+              <p className="b2-m truncate text-text">
+                {u.fullName || '—'}
+                {isSelf && <span className="f1-r text-muted"> (You)</span>}
+              </p>
+              <p className="f1-r truncate text-muted">{u.email}</p>
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      key: 'role',
+      header: 'Role',
+      render: (u) => {
+        const roleMeta = ROLE_META[u.role];
+        return (
+          <AppPill
+            label={roleMeta.label}
+            color={roleMeta.color}
+            border
+            icon={roleMeta.icon}
+          />
+        );
+      },
+    },
+    {
+      key: 'joined',
+      header: 'Date Joined',
+      render: (u) => (
+        <span className="b2-r text-text-secondary">
+          {formatJoinedDate(u.createdAt)}
+        </span>
+      ),
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (u) => (
+        <AppPill
+          label={u.isActive ? 'Active' : 'Suspended'}
+          color={u.isActive ? 'success' : 'error'}
+        />
+      ),
+    },
+    {
+      key: 'lastActive',
+      header: 'Last Active',
+      render: () => <span className="b2-r text-muted">—</span>,
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      align: 'right',
+      render: (u) => (
+        <AppButton
+          href={`/admin/users/${u.id}`}
+          variant="text"
+          color="neutral"
+          size="icon"
+          ariaLabel={`View details for ${u.fullName || u.email}`}
+          className="!h-8 !w-8 !text-muted hover:!bg-primary-light hover:!text-primary"
+        >
+          <ChevronRight size={18} />
+        </AppButton>
+      ),
+    },
+  ];
+
   return (
     <div className="flex flex-col gap-4">
       <PageHeader
@@ -190,86 +271,12 @@ export default function UsersPage() {
           </div>
         ) : hasUsers ? (
           <>
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[880px] text-left">
-                <thead>
-                  <tr className="border-b border-disabled">
-                    <th className="f1-m px-4 py-3 text-muted">User</th>
-                    <th className="f1-m px-4 py-3 text-muted">Role</th>
-                    <th className="f1-m px-4 py-3 text-muted">Date Joined</th>
-                    <th className="f1-m px-4 py-3 text-muted">Status</th>
-                    <th className="f1-m px-4 py-3 text-muted">Last Active</th>
-                    <th className="f1-m px-4 py-3 text-right text-muted">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {pagedUsers.map((u) => {
-                    const isSelf = u.id === currentUser?.id;
-                    const roleMeta = ROLE_META[u.role];
-                    return (
-                      <tr
-                        key={u.id}
-                        className="border-b border-disabled last:border-b-0"
-                      >
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-3">
-                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-light b2-b text-primary">
-                              {(u.fullName || u.email).charAt(0).toUpperCase()}
-                            </span>
-                            <div className="min-w-0">
-                              <p className="b2-m truncate text-text">
-                                {u.fullName || '—'}
-                                {isSelf && (
-                                  <span className="f1-r text-muted">
-                                    {' '}
-                                    (You)
-                                  </span>
-                                )}
-                              </p>
-                              <p className="f1-r truncate text-muted">
-                                {u.email}
-                              </p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3">
-                          <AppPill
-                            label={roleMeta.label}
-                            color={roleMeta.color}
-                            border
-                            icon={roleMeta.icon}
-                          />
-                        </td>
-                        <td className="b2-r px-4 py-3 text-text-secondary">
-                          {formatJoinedDate(u.createdAt)}
-                        </td>
-                        <td className="px-4 py-3">
-                          <AppPill
-                            label={u.isActive ? 'Active' : 'Suspended'}
-                            color={u.isActive ? 'success' : 'error'}
-                          />
-                        </td>
-                        <td className="b2-r px-4 py-3 text-muted">—</td>
-                        <td className="px-4 py-3 text-right">
-                          <AppButton
-                            href={`/admin/users/${u.id}`}
-                            variant="text"
-                            color="neutral"
-                            size="icon"
-                            ariaLabel={`View details for ${u.fullName || u.email}`}
-                            className="!h-8 !w-8 !text-muted hover:!bg-primary-light hover:!text-primary"
-                          >
-                            <ChevronRight size={18} />
-                          </AppButton>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+            <AppTable
+              columns={columns}
+              data={pagedUsers}
+              getRowKey={(u) => u.id}
+              minWidth={880}
+            />
 
             <div className="flex flex-col gap-3 border-t border-disabled px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
               <p className="b2-r text-text-secondary">
