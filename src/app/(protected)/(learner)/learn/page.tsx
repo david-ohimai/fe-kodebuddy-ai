@@ -6,7 +6,7 @@ import emptyStateImg from '@/assets/images/empty state.webp';
 import AppButton from '@/components/ui/AppButton';
 import AppSpinner from '@/components/ui/AppSpinner';
 import { useToast } from '@/components/ui/ToastProvider';
-import * as coursesApi from '@/lib/api/courses.api';
+import { listCourses } from '@/lib/api/courses.api';
 import { getErrorMessage } from '@/lib/api/client';
 import type { CourseSummary } from '@/types/dashboard.types';
 
@@ -17,8 +17,7 @@ export default function LearnPage() {
 
   useEffect(() => {
     let cancelled = false;
-    coursesApi
-      .getMyCourses()
+    listCourses()
       .then((list) => {
         if (!cancelled) setCourses(list);
       })
@@ -74,16 +73,15 @@ export default function LearnPage() {
             You don&apos;t have a course in progress yet. Explore your courses to get started.
           </p>
 
-          <AppButton 
-            href="/dashboard" 
-            radius="full" 
+          <AppButton
+            href="/dashboard"
+            radius="full"
             className="px-8 py-2.5 bg-primary text-white font-medium hover:bg-primary/90 transition-all shadow-sm"
           >
             Back to Dashboard
           </AppButton>
         </div>
       ) : (
-
         <div className="grid gap-4">
           {courses.map((course) => (
             <div key={course.id} className="bg-white border p-6 rounded-2xl shadow-sm flex justify-between items-center">
@@ -98,4 +96,3 @@ export default function LearnPage() {
     </div>
   );
 }
-
