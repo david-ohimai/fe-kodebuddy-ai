@@ -16,13 +16,6 @@ import { getErrorMessage } from '@/lib/api/client';
 import noModules from '@/assets/images/no-modules.webp';
 import type { Course } from '@/lib/api/courses.api';
 
-// NOTE: the backend's Course model has no explicit "assigned trainer"
-// field (only `created_by`, the admin who created it, per the PRD's
-// Admin-creates → Admin-assigns → Trainer-manages ownership model) —
-// there's no dedicated "courses assigned to me" endpoint either. As a
-// best-effort stand-in, this matches courses where `createdBy` equals
-// the signed-in trainer's own id, which will start working correctly
-// once the backend clarifies/adds real trainer-assignment data.
 const TABS = [
   { id: 'overview', label: 'Overview' },
   { id: 'modules', label: 'Modules' },
@@ -70,7 +63,6 @@ export default function MyCoursePage() {
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   return (
@@ -107,9 +99,7 @@ export default function MyCoursePage() {
                     color={course.isActive ? 'success' : 'default'}
                   />
                 </div>
-                <p className="f1-r mt-1 text-muted">
-                  {cohortName ?? 'Cohort'}
-                </p>
+                <p className="f1-r mt-1 text-muted">{cohortName ?? 'Cohort'}</p>
 
                 <p className="b2-m mt-5 text-text-secondary">Trainer</p>
                 <p className="b1-b text-text">
