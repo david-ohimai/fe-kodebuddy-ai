@@ -18,6 +18,7 @@ import {
   setRefreshToken,
 } from '@/lib/api/client';
 import type { SignInFormValues } from '@/types/auth.types';
+import { ROLE_HOME_HREF } from '@/types/dashboard.types';
 
 export default function SignIn() {
   const router = useRouter();
@@ -41,9 +42,7 @@ export default function SignIn() {
       });
       setAccessToken(res.accessToken);
       setRefreshToken(res.refreshToken);
-      router.push(
-        res.user.role === 'admin' ? '/admin/dashboard' : '/dashboard',
-      );
+      router.push(ROLE_HOME_HREF[res.user.role]);
     } catch (err) {
       const message = getErrorMessage(
         err,

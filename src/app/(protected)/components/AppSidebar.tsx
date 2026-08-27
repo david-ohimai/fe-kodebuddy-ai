@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import AppLogo from '@/components/layout/AppLogo';
 import AppButton from '@/components/ui/AppButton';
-import type { DashboardRole } from '@/types/dashboard.types';
+import { ROLE_HOME_HREF, type DashboardRole } from '@/types/dashboard.types';
 import {
   LayoutDashboard,
   BookOpen,
@@ -16,6 +16,8 @@ import {
   Users,
   FileText,
   GraduationCap,
+  Flag,
+  Bell,
   Settings,
   LogOut,
   PanelLeft,
@@ -60,6 +62,19 @@ const NAV_ITEMS_BY_ROLE: Record<
     },
     { label: 'Settings', href: '/admin/settings', icon: Settings },
   ],
+  trainer: [
+    { label: 'Dashboard', href: '/trainer/dashboard', icon: LayoutDashboard },
+    { label: 'My Course', href: '/trainer/my-course', icon: BookOpen },
+    { label: 'My Cohort', href: '/trainer/my-cohort', icon: GraduationCap },
+    { label: 'Escalations', href: '/trainer/escalations', icon: Flag },
+    { label: 'Settings', href: '/trainer/settings', icon: Settings },
+  ],
+  mentor: [
+    { label: 'Dashboard', href: '/mentor/dashboard', icon: LayoutDashboard },
+    { label: 'My Learners', href: '/mentor/my-learners', icon: Users },
+    { label: 'Notifications', href: '/mentor/notifications', icon: Bell },
+    { label: 'Settings', href: '/mentor/settings', icon: Settings },
+  ],
 };
 
 const AppSidebar: React.FC<AppSidebarProps> = ({
@@ -73,7 +88,7 @@ const AppSidebar: React.FC<AppSidebarProps> = ({
 }) => {
   const pathname = usePathname();
   const navItems = NAV_ITEMS_BY_ROLE[role];
-  const homeHref = role === 'learner' ? '/dashboard' : '/admin/dashboard';
+  const homeHref = ROLE_HOME_HREF[role];
 
   return (
     <>

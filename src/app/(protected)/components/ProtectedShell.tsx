@@ -6,7 +6,7 @@ import DashboardShell from './DashboardShell';
 import AppSpinner from '@/components/ui/AppSpinner';
 import { useCurrentUser } from '@/lib/auth/useCurrentUser';
 import { CurrentUserProvider } from '@/lib/auth/CurrentUserContext';
-import type { DashboardRole } from '@/types/dashboard.types';
+import { ROLE_HOME_HREF, type DashboardRole } from '@/types/dashboard.types';
 
 export interface ProtectedShellProps {
   role: DashboardRole;
@@ -20,12 +20,12 @@ export default function ProtectedShell({
   const router = useRouter();
   const { user, loading } = useCurrentUser();
 
-  const isAuthorized = !user || (role === 'admin') === (user.role === 'admin');
+  const isAuthorized = !user || role === user.role;
 
   useEffect(() => {
     if (!user || isAuthorized) return;
-    router.replace(role === 'admin' ? '/dashboard' : '/admin/dashboard');
-  }, [user, isAuthorized, role, router]);
+    router.replace(ROLE_HOME_HREF[user.role]);
+  }, [user, isAuthorized, router]);
 
   if (loading || !user || !isAuthorized) {
     return (
