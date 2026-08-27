@@ -4,7 +4,12 @@ import React, { useState } from 'react';
 import AppSidebar from './AppSidebar';
 import AppTopbar from './AppTopbar';
 import { useLogout } from '@/lib/auth/useLogout';
-import type { DashboardRole, DashboardUser } from '@/types/dashboard.types';
+import {
+  ROLE_LABEL,
+  ROLE_SETTINGS_HREF,
+  type DashboardRole,
+  type DashboardUser,
+} from '@/types/dashboard.types';
 
 export interface DashboardShellProps {
   role: DashboardRole;
@@ -21,8 +26,6 @@ export default function DashboardShell({
   const [mobileOpen, setMobileOpen] = useState(false);
   const { logout } = useLogout();
 
-  const settingsHref = role === 'learner' ? '/settings' : '/admin/settings';
-
   return (
     <div className="flex h-screen w-full overflow-hidden bg-gray-50">
       <AppSidebar
@@ -38,9 +41,9 @@ export default function DashboardShell({
         <AppTopbar
           userName={user.name}
           userEmail={user.email}
-          userRole={role === 'admin' ? 'Admin' : 'Learner'}
+          userRole={ROLE_LABEL[role]}
           avatarSrc={user.avatarSrc}
-          settingsHref={settingsHref}
+          settingsHref={ROLE_SETTINGS_HREF[role]}
           onMenuClick={() => setMobileOpen(true)}
           onLogoutClick={logout}
         />
