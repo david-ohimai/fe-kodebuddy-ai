@@ -1,5 +1,5 @@
-import ProgressPage from './components/ProgressPage';
+import ResourcesPage from './components/ResourcesPage';
 
-export default function Progress() {
-  return <ProgressPage />;
+export default function Resources() {
+  return <ResourcesPage />;
 }
