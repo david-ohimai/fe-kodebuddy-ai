@@ -516,9 +516,11 @@ export default function AssignmentDetails({
               onClick={() => setChatOpen(false)}
               className="fixed inset-0 z-40 bg-black/40 lg:hidden"
             />
-            {/* Height leaves room for the topbar and the main scroll area's
-                padding, so the panel's composer and footer are never clipped. */}
-            <aside className="fixed inset-x-4 top-4 bottom-4 z-50 lg:sticky lg:inset-auto lg:top-0 lg:z-auto lg:h-[calc(100vh-8rem)] lg:w-100 lg:shrink-0">
+            {/* From lg the panel is a top-aligned card, not a pinned column:
+                it ends with its own content and the brief scrolls on past it,
+                which is how the design lays the page out. Below lg it takes
+                over the screen instead of being squeezed into a sidebar. */}
+            <aside className="fixed inset-x-4 top-4 bottom-4 z-50 lg:relative lg:inset-auto lg:z-auto lg:h-160 lg:w-100 lg:shrink-0">
               <KodeBuddyChatPanel
                 context={{
                   courseId: assignment.courseId,
