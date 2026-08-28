@@ -15,6 +15,7 @@ import {
   BookOpen,
   ClipboardList,
   Lightbulb,
+  Bot,
   BarChart3,
   Users,
   FileText,
@@ -43,13 +44,12 @@ const NAV_ITEMS_BY_ROLE: Record<
   DashboardRole,
   ReadonlyArray<{ label: string; href: string; icon: React.ElementType }>
 > = {
-  // KodeBuddy AI is deliberately absent: the assistant is reached from the
-  // "Ask KodeBuddy" button on a screen, not from a nav destination of its own.
   learner: [
     { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
     { label: 'Learn', href: '/learn', icon: BookOpen },
     { label: 'Assignments', href: '/assignments', icon: ClipboardList },
     { label: 'Resources', href: '/resources', icon: Lightbulb },
+    { label: 'Kodebuddy AI', href: '/kodebuddy-ai', icon: Bot },
     { label: 'Progress', href: '/progress', icon: BarChart3 },
   ],
   admin: [
@@ -130,7 +130,7 @@ const AppSidebar: React.FC<AppSidebarProps> = ({
               size="icon"
               onClick={onToggleCollapsed}
               ariaLabel={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-              className="hidden h-8! w-8! text-muted! hover:!bg-primary-light! hover:!text-primary! lg:inline-flex"
+              className="hidden !h-8 !w-8 !text-muted hover:!bg-primary-light hover:!text-primary lg:inline-flex"
             >
               <PanelLeft size={18} />
             </AppButton>
@@ -141,7 +141,7 @@ const AppSidebar: React.FC<AppSidebarProps> = ({
               size="icon"
               onClick={onClose}
               ariaLabel="Close sidebar"
-              className="h-8! w-8! text-muted! hover:!bg-primary-light! hover:!text-primary! lg:hidden"
+              className="!h-8 !w-8 !text-muted hover:!bg-primary-light hover:!text-primary lg:hidden"
             >
               <X size={18} />
             </AppButton>
