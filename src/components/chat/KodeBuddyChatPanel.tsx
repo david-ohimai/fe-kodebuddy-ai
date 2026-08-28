@@ -20,9 +20,9 @@ import {
 import { cx } from '@/lib/utils/cx';
 import { useToast } from '@/components/ui/ToastProvider';
 import {
-  askKodeBuddy,
   escalateToTrainer,
   isChatMocked,
+  streamKodeBuddy,
 } from '@/lib/api/chat.api';
 import {
   ESCALATION_STAGES,
@@ -89,40 +89,49 @@ function EscalationProgress({ stage }: { stage: EscalationStage }) {
   const activeIndex = ESCALATION_STAGES.findIndex((s) => s.id === stage);
 
   return (
-    <div className="mt-4 flex items-start">
-      {ESCALATION_STAGES.map((step, index) => {
-        const reached = index <= activeIndex;
-        return (
-          <div key={step.id} className="flex flex-1 flex-col gap-2">
-            <div className="flex items-center">
+    <div className="mt-4">
+      {/*
+        Track and labels are separate rows rather than per-stage columns. With
+        columns, the final stage owned an equal-width column too, so its dot sat
+        at that column's left edge while its label was pushed to the right edge —
+        the dot never reached the end of the track. Here the connectors are the
+        only flexible elements, so the first dot pins to the left edge and the
+        last to the right edge.
+      */}
+      <div className="flex items-center">
+        {ESCALATION_STAGES.map((step, index) => (
+          <React.Fragment key={step.id}>
+            {index > 0 && (
               <span
                 className={cx(
-                  'h-3 w-3 shrink-0 rounded-full',
-                  reached ? 'bg-primary' : 'bg-disabled',
+                  'h-px flex-1',
+                  index <= activeIndex ? 'bg-primary' : 'bg-disabled',
                 )}
               />
-              {index < ESCALATION_STAGES.length - 1 && (
-                <span
-                  className={cx(
-                    'h-px flex-1',
-                    index < activeIndex ? 'bg-primary' : 'bg-disabled',
-                  )}
-                />
-              )}
-            </div>
+            )}
             <span
               className={cx(
-                'f1-r',
-                reached ? 'f1-b text-primary' : 'text-muted',
-                // Last label sits at the right edge under its own dot.
-                index === ESCALATION_STAGES.length - 1 && 'text-right',
+                'h-3 w-3 shrink-0 rounded-full',
+                index <= activeIndex ? 'bg-primary' : 'bg-disabled',
               )}
-            >
-              {step.label}
-            </span>
-          </div>
-        );
-      })}
+            />
+          </React.Fragment>
+        ))}
+      </div>
+
+      {/* justify-between puts the outer labels flush with the outer dots. */}
+      <div className="mt-2 flex justify-between">
+        {ESCALATION_STAGES.map((step, index) => (
+          <span
+            key={step.id}
+            className={cx(
+              index <= activeIndex ? 'f1-b text-primary' : 'f1-r text-muted',
+            )}
+          >
+            {step.label}
+          </span>
+        ))}
+      </div>
     </div>
   );
 }
@@ -139,6 +148,8 @@ export default function KodeBuddyChatPanel({
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState('');
   const [thinking, setThinking] = useState(false);
+  /** Partial answer text while a response streams in. */
+  const [streamingText, setStreamingText] = useState('');
   const [focused, setFocused] = useState(false);
 
   // Escalation form
@@ -158,7 +169,8 @@ export default function KodeBuddyChatPanel({
       top: scrollRef.current.scrollHeight,
       behavior: 'smooth',
     });
-  }, [messages, thinking, view]);
+    // streamingText keeps the view pinned to the bottom as tokens arrive.
+  }, [messages, thinking, streamingText, view]);
 
   const send = useCallback(
     async (text: string) => {
@@ -177,15 +189,23 @@ export default function KodeBuddyChatPanel({
       setMessages((prev) => [...prev, userTurn]);
       setDraft('');
       setThinking(true);
+      setStreamingText('');
 
       try {
-        const answer = await askKodeBuddy({
-          question,
-          courseId: context.courseId,
-          moduleId: context.moduleId,
-          assignmentId: context.assignmentId,
-          queryType: context.assignmentId ? 'assignment_guidance' : 'chat',
-        });
+        const answer = await streamKodeBuddy(
+          {
+            question,
+            courseId: context.courseId,
+            moduleId: context.moduleId,
+            assignmentId: context.assignmentId,
+            queryType: context.assignmentId ? 'assignment_guidance' : 'chat',
+          },
+          {
+            // First token means the guardrail has cleared and prose is
+            // approved — that is the moment "Thinking..." gives way to text.
+            onToken: (text) => setStreamingText((prev) => prev + text),
+          },
+        );
 
         setMessages((prev) => [
           ...prev,
@@ -201,7 +221,11 @@ export default function KodeBuddyChatPanel({
             escalationId: answer.escalationId,
           },
         ]);
+        // Cleared only after the finished turn is committed, so the text never
+        // blanks between the last token and the rendered message.
+        setStreamingText('');
       } catch {
+        setStreamingText('');
         // The turn stays in the thread marked failed rather than vanishing, so
         // the learner can see what they asked and retry it.
         setMessages((prev) =>
@@ -538,7 +562,16 @@ export default function KodeBuddyChatPanel({
                   ),
                 )}
 
-                {thinking && <p className="b2-r text-muted">Thinking...</p>}
+                {thinking &&
+                  (streamingText ? (
+                    <p className="b2-r whitespace-pre-line text-text">
+                      {streamingText}
+                      {/* Caret marks the response as still arriving. */}
+                      <span className="ml-0.5 inline-block h-4 w-0.5 translate-y-0.5 animate-pulse bg-primary align-middle" />
+                    </p>
+                  ) : (
+                    <p className="b2-r text-muted">Thinking...</p>
+                  ))}
               </>
             )}
           </div>

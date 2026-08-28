@@ -1,9 +1,12 @@
-import { apiFetch } from './client';
+import { ApiError, apiFetch, getAccessToken, getApiBaseUrl } from './client';
 import type {
   AskKodeBuddyRequest,
   AskKodeBuddyRequestDto,
   ChatAnswer,
   ChatAnswerDto,
+  ChatStreamEvent,
+  ChatStreamHandlers,
+  ChatStreamStage,
   EscalateRequest,
   EscalationReceipt,
   EscalationReceiptDto,
@@ -124,10 +127,8 @@ function stuckAnswer(): string {
   );
 }
 
-async function askMock(request: AskKodeBuddyRequest): Promise<ChatAnswer> {
-  // Long enough that the "Thinking..." state is visible in the demo.
-  await delay(1400);
-
+/** The answer itself, with no latency baked in, so both mocks can share it. */
+function buildMockAnswer(request: AskKodeBuddyRequest): ChatAnswer {
   const stuck = isStillStuck(request.question);
 
   return {
@@ -147,6 +148,57 @@ async function askMock(request: AskKodeBuddyRequest): Promise<ChatAnswer> {
     escalationId: null,
     createdAt: new Date().toISOString(),
   };
+}
+
+async function askMock(request: AskKodeBuddyRequest): Promise<ChatAnswer> {
+  // Long enough that the "Thinking..." state is visible in the demo.
+  await delay(1400);
+  return buildMockAnswer(request);
+}
+
+/**
+ * Mock stream. Emits the same stage sequence the real graph would, then plays
+ * the answer out in word-sized chunks.
+ *
+ * The pause before the first token is deliberate and not padding: it stands in
+ * for retrieve -> reason -> confidence_gate, none of which can emit prose,
+ * because the gate has to see the finished draft before any of it is shown.
+ */
+async function streamMock(
+  request: AskKodeBuddyRequest,
+  handlers: ChatStreamHandlers,
+  signal?: AbortSignal,
+): Promise<ChatAnswer> {
+  const throwIfAborted = () => {
+    if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+  };
+
+  handlers.onStage?.('retrieving');
+  await delay(450);
+  throwIfAborted();
+
+  handlers.onStage?.('reasoning');
+  await delay(650);
+  throwIfAborted();
+
+  handlers.onStage?.('checking');
+  await delay(300);
+  throwIfAborted();
+
+  const full = buildMockAnswer(request);
+
+  handlers.onStage?.('answering');
+
+  // Split so the whitespace rides along with each chunk, keeping paragraph
+  // breaks intact as the text accumulates.
+  const chunks = full.answer.match(/\S+\s*/g) ?? [full.answer];
+  for (const chunk of chunks) {
+    throwIfAborted();
+    handlers.onToken?.(chunk);
+    await delay(18);
+  }
+
+  return full;
 }
 
 async function escalateMock(): Promise<EscalationReceipt> {
@@ -212,6 +264,128 @@ function mapReceipt(dto: EscalationReceiptDto): EscalationReceipt {
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
+
+/**
+ * Streamed ask. Resolves with the same ChatAnswer as `askKodeBuddy`, having
+ * delivered the prose incrementally via `handlers.onToken` on the way.
+ *
+ * Uses `fetch` + a ReadableStream rather than `EventSource`, which cannot POST
+ * and cannot carry an Authorization header. `apiFetch` is not reusable here
+ * either — it parses the whole body as JSON.
+ *
+ * Callers should treat `onToken` as append-only and rely on the resolved value
+ * for anything structural (message id, resources, escalation state).
+ */
+export async function streamKodeBuddy(
+  request: AskKodeBuddyRequest,
+  handlers: ChatStreamHandlers = {},
+  signal?: AbortSignal,
+): Promise<ChatAnswer> {
+  if (!isLiveChat()) return streamMock(request, handlers, signal);
+
+  const headers = new Headers({
+    'Content-Type': 'application/json',
+    Accept: 'text/event-stream',
+  });
+  const token = getAccessToken();
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+
+  const response = await fetch(`${getApiBaseUrl()}/chat/stream`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(toAskDto(request)),
+    signal,
+  });
+
+  if (!response.ok || !response.body) {
+    throw new ApiError(
+      `Chat stream failed with status ${response.status}`,
+      response.status,
+    );
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let answer: ChatAnswer | null = null;
+
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+
+      // SSE frames are separated by a blank line. Anything after the last
+      // separator is a partial frame and stays buffered for the next read.
+      const frames = buffer.split('\n\n');
+      buffer = frames.pop() ?? '';
+
+      for (const frame of frames) {
+        const event = parseSseFrame(frame);
+        if (!event) continue;
+
+        if (event.type === 'stage') handlers.onStage?.(event.stage);
+        else if (event.type === 'token') handlers.onToken?.(event.text);
+        else if (event.type === 'done') answer = event.answer;
+        else if (event.type === 'error') {
+          throw new ApiError(event.message, 500);
+        }
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  if (!answer) {
+    // A stream that ends without a `done` frame is a truncated response, not
+    // an empty answer — surfacing it as an error beats rendering half a reply
+    // as if it were complete.
+    throw new ApiError('Chat stream ended before completing', 500);
+  }
+
+  return answer;
+}
+
+/** Parses one `event:`/`data:` SSE frame. Returns null for keep-alives. */
+function parseSseFrame(frame: string): ChatStreamEvent | null {
+  let eventName = 'message';
+  const dataLines: string[] = [];
+
+  for (const line of frame.split('\n')) {
+    if (line.startsWith(':')) continue; // comment / keep-alive
+    if (line.startsWith('event:')) eventName = line.slice(6).trim();
+    else if (line.startsWith('data:')) dataLines.push(line.slice(5).trim());
+  }
+
+  if (dataLines.length === 0) return null;
+
+  let payload: Record<string, unknown>;
+  try {
+    payload = JSON.parse(dataLines.join('\n'));
+  } catch {
+    return null;
+  }
+
+  switch (eventName) {
+    case 'stage':
+      return { type: 'stage', stage: payload.stage as ChatStreamStage };
+    case 'token':
+      return { type: 'token', text: String(payload.text ?? '') };
+    case 'done':
+      return {
+        type: 'done',
+        answer: mapAnswer(payload as unknown as ChatAnswerDto),
+      };
+    case 'error':
+      return {
+        type: 'error',
+        message: String(payload.message ?? 'The assistant stopped responding.'),
+      };
+    default:
+      return null;
+  }
+}
 
 export async function askKodeBuddy(
   request: AskKodeBuddyRequest,

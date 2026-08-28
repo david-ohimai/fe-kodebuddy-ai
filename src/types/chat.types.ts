@@ -100,6 +100,37 @@ export interface ChatAnswer {
 }
 
 // ---------------------------------------------------------------------------
+// POST /chat/stream — server-sent events
+// ---------------------------------------------------------------------------
+
+/**
+ * Lifecycle stages the server reports while the graph runs, mirroring the node
+ * names in build.py so a trace and the UI tell the same story.
+ *
+ * `answering` is only reached once `route` has approved a response. Tokens are
+ * NEVER emitted from the `reason` node directly — see the streaming section of
+ * docs/chat-api-contract.md for why that ordering is load-bearing.
+ */
+export type ChatStreamStage =
+  | 'retrieving'
+  | 'reasoning'
+  | 'checking'
+  | 'answering';
+
+export type ChatStreamEvent =
+  | { type: 'stage'; stage: ChatStreamStage }
+  /** An incremental slice of the approved answer. Append, never replace. */
+  | { type: 'token'; text: string }
+  /** Terminal success. Carries the metadata a token cannot. */
+  | { type: 'done'; answer: ChatAnswer }
+  | { type: 'error'; message: string };
+
+export interface ChatStreamHandlers {
+  onStage?: (stage: ChatStreamStage) => void;
+  onToken?: (text: string) => void;
+}
+
+// ---------------------------------------------------------------------------
 // GET /chat/history — replay the panel on mount
 // ---------------------------------------------------------------------------
 

@@ -30,6 +30,15 @@ export class NetworkError extends Error {
   }
 }
 
+/**
+ * The resolved API origin, for callers that cannot go through `apiFetch` —
+ * streaming responses, which must read the body incrementally rather than
+ * parsing it as JSON.
+ */
+export function getApiBaseUrl(): string {
+  return API_BASE_URL;
+}
+
 export function getAccessToken(): string | null {
   if (typeof window === 'undefined') return null;
   return window.localStorage.getItem(ACCESS_TOKEN_KEY);

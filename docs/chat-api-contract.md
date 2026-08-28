@@ -21,9 +21,14 @@
 
 | Method | Path | Auth | Purpose |
 |---|---|---|---|
-| `POST` | `/chat` | `get_current_learner` | Ask a question; runs the agent graph |
+| `POST` | `/chat/stream` | `get_current_learner` | **Primary.** Ask a question; streams the reply as SSE |
+| `POST` | `/chat` | `get_current_learner` | Non-streaming equivalent; same request and result |
 | `GET` | `/chat/history` | `get_current_learner` | Replay the panel on mount |
 | `POST` | `/chat/escalate` | `get_current_learner` | The "ASK A TRAINER" button |
+
+`/chat` is kept alongside `/chat/stream` deliberately: it is the fallback when a
+proxy buffers SSE, and it keeps the non-streaming path testable. Both take the
+same `ChatRequest` and produce the same final payload.
 
 ### `POST /chat`
 
@@ -169,9 +174,53 @@ Options: (a) add `session_id` to the table and thread it through, (b) treat ⊕ 
 
 The Figma shows feedback controls on every assistant message. No table, no column. Either add one or cut the control from v1 — shipping a button that discards its input is worse than not shipping it.
 
-### 4. Streaming or single-shot?
+### 4. Streaming — RESOLVED, with one constraint the backend must respect
 
-`LLMClient.complete()` is synchronous and returns a whole string, so single-shot is what the current design supports and this contract assumes. The "Thinking…" state in the Figma works either way. If streaming is wanted later it's an additive `/chat/stream` (SSE) — but note `apiFetch` in the frontend is JSON-only and would need extending.
+Streaming is required. The frontend is built for it. **But tokens cannot be streamed straight out of the `reason` node**, and this is not a preference — it is forced by the graph:
+
+```
+retrieve → reason → confidence_gate → route
+```
+
+`reason` produces the **entire** draft. `confidence_gate` then inspects that finished text — `_violates_guide_dont_solve_policy` counts non-empty lines against `POLICY_VIOLATION_LINE_THRESHOLD` — and `route` **suppresses the draft outright** when the reason is `POLICY_VIOLATION` (`safe_to_show` in `nodes.py::route`).
+
+That guardrail is the thing stopping the agent from simply doing the learner's assignment for them. Streaming from `reason` would push exactly that content onto the screen and only afterwards decide it should have been withheld. Streamed tokens cannot be retracted.
+
+**So the required shape is: stage events during the graph run, then token events only after `route` approves.**
+
+```
+event: stage
+data: {"stage": "retrieving"}
+
+event: stage
+data: {"stage": "reasoning"}
+
+event: stage
+data: {"stage": "checking"}
+
+event: stage
+data: {"stage": "answering"}
+
+event: token
+data: {"text": "No worries, that's a "}
+
+event: done
+data: {"message_id": 812, "answer": "<the full text>", "resources": [],
+       "offers_escalation": false, "escalated": false,
+       "escalation_id": null, "created_at": "2026-02-01T22:34:11Z"}
+```
+
+Rules:
+
+- `answering` is emitted **only** after `route` has approved a response. The three stages before it are the honest reason for the wait.
+- `token` frames carry an incremental slice; the client appends. Chunk size is the server's choice — word, sentence, or whole paragraphs all render correctly.
+- `done` is **mandatory** and carries the full `answer` plus all metadata. A stream that ends without it is treated by the client as a truncated response and surfaced as an error, not as a short answer.
+- On escalation, still emit `done` with `escalated: true`; the graph's fallback copy is learner-safe and renders like any other answer.
+- Errors use `event: error` with `{"message": "..."}`.
+
+**What this does and does not buy.** It does not reduce time-to-first-token — the learner still waits for the whole LLM call plus the gate. What it buys is an honest progress signal instead of a spinner, and the ability to render long answers progressively. If genuine low-latency token streaming is wanted, the guardrail has to become incremental (checking as tokens arrive and cutting the stream on violation), which is real backend work in `confidence_gate` and should be costed separately.
+
+Frontend note: `apiFetch` is JSON-only, so `streamKodeBuddy` in `lib/api/chat.api.ts` uses `fetch` + a `ReadableStream` reader directly — `EventSource` is unusable here as it cannot POST or send an `Authorization` header. Whatever proxy fronts this in production must not buffer `text/event-stream` (`X-Accel-Buffering: no` for nginx).
 
 ### 5. Replayed history can't show escalation state
 
