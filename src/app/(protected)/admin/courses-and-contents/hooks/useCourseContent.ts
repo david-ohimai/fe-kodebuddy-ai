@@ -43,7 +43,9 @@ export function useCourseContent(courseId: number) {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadContent();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [courseId]);
 
   const totalLessons = modules.reduce(
