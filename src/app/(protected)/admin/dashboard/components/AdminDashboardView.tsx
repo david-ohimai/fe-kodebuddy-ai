@@ -92,7 +92,7 @@ const AdminDashboardView: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [showError]);
 
   const hasData = stats.totalUsers > 0;
   const hasActivity = activities.length > 0;
