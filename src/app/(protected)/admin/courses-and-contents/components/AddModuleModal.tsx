@@ -88,7 +88,9 @@ const AddModuleModal: React.FC<AddModuleModalProps> = ({
       <div className="flex flex-col gap-6 p-6">
         <div className="flex items-start justify-between">
           <div className="flex flex-col gap-1">
-            <h3 className="h6-b text-text">{isEdit ? 'Edit module' : 'Add module'}</h3>
+            <h3 className="h6-b text-text">
+              {isEdit ? 'Edit module' : 'Add module'}
+            </h3>
             <p className="b2-r text-text-secondary">
               {isEdit
                 ? 'Update this module\u2019s title and description.'

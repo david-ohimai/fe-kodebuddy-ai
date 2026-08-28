@@ -39,7 +39,9 @@ const CourseDetailsView: React.FC<CourseDetailsViewProps> = ({
 
   const [isAddModuleOpen, setIsAddModuleOpen] = useState(false);
   const [editingModule, setEditingModule] = useState<CourseModule | null>(null);
-  const [deletingModule, setDeletingModule] = useState<CourseModule | null>(null);
+  const [deletingModule, setDeletingModule] = useState<CourseModule | null>(
+    null,
+  );
 
   const [lessonModule, setLessonModule] = useState<CourseModule | null>(null);
   const [editingLesson, setEditingLesson] = useState<{
@@ -54,7 +56,9 @@ const CourseDetailsView: React.FC<CourseDetailsViewProps> = ({
 
   const [isPublishConfirmOpen, setIsPublishConfirmOpen] = useState(false);
   const [isDescriptionModalOpen, setIsDescriptionModalOpen] = useState(false);
-  const [descriptionDraft, setDescriptionDraft] = useState(course.description ?? '');
+  const [descriptionDraft, setDescriptionDraft] = useState(
+    course.description ?? '',
+  );
 
   return (
     <div className="flex flex-col gap-6">
@@ -121,7 +125,10 @@ const CourseDetailsView: React.FC<CourseDetailsViewProps> = ({
             await content.addModule(data);
             setIsAddModuleOpen(false);
           } catch (err) {
-            showError('Could not add module', getErrorMessage(err, 'Please try again.'));
+            showError(
+              'Could not add module',
+              getErrorMessage(err, 'Please try again.'),
+            );
           }
         }}
       />
@@ -139,7 +146,10 @@ const CourseDetailsView: React.FC<CourseDetailsViewProps> = ({
             await content.editModule(editingModule.id, data);
             setEditingModule(null);
           } catch (err) {
-            showError('Could not update module', getErrorMessage(err, 'Please try again.'));
+            showError(
+              'Could not update module',
+              getErrorMessage(err, 'Please try again.'),
+            );
           }
         }}
       />
@@ -168,7 +178,9 @@ const CourseDetailsView: React.FC<CourseDetailsViewProps> = ({
             }
           } catch (err) {
             showError(
-              editingLesson ? 'Could not update lesson' : 'Could not add lesson',
+              editingLesson
+                ? 'Could not update lesson'
+                : 'Could not add lesson',
               getErrorMessage(err, 'Please try again.'),
             );
           }
@@ -186,7 +198,10 @@ const CourseDetailsView: React.FC<CourseDetailsViewProps> = ({
             await courseActions.saveDescription(descriptionDraft);
             setIsDescriptionModalOpen(false);
           } catch (err) {
-            showError('Could not save description', getErrorMessage(err, 'Please try again.'));
+            showError(
+              'Could not save description',
+              getErrorMessage(err, 'Please try again.'),
+            );
           }
         }}
       />
@@ -202,7 +217,10 @@ const CourseDetailsView: React.FC<CourseDetailsViewProps> = ({
             <span className="text-primary">{course.title}</span>?
           </>
         }
-        secondaryButton={{ label: 'Cancel', onClick: () => setIsPublishConfirmOpen(false) }}
+        secondaryButton={{
+          label: 'Cancel',
+          onClick: () => setIsPublishConfirmOpen(false),
+        }}
         primaryButton={{
           label: 'Yes publish',
           loading: courseActions.saving,
@@ -211,7 +229,10 @@ const CourseDetailsView: React.FC<CourseDetailsViewProps> = ({
               await courseActions.publish();
               setIsPublishConfirmOpen(false);
             } catch (err) {
-              showError('Could not publish course', getErrorMessage(err, 'Please try again.'));
+              showError(
+                'Could not publish course',
+                getErrorMessage(err, 'Please try again.'),
+              );
             }
           },
         }}
@@ -220,7 +241,9 @@ const CourseDetailsView: React.FC<CourseDetailsViewProps> = ({
       <AppConfirmModal
         open={!!deletingModule}
         onClose={() => setDeletingModule(null)}
-        icon={<ReportProblemIcon sx={{ fontSize: 40 }} className="text-error" />}
+        icon={
+          <ReportProblemIcon sx={{ fontSize: 40 }} className="text-error" />
+        }
         title="Delete module?"
         description={
           <>
@@ -230,7 +253,10 @@ const CourseDetailsView: React.FC<CourseDetailsViewProps> = ({
             undone.
           </>
         }
-        secondaryButton={{ label: 'Cancel', onClick: () => setDeletingModule(null) }}
+        secondaryButton={{
+          label: 'Cancel',
+          onClick: () => setDeletingModule(null),
+        }}
         primaryButton={{
           label: 'Yes, delete',
           color: 'error',
@@ -241,7 +267,10 @@ const CourseDetailsView: React.FC<CourseDetailsViewProps> = ({
               await content.deleteModule(deletingModule);
               setDeletingModule(null);
             } catch (err) {
-              showError('Could not delete module', getErrorMessage(err, 'Please try again.'));
+              showError(
+                'Could not delete module',
+                getErrorMessage(err, 'Please try again.'),
+              );
             }
           },
         }}
@@ -250,7 +279,9 @@ const CourseDetailsView: React.FC<CourseDetailsViewProps> = ({
       <AppConfirmModal
         open={!!deletingLesson}
         onClose={() => setDeletingLesson(null)}
-        icon={<ReportProblemIcon sx={{ fontSize: 40 }} className="text-error" />}
+        icon={
+          <ReportProblemIcon sx={{ fontSize: 40 }} className="text-error" />
+        }
         title="Delete lesson?"
         description={
           <>
@@ -259,7 +290,10 @@ const CourseDetailsView: React.FC<CourseDetailsViewProps> = ({
             This action cannot be undone.
           </>
         }
-        secondaryButton={{ label: 'Cancel', onClick: () => setDeletingLesson(null) }}
+        secondaryButton={{
+          label: 'Cancel',
+          onClick: () => setDeletingLesson(null),
+        }}
         primaryButton={{
           label: 'Yes, delete',
           color: 'error',
@@ -274,7 +308,10 @@ const CourseDetailsView: React.FC<CourseDetailsViewProps> = ({
               );
               setDeletingLesson(null);
             } catch (err) {
-              showError('Could not delete lesson', getErrorMessage(err, 'Please try again.'));
+              showError(
+                'Could not delete lesson',
+                getErrorMessage(err, 'Please try again.'),
+              );
             }
           },
         }}

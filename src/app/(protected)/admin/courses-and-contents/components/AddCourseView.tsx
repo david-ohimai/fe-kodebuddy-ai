@@ -16,7 +16,6 @@ import type { Cohort } from '@/lib/api/cohorts.api';
 interface AddCourseViewProps {
   onBack: () => void;
   onSaved: (course: Course) => void;
-  /** When provided, edits this course's title instead of creating a new one. */
   editCourse?: Course;
 }
 
@@ -53,12 +52,10 @@ const AddCourseView: React.FC<AddCourseViewProps> = ({
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isEdit]);
 
   const isTitleEmpty = title.trim().length === 0;
-  const isSubmitDisabled =
-    isTitleEmpty || submitting || (!isEdit && !cohortId);
+  const isSubmitDisabled = isTitleEmpty || submitting || (!isEdit && !cohortId);
 
   const handleSubmit = async () => {
     if (isSubmitDisabled) return;
@@ -76,9 +73,6 @@ const AddCourseView: React.FC<AddCourseViewProps> = ({
           title: title.trim(),
           cohortId: Number(cohortId),
         });
-        // New courses start as drafts — the backend has no draft/publish
-        // concept at creation time (CourseCreate has no `is_active`
-        // field), so this is an explicit follow-up patch.
         const draft = await coursesApi.updateCourse(created.id, {
           isActive: false,
         });
@@ -127,7 +121,7 @@ const AddCourseView: React.FC<AddCourseViewProps> = ({
           hint={
             isEdit
               ? undefined
-              : "This will be saved as a draft. You can edit and publish it later."
+              : 'This will be saved as a draft. You can edit and publish it later.'
           }
           value={title}
           onChange={(e) => setTitle(e.target.value)}
@@ -154,7 +148,10 @@ const AddCourseView: React.FC<AddCourseViewProps> = ({
             />
             {!loadingCohorts && cohorts.length === 0 && (
               <div className="mt-1 flex items-start gap-2 rounded-input bg-warning/10 px-3.5 py-2.5">
-                <AlertTriangle size={16} className="mt-0.5 shrink-0 text-warning" />
+                <AlertTriangle
+                  size={16}
+                  className="mt-0.5 shrink-0 text-warning"
+                />
                 <p className="f1-r text-text-secondary">
                   No cohorts exist yet.{' '}
                   <Link
@@ -176,7 +173,7 @@ const AddCourseView: React.FC<AddCourseViewProps> = ({
             <p className="b2-b text-text">What happens next?</p>
             <p className="b2-r text-text-secondary">
               {isEdit
-                ? "Your changes will be saved immediately."
+                ? 'Your changes will be saved immediately.'
                 : "After saving the draft, you'll be taken to the course details page where you can add modules, lessons and content."}
             </p>
           </div>
