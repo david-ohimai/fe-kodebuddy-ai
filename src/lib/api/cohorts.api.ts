@@ -135,6 +135,20 @@ export async function listCohortLearners(
       joinedAt: enrollment.joined_at,
     };
   });
+export interface CohortTrainer {
+  id: number;
+  cohortId: number;
+  trainerId: number;
+  assignedAt: string;
+  removedAt: string | null;
+}
+
+interface CohortTrainerResponseDto {
+  id: number;
+  cohort_id: number;
+  trainer_id: number;
+  assigned_at: string;
+  removed_at: string | null;
 }
 
 function mapCohortTrainer(dto: CohortTrainerResponseDto): CohortTrainer {
@@ -148,6 +162,7 @@ function mapCohortTrainer(dto: CohortTrainerResponseDto): CohortTrainer {
 }
 
 export async function listCohortTrainers(
+export async function getCohortTrainers(
   cohortId: number,
 ): Promise<CohortTrainer[]> {
   const dtos = await apiFetch<CohortTrainerResponseDto[]>(
@@ -170,4 +185,41 @@ export async function assignCohortTrainer(
     },
   );
   return mapCohortTrainer(dto);
+export interface CohortLearner {
+  id: number;
+  cohortId: number;
+  learnerId: number;
+  joinedAt: string;
+  completedAt: string | null;
+  isActive: boolean;
+}
+
+interface CohortLearnerResponseDto {
+  id: number;
+  cohort_id: number;
+  learner_id: number;
+  joined_at: string;
+  completed_at: string | null;
+  is_active: boolean;
+}
+
+function mapCohortLearner(dto: CohortLearnerResponseDto): CohortLearner {
+  return {
+    id: dto.id,
+    cohortId: dto.cohort_id,
+    learnerId: dto.learner_id,
+    joinedAt: dto.joined_at,
+    completedAt: dto.completed_at,
+    isActive: dto.is_active,
+  };
+}
+
+export async function getCohortLearners(
+  cohortId: number,
+): Promise<CohortLearner[]> {
+  const dtos = await apiFetch<CohortLearnerResponseDto[]>(
+    `/assign-cohorts/${cohortId}/learners`,
+    { method: 'GET', auth: true },
+  );
+  return dtos.map(mapCohortLearner);
 }

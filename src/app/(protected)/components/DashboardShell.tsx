@@ -34,7 +34,6 @@ export default function DashboardShell({
         onToggleCollapsed={() => setCollapsed((v) => !v)}
         isOpen={mobileOpen}
         onClose={() => setMobileOpen(false)}
-        onLogoutClick={logout}
       />
 
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">

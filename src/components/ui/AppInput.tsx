@@ -13,6 +13,7 @@ export interface AppInputProps extends Omit<
   hint?: string;
   icon?: LucideIcon;
   containerClassName?: string;
+  showCharCount?: boolean;
 }
 
 const AppInput = forwardRef<HTMLInputElement, AppInputProps>(
@@ -26,6 +27,9 @@ const AppInput = forwardRef<HTMLInputElement, AppInputProps>(
       id,
       className,
       containerClassName,
+      showCharCount = false,
+      maxLength,
+      value,
       ...rest
     },
     ref,
@@ -55,6 +59,8 @@ const AppInput = forwardRef<HTMLInputElement, AppInputProps>(
             id={inputId}
             ref={ref}
             type={isPassword ? (showPassword ? 'text' : 'password') : type}
+            maxLength={maxLength}
+            value={value}
             aria-invalid={!!error}
             aria-describedby={error ? `${inputId}-error` : undefined}
             className={cx(
@@ -82,12 +88,24 @@ const AppInput = forwardRef<HTMLInputElement, AppInputProps>(
           )}
         </div>
 
-        {error ? (
-          <p id={`${inputId}-error`} className="f1-r text-error">
-            {error}
-          </p>
-        ) : (
-          hint && <p className="f1-r text-muted">{hint}</p>
+        {(error || hint || (showCharCount && maxLength)) && (
+          <div className="flex items-start justify-between gap-2">
+            {error ? (
+              <p id={`${inputId}-error`} className="f1-r text-error">
+                {error}
+              </p>
+            ) : hint ? (
+              <p className="f1-r text-muted">{hint}</p>
+            ) : (
+              <span />
+            )}
+
+            {showCharCount && maxLength && (
+              <span className="f2-r shrink-0 text-muted">
+                {String(value ?? '').length}/{maxLength}
+              </span>
+            )}
+          </div>
         )}
       </div>
     );
