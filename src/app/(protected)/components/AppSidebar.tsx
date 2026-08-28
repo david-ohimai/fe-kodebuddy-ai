@@ -5,7 +5,11 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import AppLogo from '@/components/layout/AppLogo';
 import AppButton from '@/components/ui/AppButton';
-import { ROLE_HOME_HREF, type DashboardRole } from '@/types/dashboard.types';
+import {
+  ROLE_HOME_HREF,
+  ROLE_SETTINGS_HREF,
+  type DashboardRole,
+} from '@/types/dashboard.types';
 import {
   LayoutDashboard,
   BookOpen,
@@ -19,7 +23,6 @@ import {
   Flag,
   Bell,
   Settings,
-  LogOut,
   PanelLeft,
   X,
 } from 'lucide-react';
@@ -30,7 +33,6 @@ export interface AppSidebarProps {
   onToggleCollapsed?: () => void;
   isOpen?: boolean;
   onClose?: () => void;
-  onLogoutClick?: () => void;
   className?: string;
 }
 
@@ -49,7 +51,6 @@ const NAV_ITEMS_BY_ROLE: Record<
     { label: 'Resources', href: '/resources', icon: Lightbulb },
     { label: 'Kodebuddy AI', href: '/kodebuddy-ai', icon: Bot },
     { label: 'Progress', href: '/progress', icon: BarChart3 },
-    { label: 'Settings', href: '/settings', icon: Settings },
   ],
   admin: [
     { label: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
@@ -60,20 +61,17 @@ const NAV_ITEMS_BY_ROLE: Record<
       href: '/admin/courses-and-contents',
       icon: FileText,
     },
-    { label: 'Settings', href: '/admin/settings', icon: Settings },
   ],
   trainer: [
     { label: 'Dashboard', href: '/trainer/dashboard', icon: LayoutDashboard },
     { label: 'My Course', href: '/trainer/my-course', icon: BookOpen },
     { label: 'My Cohort', href: '/trainer/my-cohort', icon: GraduationCap },
     { label: 'Escalations', href: '/trainer/escalations', icon: Flag },
-    { label: 'Settings', href: '/trainer/settings', icon: Settings },
   ],
   mentor: [
     { label: 'Dashboard', href: '/mentor/dashboard', icon: LayoutDashboard },
     { label: 'My Learners', href: '/mentor/my-learners', icon: Users },
     { label: 'Notifications', href: '/mentor/notifications', icon: Bell },
-    { label: 'Settings', href: '/mentor/settings', icon: Settings },
   ],
 };
 
@@ -83,12 +81,14 @@ const AppSidebar: React.FC<AppSidebarProps> = ({
   onToggleCollapsed,
   isOpen = false,
   onClose,
-  onLogoutClick,
   className,
 }) => {
   const pathname = usePathname();
   const navItems = NAV_ITEMS_BY_ROLE[role];
   const homeHref = ROLE_HOME_HREF[role];
+  const settingsHref = ROLE_SETTINGS_HREF[role];
+  const isSettingsActive =
+    pathname === settingsHref || pathname?.startsWith(`${settingsHref}/`);
 
   return (
     <>
@@ -174,18 +174,21 @@ const AppSidebar: React.FC<AppSidebarProps> = ({
         </div>
 
         <div className="border-t border-disabled pt-3">
-          <button
-            type="button"
-            onClick={onLogoutClick}
-            title={collapsed ? 'Log out' : undefined}
+          <Link
+            href={settingsHref}
+            onClick={onClose}
+            title={collapsed ? 'Settings' : undefined}
             className={cx(
-              'flex w-full items-center gap-3 rounded-btn px-3 py-2.5 b2-m text-text-secondary transition-colors hover:bg-error-light hover:text-error',
+              'flex items-center gap-3 rounded-btn px-3 py-2.5 b2-m transition-colors',
               collapsed && 'lg:justify-center lg:px-2',
+              isSettingsActive
+                ? 'bg-primary-light text-primary'
+                : 'text-text-secondary hover:bg-primary-light hover:text-primary',
             )}
           >
-            <LogOut size={18} className="shrink-0" />
-            <span className={cx(collapsed && 'lg:hidden')}>Log out</span>
-          </button>
+            <Settings size={18} className="shrink-0" />
+            <span className={cx(collapsed && 'lg:hidden')}>Settings</span>
+          </Link>
         </div>
       </aside>
     </>

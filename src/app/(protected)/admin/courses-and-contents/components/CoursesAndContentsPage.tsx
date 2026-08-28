@@ -1,22 +1,24 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Plus } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { ChevronRight, Plus } from 'lucide-react';
 import PageHeader from '@/components/ui/AppPageHeader';
 import TableHeader from '@/components/ui/AppTableHeader';
+import AppTable, { type AppTableColumn } from '@/components/ui/AppTable';
 import AppEmptyState from '@/components/ui/AppEmptyState';
 import AppButton from '@/components/ui/AppButton';
+import AppPill from '@/components/ui/AppPill';
+import AppSpinner from '@/components/ui/AppSpinner';
 import { AppCard } from '@/components/ui/AppCard';
 import AddCourseView from './AddCourseView';
-import CourseDetailsView, { type CourseOverview } from './CourseDetailView';
+import CourseDetailsView from './CourseDetailView';
 import { useToast } from '@/components/ui/ToastProvider';
+import * as coursesApi from '@/lib/api/courses.api';
+import * as cohortsApi from '@/lib/api/cohorts.api';
+import { getErrorMessage } from '@/lib/api/client';
 import noCourses from '@/assets/images/no-courses.webp';
-
-interface CourseRow {
-  id: string;
-  title: string;
-  status: 'published' | 'draft';
-}
+import type { Course } from '@/lib/api/courses.api';
+import type { Cohort } from '@/lib/api/cohorts.api';
 
 const STATUS_OPTIONS = [
   { label: 'All Status', value: 'all' },
@@ -24,46 +26,92 @@ const STATUS_OPTIONS = [
   { label: 'Draft', value: 'draft' },
 ];
 
-// TODO: replace with real API data once endpoints are ready.
-const courses: CourseRow[] = [];
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString('en-US', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+}
 
 const CoursesAndContentsView: React.FC = () => {
+  const { showError } = useToast();
+
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [cohorts, setCohorts] = useState<Cohort[]>([]);
+  const [loading, setLoading] = useState(true);
+
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('all');
-  const { showSuccess } = useToast();
-  const [view, setView] = useState<'list' | 'add' | 'details'>('list');
-  const [selectedCourse, setSelectedCourse] = useState<CourseOverview | null>(
-    null,
+
+  const [view, setView] = useState<'list' | 'add' | 'edit' | 'details'>('list');
+  const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
+
+  const loadCourses = () => {
+    setLoading(true);
+    Promise.all([coursesApi.listCourses(), cohortsApi.listCohorts()])
+      .then(([courseList, cohortList]) => {
+        setCourses(courseList);
+        setCohorts(cohortList);
+      })
+      .catch((err) => {
+        showError(
+          'Could not load courses',
+          getErrorMessage(err, 'Please try again.'),
+        );
+      })
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    loadCourses();
+  }, []);
+
+  const cohortNameById = useMemo(
+    () => new Map(cohorts.map((c) => [c.id, c.name])),
+    [cohorts],
   );
 
-  const hasCourses = courses.length > 0;
+  const filteredCourses = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    return courses.filter((c) => {
+      const matchesSearch = !query || c.title.toLowerCase().includes(query);
+      const matchesStatus =
+        status === 'all' || (status === 'published' ? c.isActive : !c.isActive);
+      return matchesSearch && matchesStatus;
+    });
+  }, [courses, search, status]);
+
+  const hasCourses = filteredCourses.length > 0;
+
+  const openDetails = (course: Course) => {
+    setSelectedCourse(course);
+    setView('details');
+  };
 
   if (view === 'add') {
     return (
       <AddCourseView
         onBack={() => setView('list')}
-        onSaveDraft={(title) => {
-          // TODO: replace with the real create-course API response.
-          const createdCourse: CourseOverview = {
-            title,
-            status: 'draft',
-            modules: 0,
-            lessons: 0,
-            lastUpdated: new Date().toLocaleString('en-US', {
-              month: 'short',
-              day: 'numeric',
-              year: 'numeric',
-              hour: 'numeric',
-              minute: '2-digit',
-            }),
-            createdBy: 'Admin user',
-          };
-          setSelectedCourse(createdCourse);
-          setView('details');
-          showSuccess(
-            'Course saved as draft successfully.',
-            `"${title}" is ready to build on.`,
+        onSaved={(course) => {
+          setCourses((prev) => [course, ...prev]);
+          openDetails(course);
+        }}
+      />
+    );
+  }
+
+  if (view === 'edit' && selectedCourse) {
+    return (
+      <AddCourseView
+        editCourse={selectedCourse}
+        onBack={() => setView('details')}
+        onSaved={(course) => {
+          setCourses((prev) =>
+            prev.map((c) => (c.id === course.id ? course : c)),
           );
+          setSelectedCourse(course);
+          setView('details');
         }}
       />
     );
@@ -73,14 +121,74 @@ const CoursesAndContentsView: React.FC = () => {
     return (
       <CourseDetailsView
         course={selectedCourse}
-        onBack={() => setView('list')}
-        onEditCourse={() => setView('add')}
-        onAddDescription={() => {
-          // TODO: open description editor / modal
+        cohortName={cohortNameById.get(selectedCourse.cohortId) ?? 'Cohort'}
+        onBack={() => {
+          setView('list');
+          loadCourses();
+        }}
+        onEditCourse={() => setView('edit')}
+        onCourseChanged={(updated) => {
+          setSelectedCourse(updated);
+          setCourses((prev) =>
+            prev.map((c) => (c.id === updated.id ? updated : c)),
+          );
         }}
       />
     );
   }
+
+  const columns: AppTableColumn<Course>[] = [
+    {
+      key: 'title',
+      header: 'Course',
+      render: (c) => <span className="b2-m text-text">{c.title}</span>,
+    },
+    {
+      key: 'cohort',
+      header: 'Cohort',
+      render: (c) => (
+        <span className="b2-r text-text-secondary">
+          {cohortNameById.get(c.cohortId) ?? '—'}
+        </span>
+      ),
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (c) => (
+        <AppPill
+          label={c.isActive ? 'Published' : 'Draft'}
+          color={c.isActive ? 'success' : 'default'}
+        />
+      ),
+    },
+    {
+      key: 'created',
+      header: 'Created',
+      render: (c) => (
+        <span className="b2-r text-text-secondary">
+          {formatDate(c.createdAt)}
+        </span>
+      ),
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      align: 'right',
+      render: (c) => (
+        <AppButton
+          variant="text"
+          color="neutral"
+          size="icon"
+          ariaLabel={`View ${c.title}`}
+          className="!h-8 !w-8 !text-muted hover:!bg-primary-light hover:!text-primary"
+          onClick={() => openDetails(c)}
+        >
+          <ChevronRight size={18} />
+        </AppButton>
+      ),
+    },
+  ];
 
   return (
     <div className="flex flex-col gap-6">
@@ -116,14 +224,28 @@ const CoursesAndContentsView: React.FC = () => {
           />
         </div>
 
-        {hasCourses ? (
-          <ul>{/* TODO: course rows go here once data is wired up */}</ul>
+        {loading ? (
+          <div className="flex min-h-[420px] items-center justify-center">
+            <AppSpinner size={40} />
+          </div>
+        ) : hasCourses ? (
+          <AppTable
+            columns={columns}
+            data={filteredCourses}
+            getRowKey={(c) => c.id}
+            minWidth={720}
+          />
         ) : (
-        
           <AppEmptyState
             image={noCourses}
-            title="No courses yet"
-            description="Create your first course to start building content for Kodebuddy."
+            title={
+              courses.length === 0 ? 'No courses yet' : 'No matching courses'
+            }
+            description={
+              courses.length === 0
+                ? 'Create your first course to start building content for Kodebuddy.'
+                : 'Try adjusting your search or filters.'
+            }
           />
         )}
       </AppCard>
