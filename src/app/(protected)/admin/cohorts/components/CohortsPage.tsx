@@ -1,16 +1,20 @@
 'use client';
 
-import React, { useState } from 'react';
-import { ChevronRight } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { ChevronRight, Plus } from 'lucide-react';
+import Link from 'next/link';
+import AppButton from '@/components/ui/AppButton';
 import PageHeader from '@/components/ui/AppPageHeader';
 import TableHeader from '@/components/ui/AppTableHeader';
 import AppTable, { type AppTableColumn } from '@/components/ui/AppTable';
 import AppEmptyState from '@/components/ui/AppEmptyState';
-import AppButton from '@/components/ui/AppButton';
 import AppPill from '@/components/ui/AppPill';
 import AppPagination from '@/components/ui/AppPagination';
 import { AppCard } from '@/components/ui/AppCard';
 import AddCohortView, { type CohortFormData } from './AddCohortView';
+import { useToast } from '@/components/ui/ToastProvider';
+import { getErrorMessage } from '@/lib/api/client';
+import * as cohortsApi from '@/lib/api/cohorts.api';
 import noCohorts from '@/assets/images/no-cohorts.webp';
 
 interface CohortRow {
@@ -39,8 +43,43 @@ const CohortsView: React.FC = () => {
   const [search, setSearch] = useState('');
   const [view, setView] = useState<'list' | 'add'>('list');
   const [page, setPage] = useState(1);
-  // TODO: replace with real API data once endpoints are ready.
   const [cohorts, setCohorts] = useState<CohortRow[]>([]);
+  const { showError } = useToast();
+
+  useEffect(() => {
+    let cancelled = false;
+    cohortsApi
+      .listCohorts()
+      .then((list) => {
+        if (!cancelled) {
+          setCohorts(
+            list.map((cohort) => ({
+              id: String(cohort.id),
+              name: cohort.name,
+              startDate: cohort.startDate,
+              endDate: cohort.endDate,
+              learners: 0,
+              status: cohort.isOpen ? 'active' : 'inactive',
+            })),
+          );
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          showError(
+            'Could not load cohorts',
+            getErrorMessage(err, 'Please try again.'),
+          );
+        }
+      })
+      .finally(() => {
+        if (cancelled) return;
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [showError]);
 
   const hasCohorts = cohorts.length > 0;
 
@@ -114,14 +153,14 @@ const CohortsView: React.FC = () => {
       key: 'action',
       header: 'Action',
       align: 'right',
-      render: () => (
-        <button
-          type="button"
+      render: (row) => (
+        <Link
+          href={`/admin/cohorts/${row.id}`}
           aria-label="View cohort"
           className="flex h-8 w-8 items-center justify-center rounded-full text-muted hover:bg-disabled hover:text-text"
         >
           <ChevronRight size={18} />
-        </button>
+        </Link>
       ),
     },
   ];
@@ -140,24 +179,31 @@ const CohortsView: React.FC = () => {
       <PageHeader
         title="Cohorts"
         subtitle="View, search and manage all cohorts."
+        actions={
+          <AppButton
+            radius="full"
+            startIcon={<Plus size={16} />}
+            onClick={() => setView('add')}
+          >
+            Create cohort
+          </AppButton>
+        }
       />
 
       <AppCard padding="none">
-        {hasCohorts && (
-          <div className="p-4">
-            <TableHeader
-              searchValue={search}
-              onSearchChange={(value) => {
-                setSearch(value);
-                setPage(1);
-              }}
-              searchPlaceholder="Search cohorts..."
-            />
-          </div>
-        )}
-
         {hasCohorts ? (
           <>
+            <div className="p-4">
+              <TableHeader
+                searchValue={search}
+                onSearchChange={(value) => {
+                  setSearch(value);
+                  setPage(1);
+                }}
+                searchPlaceholder="Search cohorts..."
+              />
+            </div>
+
             <AppTable
               columns={columns}
               data={paginatedCohorts}

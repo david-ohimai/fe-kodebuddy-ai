@@ -42,3 +42,15 @@ export async function listCourses(): Promise<Course[]> {
   });
   return dtos.map(mapCourse);
 }
+
+export async function assignCourseToCohort(
+  courseId: number,
+  cohortId: number,
+): Promise<Course> {
+  const dto = await apiFetch<CourseResponseDto>(`/courses/${courseId}`, {
+    method: 'PATCH',
+    auth: true,
+    body: { cohort_id: cohortId },
+  });
+  return mapCourse(dto);
+}

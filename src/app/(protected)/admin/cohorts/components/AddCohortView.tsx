@@ -5,6 +5,10 @@ import { ArrowLeft, Calendar } from 'lucide-react';
 import AppInput from '@/components/ui/AppInput';
 import AppButton from '@/components/ui/AppButton';
 import { AppCard } from '@/components/ui/AppCard';
+import { useToast } from '@/components/ui/ToastProvider';
+import { getErrorMessage } from '@/lib/api/client';
+import * as cohortsApi from '@/lib/api/cohorts.api';
+import type { Cohort } from '@/types/cohort.types';
 import CreateCohortModal from './AddCohortModal';
 
 export interface CohortFormData {
@@ -23,33 +27,51 @@ function today() {
 }
 
 const AddCohortView: React.FC<AddCohortViewProps> = ({ onBack, onCreated }) => {
+  const { showError } = useToast();
   const [name, setName] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [createdCohort, setCreatedCohort] = useState<Cohort | null>(null);
 
   const isValid = name.trim().length > 0 && !!startDate && !!endDate;
 
   const handleStartDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setStartDate(value);
-    // clear end date if it's now before the new start date
     if (endDate && value && endDate < value) {
       setEndDate('');
     }
   };
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     if (!isValid) return;
-    // TODO: replace with the real create-cohort API call.
-    onCreated?.({ name, startDate, endDate });
-    setShowSuccess(true);
+    setSubmitting(true);
+    try {
+      const cohort = await cohortsApi.createCohort({
+        name: name.trim(),
+        startDate,
+        endDate,
+      });
+      setCreatedCohort(cohort);
+      onCreated?.({ name: cohort.name, startDate: cohort.startDate, endDate: cohort.endDate });
+      setShowSuccess(true);
+    } catch (err) {
+      showError(
+        'Could not create cohort',
+        getErrorMessage(err, 'Please try again.'),
+      );
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const resetForm = () => {
     setName('');
     setStartDate('');
     setEndDate('');
+    setCreatedCohort(null);
   };
 
   return (
@@ -118,10 +140,16 @@ const AddCohortView: React.FC<AddCohortViewProps> = ({ onBack, onCreated }) => {
               color="neutral"
               radius="full"
               onClick={onBack}
+              disabled={submitting}
             >
               Cancel
             </AppButton>
-            <AppButton radius="full" onClick={handleCreate} disabled={!isValid}>
+            <AppButton
+              radius="full"
+              onClick={handleCreate}
+              disabled={!isValid || submitting}
+              loading={submitting}
+            >
               Create cohort
             </AppButton>
           </div>
@@ -130,7 +158,11 @@ const AddCohortView: React.FC<AddCohortViewProps> = ({ onBack, onCreated }) => {
 
       <CreateCohortModal
         open={showSuccess}
-        cohort={{ name, startDate, endDate }}
+        cohort={{
+          name: createdCohort?.name ?? name,
+          startDate: createdCohort?.startDate ?? startDate,
+          endDate: createdCohort?.endDate ?? endDate,
+        }}
         onClose={() => setShowSuccess(false)}
         onBackToCohort={() => {
           setShowSuccess(false);

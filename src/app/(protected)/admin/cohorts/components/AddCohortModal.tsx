@@ -71,7 +71,7 @@ export default function AddCohortModal({
           Your cohort has been created successfully.
         </p>
 
-        <div className="mt-5 w-full max-w-[500px]">
+        <div className="mt-5 w-full max-w-125">
           <DetailRow
             icon={<GraduationCap size={15} />}
             label="Cohort Name"
@@ -89,7 +89,7 @@ export default function AddCohortModal({
           />
         </div>
 
-        <div className="mt-6 flex w-full max-w-[500px] items-center gap-3">
+        <div className="mt-6 flex w-full max-w-125 items-center gap-3">
           <AppButton
             variant="outlined"
             color="neutral"

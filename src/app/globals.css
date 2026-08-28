@@ -22,6 +22,7 @@
   --muted: #9ca3af;
   --disabled: #e6f2fb;
   --border:#E5E7EB;
+  --button-hover: #002c4e;
 
   --font-app-font: 'Lato', sans-serif;
 
@@ -98,7 +99,8 @@
   --color-text-secondary: var(--text-secondary);
   --color-muted: var(--muted);
   --color-disabled: var(--disabled);
-  --color-border: var(--border)
+  --color-border: var(--border);
+  --color-button-hover: var(--button-hover);
 
   --font-primary: var(--font-app-font);
 
@@ -106,6 +108,7 @@
   --radius-btn: var(--radius-button-radius);
   --radius-input: var(--radius-input-radius);
   --radius-card: var(--radius-card);
+
 }
 
 body {
