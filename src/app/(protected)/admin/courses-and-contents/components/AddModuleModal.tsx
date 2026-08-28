@@ -4,25 +4,32 @@ import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import AppButton from '@/components/ui/AppButton';
 import AppInput from '@/components/ui/AppInput';
+import AppTextarea from '@/components/ui/AppTextarea';
 import AppModal from '@/components/ui/AppModal';
 
 interface AddModuleModalProps {
   open: boolean;
   onClose: () => void;
   onSubmit: (data: { title: string; description?: string }) => void;
+  initialTitle?: string;
+  initialDescription?: string;
+  submitLabel?: string;
 }
 
 const AddModuleModal: React.FC<AddModuleModalProps> = ({
   open,
   onClose,
   onSubmit,
+  initialTitle = '',
+  initialDescription = '',
+  submitLabel = 'Add module',
 }) => {
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
+  const [title, setTitle] = useState(initialTitle);
+  const [description, setDescription] = useState(initialDescription);
 
   const handleClose = () => {
-    setTitle('');
-    setDescription('');
+    setTitle(initialTitle);
+    setDescription(initialDescription);
     onClose();
   };
 
@@ -38,11 +45,12 @@ const AddModuleModal: React.FC<AddModuleModalProps> = ({
       description: description.trim() || undefined,
     });
 
-    setTitle('');
-    setDescription('');
+    setTitle(initialTitle);
+    setDescription(initialDescription);
   };
 
   const isSubmitDisabled = !title.trim();
+  const isEdit = !!initialTitle;
 
   return (
     <AppModal
@@ -72,7 +80,7 @@ const AddModuleModal: React.FC<AddModuleModalProps> = ({
             disabled={isSubmitDisabled}
             onClick={handleSubmit}
           >
-            Add module
+            {submitLabel}
           </AppButton>
         </div>
       }
@@ -80,9 +88,11 @@ const AddModuleModal: React.FC<AddModuleModalProps> = ({
       <div className="flex flex-col gap-6 p-6">
         <div className="flex items-start justify-between">
           <div className="flex flex-col gap-1">
-            <h3 className="h6-b text-text">Add module</h3>
+            <h3 className="h6-b text-text">{isEdit ? 'Edit module' : 'Add module'}</h3>
             <p className="b2-r text-text-secondary">
-              Create a new module to organise your course lessons.
+              {isEdit
+                ? 'Update this module\u2019s title and description.'
+                : 'Create a new module to organise your course lessons.'}
             </p>
           </div>
           <button
@@ -96,50 +106,43 @@ const AddModuleModal: React.FC<AddModuleModalProps> = ({
         </div>
 
         <div className="flex flex-col gap-5">
-          <div className="flex flex-col">
-            <AppInput
-              label={
-                <div className="flex flex-col gap-0.5">
-                  <span className="b2-b text-text">
-                    Module title <span className="text-error">*</span>
-                  </span>
-                  <span className="f1-r font-normal text-muted">
-                    Give your module a clear and descriptive title.
-                  </span>
-                </div>
-              }
-              placeholder="Enter module title"
-              value={title}
-              maxLength={100}
-              onChange={(e) => setTitle(e.target.value)}
-            />
-            <div className="mt-1 flex justify-end">
-              <span className="f2-r text-muted">{title.length}/100</span>
-            </div>
-          </div>
+          <AppInput
+            label={
+              <div className="flex flex-col gap-0.5">
+                <span className="b2-b text-text">
+                  Module title <span className="text-error">*</span>
+                </span>
+                <span className="f1-r font-normal text-muted">
+                  Give your module a clear and descriptive title.
+                </span>
+              </div>
+            }
+            placeholder="Enter module title"
+            value={title}
+            maxLength={100}
+            showCharCount
+            onChange={(e) => setTitle(e.target.value)}
+          />
 
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="module-description" className="b2-b text-text">
-              Module description (optional)
-            </label>
-            <p className="f1-r text-muted">
-              Provide a short description of what learners will learn in this
-              module.
-            </p>
-
-            <textarea
-              id="module-description"
-              value={description}
-              maxLength={100}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Enter module description"
-              rows={3}
-              className="b2-r w-full resize-none rounded-input border border-disabled bg-background px-4 py-3 text-text outline-none transition-colors placeholder:text-muted focus:border-primary"
-            />
-            <div className="flex justify-end">
-              <span className="f2-r text-muted">{description.length}/100</span>
-            </div>
-          </div>
+          <AppTextarea
+            label={
+              <div className="flex flex-col gap-0.5">
+                <span className="b2-b text-text">
+                  Module description (optional)
+                </span>
+                <span className="f1-r font-normal text-muted">
+                  Provide a short description of what learners will learn in
+                  this module.
+                </span>
+              </div>
+            }
+            placeholder="Enter module description"
+            value={description}
+            maxLength={100}
+            showCharCount
+            rows={3}
+            onChange={(e) => setDescription(e.target.value)}
+          />
         </div>
       </div>
     </AppModal>
