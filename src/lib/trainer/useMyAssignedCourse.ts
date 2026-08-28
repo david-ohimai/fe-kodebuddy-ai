@@ -4,12 +4,21 @@ import { useEffect, useState } from 'react';
 import * as coursesApi from '@/lib/api/courses.api';
 import * as cohortsApi from '@/lib/api/cohorts.api';
 import type { Course } from '@/lib/api/courses.api';
-import type { Cohort } from '@/lib/api/cohorts.api';
+import type { Cohort, CohortLearner } from '@/lib/api/cohorts.api';
 
 export interface AssignedCourseInfo {
   course: Course;
   cohort: Cohort;
+  learners: CohortLearner[];
   learnerCount: number;
+  /**
+   * Percentage of active learners who have completed the cohort
+   * (CohortLearner.completedAt is set). There's no endpoint exposing
+   * granular per-learner lesson/module completion to trainers, so this
+   * is the most honest real signal available for "cohort progress" —
+   * it's completion-count based, not content-progress based.
+   */
+  completionPercent: number;
 }
 
 interface UseMyAssignedCourseResult {
@@ -61,10 +70,24 @@ export function useMyAssignedCourse(
         const learners = await cohortsApi.getCohortLearners(
           myAssignment.cohort.id,
         );
-        const learnerCount = learners.filter((l) => l.isActive).length;
+        const activeLearners = learners.filter((l) => l.isActive);
+        const completionPercent =
+          activeLearners.length === 0
+            ? 0
+            : Math.round(
+                (activeLearners.filter((l) => l.completedAt).length /
+                  activeLearners.length) *
+                  100,
+              );
 
         if (!cancelled) {
-          setData({ course, cohort: myAssignment.cohort, learnerCount });
+          setData({
+            course,
+            cohort: myAssignment.cohort,
+            learners: activeLearners,
+            learnerCount: activeLearners.length,
+            completionPercent,
+          });
         }
       } catch {
         if (!cancelled) {

@@ -4,7 +4,7 @@ import { AppCard } from '@/components/ui/AppCard';
 import AppButton from '@/components/ui/AppButton';
 import AppPill from '@/components/ui/AppPill';
 import AppEmptyState from '@/components/ui/AppEmptyState';
-import OptionsMenu from './OptionsMenu';
+import OptionsMenu from '@/components/course/OptionsMenu';
 import { CONTENT_TYPE_META } from '@/types/lesson-content.types';
 import { DEFAULT_LESSON_CONTENT_TYPE } from '@/lib/api/lessons.api';
 import noLessons from '@/assets/images/no-lessons.webp';

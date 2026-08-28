@@ -7,11 +7,21 @@ import { AppCard } from '@/components/ui/AppCard';
 import AppEmptyState from '@/components/ui/AppEmptyState';
 import AppSpinner from '@/components/ui/AppSpinner';
 import AssignedCourseCard from '../../components/AssignedCourseCard';
+import CircularProgress from '@/components/course/CircularProgress';
 import { useCurrentUserContext } from '@/lib/auth/CurrentUserContext';
 import { useMyAssignedCourse } from '@/lib/trainer/useMyAssignedCourse';
 import noCourses from '@/assets/images/no-courses.webp';
 import activity from '@/assets/images/activity.webp';
 
+// NOTE: "Cohort progress" is real — computed from the cohort's actual
+// learner roster (% with a completedAt timestamp set). There's still no
+// per-learner content-progress aggregate, and no escalations endpoint
+// anywhere in the API, so "Learners needing attention" and the
+// Escalations count remain honestly unavailable. GET /dashboard/trainer
+// does exist and is very likely meant to supply exactly this, but its
+// response shape isn't documented (see lib/api/dashboard.api.ts) —
+// rather than guess field names and risk showing wrong numbers, these
+// sections stay honest until the real shape is confirmed.
 export default function TrainerDashboard() {
   const { user } = useCurrentUserContext();
   const firstName =
@@ -65,8 +75,25 @@ export default function TrainerDashboard() {
                     </p>
                   </div>
                 </div>
-                <p className="h3-b text-muted">—</p>
-                <p className="f1-r mt-1 text-muted">Not available yet</p>
+                <div className="flex items-center gap-3">
+                  <div className="relative shrink-0">
+                    <CircularProgress percent={data.completionPercent} />
+                    <span className="b2-b absolute inset-0 flex items-center justify-center text-text">
+                      {data.completionPercent}%
+                    </span>
+                  </div>
+                  <p className="f1-r text-muted">
+                    Across {data.learnerCount} learner
+                    {data.learnerCount === 1 ? '' : 's'}
+                  </p>
+                </div>
+                <p className="b2-m mt-3 text-success-dark">
+                  {data.completionPercent >= 70
+                    ? 'Keep up the great work'
+                    : data.completionPercent >= 40
+                      ? 'Keep up with the good work'
+                      : 'Your cohort could use a nudge'}
+                </p>
               </AppCard>
 
               <AppCard padding="md">

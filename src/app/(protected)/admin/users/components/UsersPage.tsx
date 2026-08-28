@@ -103,7 +103,7 @@ export default function UsersPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [showError]);
 
   const filteredUsers = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -218,7 +218,7 @@ export default function UsersPage() {
           color="neutral"
           size="icon"
           ariaLabel={`View details for ${u.fullName || u.email}`}
-          className="!h-8 !w-8 !text-muted hover:!bg-primary-light hover:!text-primary"
+          className="h-8 w-8 text-muted hover:bg-primary-light hover:text-primary"
         >
           <ChevronRight size={18} />
         </AppButton>
