@@ -145,30 +145,8 @@ const CohortDetailsView: React.FC<CohortDetailsViewProps> = ({
             </div>
           </div>
         </div>
-      </AppCard>
 
-      <AppCard padding="none">
-        <div className="flex items-start justify-between border-b border-disabled px-6 py-5">
-          <div>
-            <h2 className="h5-b text-text">Cohort details</h2>
-            <p className="b2-r mt-1 text-muted">
-              View and manage the details of this cohort.
-            </p>
-          </div>
-          <AppButton
-            variant="outlined"
-            color="primary"
-            radius="full"
-            size="small"
-            startIcon={<Pencil size={14} />}
-            className={actionButtonClass}
-            onClick={onEditCohort}
-          >
-            Edit cohort
-          </AppButton>
-        </div>
-
-        <div>
+        <div className="border-t border-disabled">
           <DetailListItem
             icon={<User size={16} />}
             title="Learners"
@@ -199,7 +177,11 @@ const CohortDetailsView: React.FC<CohortDetailsViewProps> = ({
           <DetailListItem
             icon={<GraduationCap size={16} />}
             title="Cohort status"
-            description="This cohort is currently active and learners can access course content and resources"
+            description={
+              cohort.status === 'active'
+                ? 'This cohort is currently active and learners can access course content and resources.'
+                : 'This cohort is inactive — learners cannot access course content or resources.'
+            }
             value={
               <AppPill
                 label={cohort.status === 'active' ? 'Active' : 'Inactive'}

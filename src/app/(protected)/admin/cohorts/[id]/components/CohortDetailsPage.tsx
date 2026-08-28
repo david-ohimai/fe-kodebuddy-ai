@@ -7,12 +7,16 @@ import CohortDetailsView, {
 } from '@/app/(protected)/admin/cohorts/components/CohortDetails';
 import ChangeTrainerPage from './ChangeTrainerPage';
 import ChangeCoursePage from './ChangeCoursePage';
+import EditCohortModal from '@/app/(protected)/admin/cohorts/components/EditCohortModal';
 import type { AuthUser } from '@/types/auth.types';
 import { AppCard } from '@/components/ui/AppCard';
 import AppSpinner from '@/components/ui/AppSpinner';
+import AppConfirmModal from '@/components/ui/AppConfirmModal';
+import { RefreshCw } from 'lucide-react';
 import { useToast } from '@/components/ui/ToastProvider';
 import { getErrorMessage } from '@/lib/api/client';
 import * as cohortsApi from '@/lib/api/cohorts.api';
+import type { Cohort } from '@/lib/api/cohorts.api';
 import * as profileApi from '@/lib/api/profile.api';
 import * as coursesApi from '@/lib/api/courses.api';
 
@@ -24,11 +28,15 @@ export default function CohortDetailsPage({
   cohortId,
 }: CohortDetailsPageProps) {
   const router = useRouter();
-  const { showError } = useToast();
+  const { showError, showSuccess } = useToast();
   const [cohort, setCohort] = useState<CohortDetails | null>(null);
+  const [rawCohort, setRawCohort] = useState<Cohort | null>(null);
   const [loading, setLoading] = useState(true);
   const [changingTrainer, setChangingTrainer] = useState(false);
   const [changingCourse, setChangingCourse] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isStatusConfirmOpen, setIsStatusConfirmOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -45,6 +53,7 @@ export default function CohortDetailsPage({
           const trainer = users.find(
             (user) => user.id === activeAssignment?.trainerId,
           );
+          setRawCohort(value);
           setCohort({
             id: String(value.id),
             name: value.name,
@@ -134,15 +143,116 @@ export default function CohortDetailsPage({
     );
   }
 
+  const handleSaveEdit = async (data: {
+    name: string;
+    description?: string;
+    startDate: string;
+    endDate: string;
+  }) => {
+    setSaving(true);
+    try {
+      const updated = await cohortsApi.updateCohort(cohortId, data);
+      setRawCohort(updated);
+      setCohort((current) =>
+        current
+          ? {
+              ...current,
+              name: updated.name,
+              startDate: updated.startDate,
+              endDate: updated.endDate,
+            }
+          : current,
+      );
+      showSuccess('Cohort updated.', `"${updated.name}" has been saved.`);
+      setIsEditOpen(false);
+    } catch (error) {
+      showError(
+        'Could not update cohort',
+        getErrorMessage(error, 'Please try again.'),
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleConfirmStatusChange = async () => {
+    if (!rawCohort) return;
+    setSaving(true);
+    try {
+      const updated = await cohortsApi.updateCohort(cohortId, {
+        isOpen: !rawCohort.isOpen,
+      });
+      setRawCohort(updated);
+      setCohort((current) =>
+        current
+          ? { ...current, status: updated.isOpen ? 'active' : 'inactive' }
+          : current,
+      );
+      showSuccess(
+        'Cohort status updated.',
+        `${updated.name} is now ${updated.isOpen ? 'active' : 'inactive'}.`,
+      );
+      setIsStatusConfirmOpen(false);
+    } catch (error) {
+      showError(
+        'Could not update cohort status',
+        getErrorMessage(error, 'Please try again.'),
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
-    <CohortDetailsView
-      cohort={cohort}
-      onBack={() => router.push('/admin/cohorts')}
-      onViewLearners={() =>
-        router.push(`/admin/cohorts/${cohortId}/learners`)
-      }
-      onChangeTrainer={() => setChangingTrainer(true)}
-      onChangeCourse={() => setChangingCourse(true)}
-    />
+    <>
+      <CohortDetailsView
+        cohort={cohort}
+        onBack={() => router.push('/admin/cohorts')}
+        onViewLearners={() =>
+          router.push(`/admin/cohorts/${cohortId}/learners`)
+        }
+        onChangeTrainer={() => setChangingTrainer(true)}
+        onChangeCourse={() => setChangingCourse(true)}
+        onEditCohort={() => setIsEditOpen(true)}
+        onChangeStatus={() => setIsStatusConfirmOpen(true)}
+      />
+
+      {rawCohort && (
+        <EditCohortModal
+          open={isEditOpen}
+          cohort={rawCohort}
+          saving={saving}
+          onClose={() => setIsEditOpen(false)}
+          onSave={handleSaveEdit}
+        />
+      )}
+
+      <AppConfirmModal
+        open={isStatusConfirmOpen}
+        onClose={() => setIsStatusConfirmOpen(false)}
+        icon={
+          <span className="flex h-16 w-16 items-center justify-center rounded-full bg-warning/15">
+            <RefreshCw size={28} className="text-warning" />
+          </span>
+        }
+        title={
+          rawCohort?.isOpen ? 'Mark cohort inactive?' : 'Mark cohort active?'
+        }
+        description={
+          rawCohort?.isOpen
+            ? `Learners in ${cohort.name} will no longer be able to access course content or resources.`
+            : `Learners in ${cohort.name} will regain access to course content and resources.`
+        }
+        secondaryButton={{
+          label: 'Cancel',
+          onClick: () => setIsStatusConfirmOpen(false),
+        }}
+        primaryButton={{
+          label: 'Confirm',
+          loading: saving,
+          onClick: handleConfirmStatusChange,
+        }}
+      />
+    </>
   );
 }

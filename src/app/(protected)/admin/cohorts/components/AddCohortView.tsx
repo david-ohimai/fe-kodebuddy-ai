@@ -8,7 +8,7 @@ import { AppCard } from '@/components/ui/AppCard';
 import { useToast } from '@/components/ui/ToastProvider';
 import { getErrorMessage } from '@/lib/api/client';
 import * as cohortsApi from '@/lib/api/cohorts.api';
-import type { Cohort } from '@/types/cohort.types';
+import type { Cohort } from '@/lib/api/cohorts.api';
 import CreateCohortModal from './AddCohortModal';
 
 export interface CohortFormData {
@@ -19,7 +19,7 @@ export interface CohortFormData {
 
 interface AddCohortViewProps {
   onBack: () => void;
-  onCreated?: (cohort: CohortFormData) => void;
+  onCreated?: (cohort: Cohort) => void;
 }
 
 function today() {
@@ -55,7 +55,7 @@ const AddCohortView: React.FC<AddCohortViewProps> = ({ onBack, onCreated }) => {
         endDate,
       });
       setCreatedCohort(cohort);
-      onCreated?.({ name: cohort.name, startDate: cohort.startDate, endDate: cohort.endDate });
+      onCreated?.(cohort);
       setShowSuccess(true);
     } catch (err) {
       showError(

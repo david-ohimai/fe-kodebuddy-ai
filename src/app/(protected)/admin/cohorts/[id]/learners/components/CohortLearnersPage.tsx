@@ -118,7 +118,7 @@ export default function CohortLearnersPage({
                     </td>
                     <td className="b2-r px-4 py-3 text-text-secondary">{learner.email}</td>
                     <td className="b2-r px-4 py-3 text-text-secondary">
-                      {formatDate(learner.joinedAt ?? learner.createdAt)}
+                      {formatDate(learner.joinedAt)}
                     </td>
                     <td className="px-4 py-3">
                       <AppPill
@@ -128,7 +128,7 @@ export default function CohortLearnersPage({
                     </td>
                     <td className="px-4 py-3 text-right">
                       <Link
-                        href={`/admin/users/${learner.id}`}
+                        href={`/admin/users/${learner.learnerId}`}
                         aria-label={`View details for ${learner.fullName || learner.email}`}
                         className="inline-flex h-8 w-8 items-center justify-center rounded-full text-muted hover:bg-primary-light hover:text-primary"
                       >

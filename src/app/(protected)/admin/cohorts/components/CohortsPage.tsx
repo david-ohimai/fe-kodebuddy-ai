@@ -8,13 +8,15 @@ import PageHeader from '@/components/ui/AppPageHeader';
 import TableHeader from '@/components/ui/AppTableHeader';
 import AppTable, { type AppTableColumn } from '@/components/ui/AppTable';
 import AppEmptyState from '@/components/ui/AppEmptyState';
+import AppSpinner from '@/components/ui/AppSpinner';
 import AppPill from '@/components/ui/AppPill';
 import AppPagination from '@/components/ui/AppPagination';
 import { AppCard } from '@/components/ui/AppCard';
-import AddCohortView, { type CohortFormData } from './AddCohortView';
+import AddCohortView from './AddCohortView';
 import { useToast } from '@/components/ui/ToastProvider';
 import { getErrorMessage } from '@/lib/api/client';
 import * as cohortsApi from '@/lib/api/cohorts.api';
+import type { Cohort } from '@/lib/api/cohorts.api';
 import noCohorts from '@/assets/images/no-cohorts.webp';
 
 interface CohortRow {
@@ -44,21 +46,31 @@ const CohortsView: React.FC = () => {
   const [view, setView] = useState<'list' | 'add'>('list');
   const [page, setPage] = useState(1);
   const [cohorts, setCohorts] = useState<CohortRow[]>([]);
+  const [loading, setLoading] = useState(true);
   const { showError } = useToast();
 
   useEffect(() => {
     let cancelled = false;
     cohortsApi
       .listCohorts()
-      .then((list) => {
+      .then(async (list) => {
+        if (cancelled) return;
+        const learnerCounts = await Promise.all(
+          list.map((cohort) =>
+            cohortsApi
+              .listCohortLearners(cohort.id)
+              .then((learners) => learners.filter((l) => l.isActive).length)
+              .catch(() => 0),
+          ),
+        );
         if (!cancelled) {
           setCohorts(
-            list.map((cohort) => ({
+            list.map((cohort, i) => ({
               id: String(cohort.id),
               name: cohort.name,
               startDate: cohort.startDate,
               endDate: cohort.endDate,
-              learners: 0,
+              learners: learnerCounts[i],
               status: cohort.isOpen ? 'active' : 'inactive',
             })),
           );
@@ -74,6 +86,7 @@ const CohortsView: React.FC = () => {
       })
       .finally(() => {
         if (cancelled) return;
+        setLoading(false);
       });
 
     return () => {
@@ -81,11 +94,11 @@ const CohortsView: React.FC = () => {
     };
   }, [showError]);
 
-  const hasCohorts = cohorts.length > 0;
-
   const filteredCohorts = cohorts.filter((cohort) =>
     cohort.name.toLowerCase().includes(search.toLowerCase()),
   );
+
+  const hasCohorts = filteredCohorts.length > 0;
 
   const totalPages = Math.max(1, Math.ceil(filteredCohorts.length / PAGE_SIZE));
   const paginatedCohorts = filteredCohorts.slice(
@@ -93,15 +106,15 @@ const CohortsView: React.FC = () => {
     page * PAGE_SIZE,
   );
 
-  const handleCohortCreated = (cohort: CohortFormData) => {
+  const handleCohortCreated = (cohort: Cohort) => {
     setCohorts((prev) => [
       {
-        id: crypto.randomUUID(),
+        id: String(cohort.id),
         name: cohort.name,
         startDate: cohort.startDate,
         endDate: cohort.endDate,
         learners: 0,
-        status: 'active',
+        status: cohort.isOpen ? 'active' : 'inactive',
       },
       ...prev,
     ]);
@@ -191,7 +204,11 @@ const CohortsView: React.FC = () => {
       />
 
       <AppCard padding="none">
-        {hasCohorts ? (
+        {loading ? (
+          <div className="flex min-h-[420px] items-center justify-center">
+            <AppSpinner size={40} />
+          </div>
+        ) : (
           <>
             <div className="p-4">
               <TableHeader
@@ -204,28 +221,38 @@ const CohortsView: React.FC = () => {
               />
             </div>
 
-            <AppTable
-              columns={columns}
-              data={paginatedCohorts}
-              getRowKey={(row) => row.id}
-            />
+            {hasCohorts ? (
+              <>
+                <AppTable
+                  columns={columns}
+                  data={paginatedCohorts}
+                  getRowKey={(row) => row.id}
+                />
 
-            <div className="px-4 pb-4">
-              <AppPagination
-                currentPage={page}
-                totalPages={totalPages}
-                onChange={setPage}
+                <div className="px-4 pb-4">
+                  <AppPagination
+                    currentPage={page}
+                    totalPages={totalPages}
+                    onChange={setPage}
+                  />
+                </div>
+              </>
+            ) : (
+              <AppEmptyState
+                image={noCohorts}
+                title={
+                  cohorts.length === 0 ? 'No cohorts yet' : 'No matching cohorts'
+                }
+                description={
+                  cohorts.length === 0
+                    ? 'Create your first cohort to start organising learners and their courses.'
+                    : 'Try adjusting your search.'
+                }
+                actionLabel={cohorts.length === 0 ? 'Create cohort' : undefined}
+                onAction={cohorts.length === 0 ? () => setView('add') : undefined}
               />
-            </div>
+            )}
           </>
-        ) : (
-          <AppEmptyState
-            image={noCohorts}
-            title="No cohorts yet"
-            description="Create your first cohort to start organising learners and their courses."
-            actionLabel="Create cohort"
-            onAction={() => setView('add')}
-          />
         )}
       </AppCard>
     </div>

@@ -136,15 +136,6 @@ export default function ChangeCoursePage({
               Update the course assigned to this cohort.
             </p>
           </div>
-          <AppButton
-            variant="outlined"
-            color="primary"
-            radius="full"
-            size="small"
-            className={actionButtonClass}
-          >
-            Edit cohort
-          </AppButton>
         </div>
         <div className="px-6 py-5">
           <div className="rounded-card border border-disabled p-5">

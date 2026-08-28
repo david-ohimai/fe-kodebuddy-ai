@@ -54,6 +54,7 @@ export async function assignCourseToCohort(
   });
   return mapCourse(dto);
 }
+
 export async function getCourse(courseId: number): Promise<Course> {
   const dto = await apiFetch<CourseResponseDto>(`/courses/${courseId}`, {
     method: 'GET',

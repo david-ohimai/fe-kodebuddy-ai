@@ -1,6 +1,6 @@
 import { apiFetch } from './client';
 import { mapUser } from './auth.api';
-import type { CreateCohortPayload } from '@/types/cohort.types';
+import type { CreateCohortPayload, UpdateCohortPayload } from '@/types/cohort.types';
 import type { UserDto } from '@/types/auth.types';
 
 export interface Cohort {
@@ -25,41 +25,6 @@ interface CohortResponseDto {
   created_by: number;
   created_at: string;
   updated_at: string;
-}
-
-export interface CohortLearner {
-  id: number;
-  learnerId: number;
-  fullName: string | null;
-  email: string;
-  createdAt: string;
-  isActive: boolean;
-  joinedAt?: string;
-}
-
-export interface CohortTrainer {
-  id: number;
-  cohortId: number;
-  trainerId: number;
-  assignedAt: string;
-  removedAt: string | null;
-}
-
-interface CohortLearnerResponseDto {
-  id: number;
-  cohort_id: number;
-  learner_id: number;
-  joined_at: string;
-  completed_at: string | null;
-  is_active: boolean;
-}
-
-interface CohortTrainerResponseDto {
-  id: number;
-  cohort_id: number;
-  trainer_id: number;
-  assigned_at: string;
-  removed_at: string | null;
 }
 
 function mapCohort(dto: CohortResponseDto): Cohort {
@@ -110,6 +75,54 @@ export async function getCohortById(cohortId: number): Promise<Cohort> {
   return mapCohort(dto);
 }
 
+export async function updateCohort(
+  cohortId: number,
+  payload: UpdateCohortPayload,
+): Promise<Cohort> {
+  const dto = await apiFetch<CohortResponseDto>(`/cohorts/${cohortId}`, {
+    method: 'PATCH',
+    auth: true,
+    body: {
+      name: payload.name,
+      description: payload.description,
+      start_date: payload.startDate,
+      end_date: payload.endDate,
+      is_open: payload.isOpen,
+    },
+  });
+  return mapCohort(dto);
+}
+
+// ── Learners ────────────────────────────────────────────────────────
+// One canonical shape covering both consumers: the admin Cohorts UI
+// needs the learner's name/email for display, and the trainer dashboard
+// needs cohortId/completedAt to compute real completion percentages.
+
+export interface CohortLearner {
+  id: number;
+  cohortId: number;
+  learnerId: number;
+  fullName: string | null;
+  email: string;
+  joinedAt: string;
+  completedAt: string | null;
+  isActive: boolean;
+}
+
+interface CohortLearnerResponseDto {
+  id: number;
+  cohort_id: number;
+  learner_id: number;
+  joined_at: string;
+  completed_at: string | null;
+  is_active: boolean;
+}
+
+/**
+ * GET /assign-cohorts/{cohort_id}/learners, enriched with each
+ * learner's name/email via GET /profile/users — the enrollment endpoint
+ * only returns learner_id, not the learner's profile.
+ */
 export async function listCohortLearners(
   cohortId: number,
 ): Promise<CohortLearner[]> {
@@ -127,14 +140,24 @@ export async function listCohortLearners(
     const user = usersById.get(enrollment.learner_id);
     return {
       id: enrollment.id,
+      cohortId: enrollment.cohort_id,
       learnerId: enrollment.learner_id,
       fullName: user?.fullName ?? null,
       email: user?.email ?? '—',
-      createdAt: user?.createdAt ?? enrollment.joined_at,
-      isActive: enrollment.is_active && (user?.isActive ?? true),
       joinedAt: enrollment.joined_at,
+      completedAt: enrollment.completed_at,
+      // A learner enrolled (is_active on the enrollment) whose account
+      // has since been suspended shouldn't read as "active".
+      isActive: enrollment.is_active && (user?.isActive ?? true),
     };
   });
+}
+
+/** Alias — lib/trainer/useMyAssignedCourse.ts was written against this name. Same data. */
+export const getCohortLearners = listCohortLearners;
+
+// ── Trainers ────────────────────────────────────────────────────────
+
 export interface CohortTrainer {
   id: number;
   cohortId: number;
@@ -161,8 +184,8 @@ function mapCohortTrainer(dto: CohortTrainerResponseDto): CohortTrainer {
   };
 }
 
+/** GET /assign-cohorts/{cohort_id}/trainers */
 export async function listCohortTrainers(
-export async function getCohortTrainers(
   cohortId: number,
 ): Promise<CohortTrainer[]> {
   const dtos = await apiFetch<CohortTrainerResponseDto[]>(
@@ -171,6 +194,9 @@ export async function getCohortTrainers(
   );
   return dtos.map(mapCohortTrainer);
 }
+
+/** Alias — lib/trainer/useMyAssignedCourse.ts was written against this name. Same data. */
+export const getCohortTrainers = listCohortTrainers;
 
 export async function assignCohortTrainer(
   cohortId: number,
@@ -185,41 +211,4 @@ export async function assignCohortTrainer(
     },
   );
   return mapCohortTrainer(dto);
-export interface CohortLearner {
-  id: number;
-  cohortId: number;
-  learnerId: number;
-  joinedAt: string;
-  completedAt: string | null;
-  isActive: boolean;
-}
-
-interface CohortLearnerResponseDto {
-  id: number;
-  cohort_id: number;
-  learner_id: number;
-  joined_at: string;
-  completed_at: string | null;
-  is_active: boolean;
-}
-
-function mapCohortLearner(dto: CohortLearnerResponseDto): CohortLearner {
-  return {
-    id: dto.id,
-    cohortId: dto.cohort_id,
-    learnerId: dto.learner_id,
-    joinedAt: dto.joined_at,
-    completedAt: dto.completed_at,
-    isActive: dto.is_active,
-  };
-}
-
-export async function getCohortLearners(
-  cohortId: number,
-): Promise<CohortLearner[]> {
-  const dtos = await apiFetch<CohortLearnerResponseDto[]>(
-    `/assign-cohorts/${cohortId}/learners`,
-    { method: 'GET', auth: true },
-  );
-  return dtos.map(mapCohortLearner);
 }
