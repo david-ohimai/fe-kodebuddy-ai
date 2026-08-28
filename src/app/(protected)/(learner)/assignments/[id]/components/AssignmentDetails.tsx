@@ -160,25 +160,24 @@ export default function AssignmentDetails({
     };
   }, [assignmentId]);
 
-  const toggleRequirement = useCallback(
-    (index: number) => {
-      setChecked((prev) => {
-        const next = prev.map((value, i) => (i === index ? !value : value));
-        if (assignment) {
-          try {
-            window.localStorage.setItem(
-              requirementsStorageKey(assignment.id),
-              JSON.stringify(next),
-            );
-          } catch {
-            // Storage unavailable — ticks still work for this session.
-          }
-        }
-        return next;
-      });
-    },
-    [assignment],
-  );
+  const toggleRequirement = useCallback((index: number) => {
+    setChecked((prev) => prev.map((value, i) => (i === index ? !value : value)));
+  }, []);
+
+  // Persisted here rather than inside the updater above: a state updater must
+  // be pure, and writing to storage from one runs the write before React has
+  // committed the render.
+  useEffect(() => {
+    if (!assignment) return;
+    try {
+      window.localStorage.setItem(
+        requirementsStorageKey(assignment.id),
+        JSON.stringify(checked),
+      );
+    } catch {
+      // Storage unavailable — ticks still work for this session.
+    }
+  }, [assignment, checked]);
 
   const completion = useMemo(() => {
     if (checked.length === 0) return 0;
