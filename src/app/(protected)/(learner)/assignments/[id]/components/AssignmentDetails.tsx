@@ -261,12 +261,22 @@ export default function AssignmentDetails({
   const moduleLabel = formatModuleLabel(assignment.moduleOrder);
   const paragraphs = (assignment.description ?? '')
     .split(/\n{2,}/)
+    .map((p) => p.trim())
     .filter(Boolean);
+
+  // The first paragraph is the summary on the overview card, so the Description
+  // section shows what follows it. A single-paragraph description therefore has
+  // no separate body to repeat.
+  const summary = paragraphs[0] ?? null;
+  const bodyParagraphs = paragraphs.slice(1);
 
   return (
     <>
-      <div className="flex gap-6">
-        <div className="flex min-w-0 flex-1 flex-col gap-6">
+      {/* items-start keeps the docked panel from stretching the row, so the
+          brief below it flows to its natural length instead of being padded
+          out to the panel's height. */}
+      <div className="mx-auto flex w-full max-w-7xl items-start gap-6">
+        <div className="flex min-w-0 flex-1 flex-col gap-6 pb-2">
           <Link
             href="/assignments"
             className="inline-flex w-fit items-center gap-2 b1-m text-primary underline underline-offset-4"
@@ -302,9 +312,9 @@ export default function AssignmentDetails({
             </p>
             <h2 className="h4-b mt-3 text-text">{assignment.title}</h2>
 
-            {paragraphs.length > 0 && (
+            {summary && (
               <p className="b1-r mt-3 max-w-3xl text-text-secondary">
-                {paragraphs[0]}
+                {summary}
               </p>
             )}
 
@@ -329,10 +339,10 @@ export default function AssignmentDetails({
           </AppCard>
 
           {/* Description */}
-          {paragraphs.length > 0 && (
+          {bodyParagraphs.length > 0 && (
             <DetailSection title="Description">
               <div className="flex flex-col gap-4">
-                {paragraphs.map((paragraph, index) => (
+                {bodyParagraphs.map((paragraph, index) => (
                   <p key={index} className="b1-r text-text">
                     {paragraph}
                   </p>
@@ -506,7 +516,9 @@ export default function AssignmentDetails({
               onClick={() => setChatOpen(false)}
               className="fixed inset-0 z-40 bg-black/40 lg:hidden"
             />
-            <aside className="fixed inset-x-4 top-4 bottom-4 z-50 lg:sticky lg:inset-auto lg:top-6 lg:z-auto lg:h-[calc(100vh-6rem)] lg:w-100 lg:shrink-0">
+            {/* Height leaves room for the topbar and the main scroll area's
+                padding, so the panel's composer and footer are never clipped. */}
+            <aside className="fixed inset-x-4 top-4 bottom-4 z-50 lg:sticky lg:inset-auto lg:top-0 lg:z-auto lg:h-[calc(100vh-8rem)] lg:w-100 lg:shrink-0">
               <KodeBuddyChatPanel
                 context={{
                   courseId: assignment.courseId,

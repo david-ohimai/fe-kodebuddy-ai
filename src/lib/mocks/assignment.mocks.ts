@@ -20,42 +20,56 @@ export const DEMO_ASSIGNMENTS: LearnerAssignment[] = [
     courseTitle: 'Product Design Fundamentals',
 
     title: 'Layout Vs. Autolayout',
-    description:
+    // First paragraph is the summary shown on the overview card; the rest is
+    // the Description section body.
+    description: [
       'Practice building responsive, reusable layouts using Auto-layout so your components adapt cleanly across screen sizes — the foundation every design system component depends on',
+      'Auto-layout is the difference between a component that looks good in one screenshot and one that survives real content — longer text, missing images, different screen widths.',
+      "You'll build two components, a card and a navigation bar, entirely using Auto-layout with no manual positioning. Both should resize predictably when their content changes, the same way a production component behaves in a live product.",
+    ].join('\n\n'),
 
+    // Steps are newline-separated inside one description, which is how the
+    // detail screen splits them into a numbered list.
     instructions: [
       {
-        title: 'Part A — Build a card component',
-        description:
-          'Create a card containing an image, a title, a description and a button. Every element must be positioned by Auto-layout — no manual X/Y placement anywhere in the frame.',
+        title: 'Part A - Card Component',
+        description: [
+          'Create a new Figma file named Module2_[Your Name].',
+          'Build a card frame containing: image placeholder, title text, description text, and a button.',
+          'Apply vertical Auto-layout to the card — set consistent spacing between elements (recommend 12–16px).',
+          'Set padding on the outer frame (recommend 16–24px on all sides).',
+        ].join('\n'),
       },
       {
-        title: 'Part B — Build a navigation bar',
-        description:
-          'Build a horizontal nav with a logo on the left and four links plus an avatar on the right. Use spacing tokens from the Module 2 session rather than hand-typed pixel values.',
+        title: 'Part B - Navigation Bar',
+        description: [
+          'Build a horizontal nav with a logo on the left, four links and an avatar on the right.',
+          'Apply horizontal Auto-layout with space-between alignment.',
+          'Use the spacing tokens from the Module 2 session rather than hand-typed pixel values.',
+          'Set a fixed height and let the width fill its container.',
+        ].join('\n'),
       },
       {
-        title: 'Part C — Prove it resizes',
-        description:
-          'Duplicate both components and stress-test them: double the title length, remove the image, and resize the frame to 375px. Neither component may break or overlap.',
+        title: 'Part C - Submission Prep',
+        description: [
+          'Duplicate both components and stress-test them: double the title length, remove the image, and resize the frame to 375px.',
+          'Rename every layer meaningfully, then share the file with view access and paste the link below.',
+        ].join('\n'),
       },
     ],
 
     requirements: [
       {
-        title: 'Auto-layout only',
-        description:
-          'No absolute positioning. Every frame in the submission uses Auto-layout with explicit padding and gap values.',
+        title: 'Card uses vertical component',
+        description: 'No absolute or manual positioning',
       },
       {
-        title: 'Named layers',
-        description:
-          'Layers carry meaningful names. "Frame 247" will be sent back for a rename.',
+        title: 'Card resizes correctly',
+        description: 'Grows vertically when description length changes',
       },
       {
-        title: 'One Figma link',
-        description:
-          'Submit a single share link with view access enabled, containing both components on one page.',
+        title: 'Nav bar uses horizontal Auto-layout',
+        description: 'Correct space-between alignment',
       },
     ],
 
