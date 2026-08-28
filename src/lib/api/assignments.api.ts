@@ -1,41 +1,32 @@
 import { apiFetch } from './client';
 
+// Minimal for now — only what's needed to show a real assignment count
+// on the Overview tab. Full CRUD (create/edit/grade) will follow once
+// the Assignments tab design is available.
 export interface Assignment {
-  id: string;
+  id: number;
+  moduleId: number;
   title: string;
-  moduleName: string;
-  dueDate: string;
-  status: 'pending' | 'submitted' | 'graded' | 'overdue';
 }
 
 interface AssignmentResponseDto {
-  id: string;
+  id: number;
+  module_id: number;
   title: string;
-  module_name: string;
-  due_date: string;
-  status: 'pending' | 'submitted' | 'graded' | 'overdue';
+  [key: string]: unknown;
 }
 
-function mapAssignment(dto: AssignmentResponseDto): Assignment {
-  return {
-    id: dto.id,
-    title: dto.title,
-    moduleName: dto.module_name,
-    dueDate: dto.due_date,
-    status: dto.status,
-  };
-}
-
-export async function listAssignmentsByModule(
+/** GET /modules/{module_id}/assignments */
+export async function listModuleAssignments(
   moduleId: number,
 ): Promise<Assignment[]> {
-  const response = await apiFetch<AssignmentResponseDto[]>(
+  const dtos = await apiFetch<AssignmentResponseDto[]>(
     `/modules/${moduleId}/assignments`,
-    {
-      method: 'GET',
-      auth: true,
-    },
+    { method: 'GET', auth: true },
   );
-
-  return response.map(mapAssignment);
+  return dtos.map((dto) => ({
+    id: dto.id,
+    moduleId: dto.module_id,
+    title: dto.title,
+  }));
 }

@@ -14,9 +14,8 @@ function AskKodeBuddyWidget() {
   const [question, setQuestion] = useState('');
 
   return (
-    <AppCard padding="lg" className="flex flex-col gap-2 border-transparent bg-text">
-      <p className="b2-b text-white">Ask KodeBuddy</p>
-      <p className="b2-r -mt-1 text-white/60">Quick help with your code or concepts.</p>
+    <AppCard padding="lg" className="flex flex-col gap-2">
+      <p className="b2-b text-text">Ask KodeBuddy</p>
       <textarea
         value={question}
         onChange={(e) => setQuestion(e.target.value)}
