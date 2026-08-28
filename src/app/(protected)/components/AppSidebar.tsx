@@ -43,8 +43,6 @@ const NAV_ITEMS_BY_ROLE: Record<
   DashboardRole,
   ReadonlyArray<{ label: string; href: string; icon: React.ElementType }>
 > = {
-  // KodeBuddy AI is deliberately absent: the assistant is reached from the
-  // "Ask KodeBuddy" button on a screen, not from a nav destination of its own.
   learner: [
     { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
     { label: 'Learn', href: '/learn', icon: BookOpen },

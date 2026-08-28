@@ -1,6 +1,3 @@
-// This file is the small, self-contained replacement: a single `apiFetch` helper that
-// `lib/api/auth.api.ts` builds its requests on top of.
-
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') ??
   'https://kodebuddy-ai-be.onrender.com';
@@ -30,11 +27,6 @@ export class NetworkError extends Error {
   }
 }
 
-/**
- * The resolved API origin, for callers that cannot go through `apiFetch` —
- * streaming responses, which must read the body incrementally rather than
- * parsing it as JSON.
- */
 export function getApiBaseUrl(): string {
   return API_BASE_URL;
 }

@@ -6,10 +6,6 @@ import {
 } from '@/types/assignment.types';
 import { DEMO_ASSIGNMENTS } from '@/lib/mocks/assignment.mocks';
 
-// ---------------------------------------------------------------------------
-// DTOs
-// ---------------------------------------------------------------------------
-
 interface AssignmentResponseDto {
   id: number;
   module_id: number;
@@ -54,18 +50,6 @@ interface LearnerDashboardDto {
   assignments: LearnerAssignmentStatusDto[];
 }
 
-// ---------------------------------------------------------------------------
-// Demo fallback
-// ---------------------------------------------------------------------------
-
-/**
- * Whether to fall back to fixtures when the API yields nothing usable.
- *
- * Defaults to ON so a demo against an unseeded environment still shows the
- * screens. Set NEXT_PUBLIC_DEMO_FALLBACK=false to force real-data-only and see
- * the genuine empty state. Real data is always preferred — the fallback only
- * engages on error or an empty result, never over live rows.
- */
 function fallbackEnabled(): boolean {
   return process.env.NEXT_PUBLIC_DEMO_FALLBACK !== 'false';
 }
@@ -82,10 +66,6 @@ function withFallback(
   );
   return DEMO_ASSIGNMENTS;
 }
-
-// ---------------------------------------------------------------------------
-// Mappers
-// ---------------------------------------------------------------------------
 
 function mapAssignment(
   dto: AssignmentResponseDto,
@@ -121,25 +101,6 @@ function mapAssignment(
   };
 }
 
-// ---------------------------------------------------------------------------
-// Queries
-// ---------------------------------------------------------------------------
-
-/**
- * Every assignment visible to the signed-in learner, with module/course
- * context and per-learner status.
- *
- * PERFORMANCE CAVEAT — this fans out: 1 dashboard call, then one call per
- * enrolled course for its modules, then one call per module for its
- * assignments. That is N+1 by construction, because there is no
- * `GET /assignments/me` on the backend and `/dashboard/learner` returns
- * assignment *status* without the `module_id` needed to reach the full record
- * (`/modules/{module_id}/assignments/{id}`).
- *
- * Fine at demo scale. The fix is one backend endpoint returning the joined
- * rows; until then this is the only way to assemble the screen. Requests at
- * each level run in parallel, so latency is ~3 round trips, not N.
- */
 export async function listLearnerAssignments(): Promise<LearnerAssignment[]> {
   try {
     const dashboard = await apiFetch<LearnerDashboardDto>(
@@ -159,7 +120,6 @@ export async function listLearnerAssignments(): Promise<LearnerAssignment[]> {
       return withFallback([], 'learner has no enrolled courses');
     }
 
-    // Level 2: modules per course, in parallel.
     const moduleGroups = await Promise.all(
       courses.map(async (course) => {
         const modules = await apiFetch<ModuleResponseDto[]>(
@@ -170,7 +130,6 @@ export async function listLearnerAssignments(): Promise<LearnerAssignment[]> {
       }),
     );
 
-    // Level 3: assignments per module, in parallel across every course.
     const assignmentGroups = await Promise.all(
       moduleGroups.flatMap(({ course, modules }) =>
         modules.map(async (module) => {
@@ -197,14 +156,6 @@ export async function listLearnerAssignments(): Promise<LearnerAssignment[]> {
   }
 }
 
-/**
- * One assignment by id.
- *
- * Goes through the same fan-out as the list because the detail endpoint is
- * keyed by `(module_id, assignment_id)` and the id in the URL carries no
- * module. Once the backend exposes the module on the dashboard payload — or a
- * flat `GET /assignments/{id}` — this collapses to a single request.
- */
 export async function getLearnerAssignment(
   id: number,
 ): Promise<LearnerAssignment | null> {
@@ -212,22 +163,6 @@ export async function getLearnerAssignment(
   return all.find((a) => a.id === id) ?? null;
 }
 
-// ---------------------------------------------------------------------------
-// Single-module listing (kept from the dev branch)
-// ---------------------------------------------------------------------------
-
-/**
- * Flat display shape for one module's assignments.
- *
- * NOTE for review: this maps `module_name` and `status` off
- * `/modules/{id}/assignments`, but the backend's `AssignmentResponse` returns
- * neither — it carries `module_id` (no module name) and has no status field at
- * all. Against the live API both land as `undefined`. That mismatch is why
- * `listLearnerAssignments` above joins the dashboard payload instead.
- *
- * Preserved as-is rather than deleted during the merge; nothing imports it
- * today, so it is safe to either fix or drop in a follow-up.
- */
 export interface Assignment {
   id: string;
   title: string;

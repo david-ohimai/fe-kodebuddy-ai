@@ -32,15 +32,12 @@ import {
 } from '@/types/chat.types';
 
 export interface KodeBuddyChatPanelProps {
-  /** Drives which ids are sent and whether the query is assignment guidance. */
   context: ChatContext;
-  /** Quick-suggestion pills shown above the composer while the thread is empty. */
   suggestions?: string[];
   onClose?: () => void;
   className?: string;
 }
 
-/** The panel swaps wholesale between the thread and the handoff form. */
 type PanelView = 'chat' | 'escalation';
 
 function formatTime(iso: string): string {
@@ -84,20 +81,11 @@ function IconAction({
   );
 }
 
-/** Sent → Reviewing → Ready, shown once a handoff has been accepted. */
 function EscalationProgress({ stage }: { stage: EscalationStage }) {
   const activeIndex = ESCALATION_STAGES.findIndex((s) => s.id === stage);
 
   return (
     <div className="mt-4">
-      {/*
-        Track and labels are separate rows rather than per-stage columns. With
-        columns, the final stage owned an equal-width column too, so its dot sat
-        at that column's left edge while its label was pushed to the right edge —
-        the dot never reached the end of the track. Here the connectors are the
-        only flexible elements, so the first dot pins to the left edge and the
-        last to the right edge.
-      */}
       <div className="flex items-center">
         {ESCALATION_STAGES.map((step, index) => (
           <React.Fragment key={step.id}>
@@ -119,7 +107,6 @@ function EscalationProgress({ stage }: { stage: EscalationStage }) {
         ))}
       </div>
 
-      {/* justify-between puts the outer labels flush with the outer dots. */}
       <div className="mt-2 flex justify-between">
         {ESCALATION_STAGES.map((step, index) => (
           <span
@@ -148,11 +135,9 @@ export default function KodeBuddyChatPanel({
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState('');
   const [thinking, setThinking] = useState(false);
-  /** Partial answer text while a response streams in. */
   const [streamingText, setStreamingText] = useState('');
   const [focused, setFocused] = useState(false);
 
-  // Escalation form
   const [escalationNote, setEscalationNote] = useState('');
   const [sendingEscalation, setSendingEscalation] = useState(false);
   const [escalationStage, setEscalationStage] =
@@ -169,7 +154,6 @@ export default function KodeBuddyChatPanel({
       top: scrollRef.current.scrollHeight,
       behavior: 'smooth',
     });
-    // streamingText keeps the view pinned to the bottom as tokens arrive.
   }, [messages, thinking, streamingText, view]);
 
   const send = useCallback(
@@ -201,8 +185,6 @@ export default function KodeBuddyChatPanel({
             queryType: context.assignmentId ? 'assignment_guidance' : 'chat',
           },
           {
-            // First token means the guardrail has cleared and prose is
-            // approved — that is the moment "Thinking..." gives way to text.
             onToken: (text) => setStreamingText((prev) => prev + text),
           },
         );
@@ -221,13 +203,9 @@ export default function KodeBuddyChatPanel({
             escalationId: answer.escalationId,
           },
         ]);
-        // Cleared only after the finished turn is committed, so the text never
-        // blanks between the last token and the rendered message.
         setStreamingText('');
       } catch {
         setStreamingText('');
-        // The turn stays in the thread marked failed rather than vanishing, so
-        // the learner can see what they asked and retry it.
         setMessages((prev) =>
           prev.map((m) =>
             m.id === userTurn.id ? { ...m, status: 'failed' } : m,
@@ -244,7 +222,6 @@ export default function KodeBuddyChatPanel({
     [context, thinking, showError],
   );
 
-  /** Opens the handoff form, pre-filled with whatever the learner already typed. */
   const openEscalation = useCallback(() => {
     setEscalationNote((current) => current || draft.trim());
     setView('escalation');
@@ -265,7 +242,10 @@ export default function KodeBuddyChatPanel({
       setEscalationStage(receipt.stage);
       setDraft('');
     } catch {
-      showError('Could not reach your trainer', 'Please try again in a moment.');
+      showError(
+        'Could not reach your trainer',
+        'Please try again in a moment.',
+      );
     } finally {
       setSendingEscalation(false);
     }
@@ -292,11 +272,6 @@ export default function KodeBuddyChatPanel({
     inputRef.current?.focus();
   }, []);
 
-  /**
-   * What the trainer sees alongside the learner's note. Derived from the thread
-   * rather than typed, so the trainer gets the context without the learner
-   * having to restate it.
-   */
   const chatNotes =
     [...messages].reverse().find((m) => m.role === 'user')?.content ??
     "Kodebuddy's notes from your chat";
@@ -309,7 +284,6 @@ export default function KodeBuddyChatPanel({
         className,
       )}
     >
-      {/* Header */}
       <header className="flex items-center justify-between px-5 pt-5">
         <h2 className="b1-b">
           <span className="text-primary">Kode</span>
@@ -329,9 +303,6 @@ export default function KodeBuddyChatPanel({
       </header>
 
       {view === 'escalation' ? (
-        /* ---------------------------------------------------------------
-         * Human escalation
-         * ------------------------------------------------------------- */
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 py-4">
           <button
             type="button"
@@ -352,7 +323,9 @@ export default function KodeBuddyChatPanel({
               </span>
             </div>
 
-            <h3 className="b1-b mt-4 text-text">Let&apos;s get you some help</h3>
+            <h3 className="b1-b mt-4 text-text">
+              Let&apos;s get you some help
+            </h3>
             <p className="b2-r mt-1 text-text-secondary">
               A trainer typically responds within a few hours
             </p>
@@ -419,9 +392,6 @@ export default function KodeBuddyChatPanel({
           )}
         </div>
       ) : (
-        /* ---------------------------------------------------------------
-         * Chat thread
-         * ------------------------------------------------------------- */
         <>
           <div className="px-5 pt-4">
             <button
@@ -490,7 +460,6 @@ export default function KodeBuddyChatPanel({
                     </div>
                   ) : (
                     <div key={message.id} className="flex flex-col gap-3">
-                      {/* whitespace-pre-line renders the agent's paragraph breaks */}
                       <p className="b2-r whitespace-pre-line text-text">
                         {message.content}
                       </p>
@@ -566,7 +535,6 @@ export default function KodeBuddyChatPanel({
                   (streamingText ? (
                     <p className="b2-r whitespace-pre-line text-text">
                       {streamingText}
-                      {/* Caret marks the response as still arriving. */}
                       <span className="ml-0.5 inline-block h-4 w-0.5 translate-y-0.5 animate-pulse bg-primary align-middle" />
                     </p>
                   ) : (
@@ -614,7 +582,6 @@ export default function KodeBuddyChatPanel({
                 onFocus={() => setFocused(true)}
                 onBlur={() => setFocused(false)}
                 onKeyDown={(e) => {
-                  // Enter sends; Shift+Enter is a newline.
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
                     send(draft);
