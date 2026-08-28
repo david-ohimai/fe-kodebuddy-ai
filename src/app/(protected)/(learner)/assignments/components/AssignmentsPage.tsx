@@ -1,40 +1,85 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { CalendarDays, ChevronRight, Clock } from 'lucide-react';
 import PageHeader from '@/components/ui/AppPageHeader';
-import TableHeader from '@/components/ui/AppTableHeader';
-import AppPill from '@/components/ui/AppPill';
-import AppSpinner from '@/components/ui/AppSpinner';
 import AppEmptyState from '@/components/ui/AppEmptyState';
-import { AppCard } from '@/components/ui/AppCard';
 import { useToast } from '@/components/ui/ToastProvider';
+import { cx } from '@/lib/utils/cx';
 import { listLearnerAssignments } from '@/lib/api/assignments.api';
 import { getErrorMessage } from '@/lib/api/client';
-import {
-  ASSIGNMENT_STATUS_COLOR,
-  ASSIGNMENT_STATUS_LABEL,
-  formatDueDate,
-  formatModuleLabel,
-  type LearnerAssignment,
-} from '@/types/assignment.types';
-import emptyState from '@/assets/images/empty state.webp';
+import type { LearnerAssignment } from '@/types/assignment.types';
+import AssignmentCard from './AssignmentCard';
+import emptyStateImage from '@/assets/images/empty state assign.webp';
 
-const STATUS_OPTIONS = [
-  { label: 'All Status', value: '' },
-  { label: 'In-progress', value: 'in-progress' },
-  { label: 'Submitted', value: 'submitted' },
-  { label: 'Graded', value: 'graded' },
-  { label: 'Overdue', value: 'overdue' },
+type AssignmentTab =
+  | 'all'
+  | 'pending'
+  | 'in-progress'
+  | 'submitted'
+  | 'escalations';
+
+const TABS: ReadonlyArray<{ id: AssignmentTab; label: string }> = [
+  { id: 'all', label: 'All' },
+  { id: 'pending', label: 'Pending' },
+  { id: 'in-progress', label: 'In-progress' },
+  { id: 'submitted', label: 'Submitted' },
+  { id: 'escalations', label: 'Escalations' },
 ];
+
+const GRID =
+  'grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4';
+
+/**
+ * Which statuses each tab shows.
+ *
+ * Overdue work sits under In-progress rather than getting a tab of its own:
+ * it is still outstanding and still actionable, and the design has no Overdue
+ * tab, so anything else would leave it visible only under All.
+ *
+ * Escalations has no source yet — the backend records escalations the agent
+ * raises but exposes no endpoint to read them — so it renders the empty state.
+ */
+function matchesTab(assignment: LearnerAssignment, tab: AssignmentTab) {
+  switch (tab) {
+    case 'all':
+      return true;
+    case 'pending':
+      return assignment.status === 'pending';
+    case 'in-progress':
+      return (
+        assignment.status === 'in-progress' || assignment.status === 'overdue'
+      );
+    case 'submitted':
+      return assignment.status === 'submitted' || assignment.status === 'graded';
+    case 'escalations':
+      return false;
+  }
+}
+
+function LoadingGrid() {
+  return (
+    <div className={GRID} aria-hidden="true">
+      {Array.from({ length: 8 }).map((_, index) => (
+        <div
+          key={index}
+          className="rounded-card border border-disabled bg-background p-4"
+        >
+          <div className="h-6 w-full animate-pulse rounded-md bg-disabled" />
+          <div className="mt-3 h-6 w-full animate-pulse rounded-md bg-disabled" />
+          <div className="mt-3 h-5 w-1/2 animate-pulse rounded-md bg-disabled" />
+          <div className="mt-6 h-9 w-32 animate-pulse rounded-full bg-disabled" />
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export default function AssignmentsPage() {
   const { showError } = useToast();
 
   const [assignments, setAssignments] = useState<LearnerAssignment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [status, setStatus] = useState('');
+  const [activeTab, setActiveTab] = useState<AssignmentTab>('all');
 
   useEffect(() => {
     let cancelled = false;
@@ -60,110 +105,67 @@ export default function AssignmentsPage() {
     };
   }, [showError]);
 
-  const visible = useMemo(() => {
-    const term = search.trim().toLowerCase();
-    return assignments.filter((assignment) => {
-      const matchesStatus = !status || assignment.status === status;
-      const matchesSearch =
-        !term ||
-        assignment.title.toLowerCase().includes(term) ||
-        assignment.moduleTitle.toLowerCase().includes(term);
-      return matchesStatus && matchesSearch;
-    });
-  }, [assignments, search, status]);
+  const visible = useMemo(
+    () => assignments.filter((a) => matchesTab(a, activeTab)),
+    [assignments, activeTab],
+  );
 
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Assignments"
-        subtitle="Track and submit your assignments."
+        subtitle="Here's what's happening on KodeBuddy today."
       />
 
-      <TableHeader
-        searchValue={search}
-        onSearchChange={setSearch}
-        searchPlaceholder="Search assignments"
-        filters={[
-          {
-            id: 'status',
-            value: status,
-            options: STATUS_OPTIONS,
-            onChange: setStatus,
-            ariaLabel: 'Filter by status',
-          },
-        ]}
-      />
-
-      {loading ? (
-        <div className="flex min-h-[50vh] items-center justify-center">
-          <AppSpinner />
-        </div>
-      ) : visible.length === 0 ? (
-        <AppEmptyState
-          image={emptyState}
-          title={
-            assignments.length === 0
-              ? 'No assignments yet'
-              : 'No assignments match your filters'
-          }
-          description={
-            assignments.length === 0
-              ? 'Assignments appear here once your trainer publishes them.'
-              : 'Try a different search term or status.'
-          }
-        />
-      ) : (
-        <div className="flex flex-col gap-4">
-          {visible.map((assignment) => (
-            <AppCard
-              key={assignment.id}
-              href={`/assignments/${assignment.id}`}
-              interactive
-              padding="md"
+      {/* Underlined tabs, per the Assignments design. AppTab is a filled
+          segmented control from md up, so it is not reused here. */}
+      <div
+        role="tablist"
+        aria-label="Filter assignments"
+        className="flex items-center gap-6 overflow-x-auto rounded-card bg-background px-5"
+      >
+        {TABS.map((tab) => {
+          const isActive = tab.id === activeTab;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              role="tab"
+              aria-selected={isActive}
+              onClick={() => setActiveTab(tab.id)}
+              className={cx(
+                'relative shrink-0 py-3 b2-m transition-colors',
+                isActive
+                  ? 'text-primary'
+                  : 'text-muted hover:text-text-secondary',
+              )}
             >
-              <div className="flex items-start justify-between gap-4">
-                <div className="min-w-0">
-                  <p className="f1-b tracking-widest text-text-secondary">
-                    {formatModuleLabel(assignment.moduleOrder)}
-                  </p>
-                  <h2 className="b1-b mt-1.5 text-text">{assignment.title}</h2>
+              {tab.label}
+              {isActive && (
+                <span className="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-primary" />
+              )}
+            </button>
+          );
+        })}
+      </div>
 
-                  {assignment.description && (
-                    <p className="b2-r mt-1.5 line-clamp-2 max-w-2xl text-text-secondary">
-                      {assignment.description}
-                    </p>
-                  )}
-
-                  <div className="mt-4 flex flex-wrap items-center gap-3">
-                    <AppPill
-                      label={ASSIGNMENT_STATUS_LABEL[assignment.status]}
-                      color={ASSIGNMENT_STATUS_COLOR[assignment.status]}
-                      icon={<Clock size={14} />}
-                    />
-                    <AppPill
-                      label={formatDueDate(assignment.dueDate)}
-                      color="warning"
-                      icon={<CalendarDays size={14} />}
-                    />
-                    {assignment.graded && assignment.score !== null && (
-                      <AppPill
-                        label={`${assignment.score} / ${assignment.maximumScore}`}
-                        color="success"
-                      />
-                    )}
-                  </div>
-                </div>
-
-                <ChevronRight
-                  size={20}
-                  className="mt-1 shrink-0 text-muted"
-                  aria-hidden="true"
-                />
-              </div>
-            </AppCard>
-          ))}
-        </div>
-      )}
+      <div className="rounded-card bg-background p-5">
+        {loading ? (
+          <LoadingGrid />
+        ) : visible.length === 0 ? (
+          <AppEmptyState
+            image={emptyStateImage}
+            title="No assignment"
+            description="There are no assignments in this categories yet"
+          />
+        ) : (
+          <div className={GRID}>
+            {visible.map((assignment) => (
+              <AssignmentCard key={assignment.id} assignment={assignment} />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

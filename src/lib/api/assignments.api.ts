@@ -5,6 +5,7 @@ import {
   type LearnerAssignment,
 } from '@/types/assignment.types';
 import { DEMO_ASSIGNMENTS } from '@/lib/mocks/assignment.mocks';
+import { listMySubmissions, type Submission } from './submissions.api';
 
 // ---------------------------------------------------------------------------
 // Trainer-facing listing (from dev — used by trainer/my-course)
@@ -124,9 +125,13 @@ function mapLearnerAssignment(
   module: ModuleResponseDto,
   course: LearnerCourseProgressDto,
   status: LearnerAssignmentStatusDto | undefined,
+  submission: Submission | undefined,
 ): LearnerAssignment {
-  const submitted = status?.submitted ?? false;
-  const graded = status?.graded ?? false;
+  // The dashboard is authoritative for `graded`/`is_overdue`, which it derives
+  // server-side. A submission row is authoritative for "did I submit", since it
+  // is the record itself — and it carries the timestamp the dashboard omits.
+  const submitted = status?.submitted ?? submission !== undefined;
+  const graded = status?.graded ?? submission?.score != null;
   const isOverdue = status?.is_overdue ?? false;
 
   return {
@@ -148,8 +153,12 @@ function mapLearnerAssignment(
     status: deriveAssignmentStatus({ submitted, graded, isOverdue }),
     submitted,
     graded,
-    score: status?.score ?? null,
+    score: status?.score ?? submission?.score ?? null,
     isOverdue,
+
+    submittedAt: submission?.submittedAt ?? null,
+    submissionContent: submission?.content ?? null,
+    feedback: submission?.feedback ?? null,
   };
 }
 
@@ -170,17 +179,32 @@ function mapLearnerAssignment(
  */
 export async function listLearnerAssignments(): Promise<LearnerAssignment[]> {
   try {
-    const dashboard = await apiFetch<LearnerDashboardDto>(
-      '/dashboard/learner',
-      {
+    // Independent of each other, so they share one round trip. A submissions
+    // failure must not blank the whole screen — the assignments are still
+    // readable without it, just without submitted-at dates.
+    const [dashboard, submissions] = await Promise.all([
+      apiFetch<LearnerDashboardDto>('/dashboard/learner', {
         method: 'GET',
         auth: true,
-      },
-    );
+      }),
+      listMySubmissions().catch(() => [] as Submission[]),
+    ]);
 
     const statusById = new Map(
       (dashboard.assignments ?? []).map((a) => [a.assignment_id, a]),
     );
+
+    // Newest submission wins if an assignment somehow has more than one.
+    const submissionByAssignment = new Map<number, Submission>();
+    for (const submission of submissions) {
+      const existing = submissionByAssignment.get(submission.assignmentId);
+      if (
+        !existing ||
+        new Date(submission.submittedAt) > new Date(existing.submittedAt)
+      ) {
+        submissionByAssignment.set(submission.assignmentId, submission);
+      }
+    }
 
     const courses = dashboard.courses ?? [];
     if (courses.length === 0) {
@@ -207,7 +231,13 @@ export async function listLearnerAssignments(): Promise<LearnerAssignment[]> {
             { method: 'GET', auth: true },
           );
           return (assignments ?? []).map((dto) =>
-            mapLearnerAssignment(dto, module, course, statusById.get(dto.id)),
+            mapLearnerAssignment(
+              dto,
+              module,
+              course,
+              statusById.get(dto.id),
+              submissionByAssignment.get(dto.id),
+            ),
           );
         }),
       ),

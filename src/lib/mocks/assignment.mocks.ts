@@ -68,6 +68,9 @@ export const DEMO_ASSIGNMENTS: LearnerAssignment[] = [
     graded: false,
     score: null,
     isOverdue: false,
+    submittedAt: null,
+    submissionContent: null,
+    feedback: null,
   },
 
   {
@@ -112,6 +115,10 @@ export const DEMO_ASSIGNMENTS: LearnerAssignment[] = [
     graded: true,
     score: 88,
     isOverdue: false,
+    submittedAt: '2026-01-17T14:20:00Z',
+    submissionContent: 'https://www.figma.com/file/example-colour-type-scale',
+    feedback:
+      'Strong palette. Watch the 14px body on the neutral-200 background — it lands just under AA.',
   },
 
   {
@@ -151,5 +158,8 @@ export const DEMO_ASSIGNMENTS: LearnerAssignment[] = [
     graded: false,
     score: null,
     isOverdue: false,
+    submittedAt: '2026-02-10T09:05:00Z',
+    submissionContent: 'https://www.figma.com/file/example-button-variants',
+    feedback: null,
   },
 ];
