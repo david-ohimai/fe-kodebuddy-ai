@@ -34,6 +34,11 @@ import {
 export interface KodeBuddyChatPanelProps {
   context: ChatContext;
   suggestions?: string[];
+  /**
+   * Asked automatically once, on mount. For entry points that collect the
+   * question before the panel opens, such as the dashboard's quick ask.
+   */
+  initialQuestion?: string;
   onClose?: () => void;
   className?: string;
 }
@@ -126,6 +131,7 @@ function EscalationProgress({ stage }: { stage: EscalationStage }) {
 export default function KodeBuddyChatPanel({
   context,
   suggestions = [],
+  initialQuestion,
   onClose,
   className,
 }: KodeBuddyChatPanelProps) {
@@ -221,6 +227,23 @@ export default function KodeBuddyChatPanel({
     },
     [context, thinking, showError],
   );
+
+  /**
+   * Asks the question the panel was opened with, exactly once.
+   *
+   * Deferred by a timeout rather than called straight from the effect: `send`
+   * updates state synchronously, and doing that during an effect's commit
+   * triggers a cascading render.
+   */
+  const autoAskedRef = useRef(false);
+  useEffect(() => {
+    const question = initialQuestion?.trim();
+    if (!question || autoAskedRef.current) return;
+    autoAskedRef.current = true;
+
+    const timer = window.setTimeout(() => void send(question), 0);
+    return () => window.clearTimeout(timer);
+  }, [initialQuestion, send]);
 
   const openEscalation = useCallback(() => {
     setEscalationNote((current) => current || draft.trim());

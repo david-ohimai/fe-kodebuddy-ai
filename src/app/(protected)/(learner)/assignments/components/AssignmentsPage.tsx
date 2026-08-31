@@ -8,7 +8,10 @@ import { cx } from '@/lib/utils/cx';
 import { listLearnerAssignments } from '@/lib/api/assignments.api';
 import { getErrorMessage } from '@/lib/api/client';
 import type { LearnerAssignment } from '@/types/assignment.types';
+import type { Escalation } from '@/types/escalation.types';
+import { listEscalations } from '@/lib/mocks/escalation.mocks';
 import AssignmentCard from './AssignmentCard';
+import EscalationCard from './EscalationCard';
 import emptyStateImage from '@/assets/images/empty state assign.webp';
 
 type AssignmentTab =
@@ -36,8 +39,8 @@ const GRID =
  * it is still outstanding and still actionable, and the design has no Overdue
  * tab, so anything else would leave it visible only under All.
  *
- * Escalations has no source yet — the backend records escalations the agent
- * raises but exposes no endpoint to read them — so it renders the empty state.
+ * Escalations are not assignments at all — that tab renders its own list, so
+ * this never has to answer for it.
  */
 function matchesTab(assignment: LearnerAssignment, tab: AssignmentTab) {
   switch (tab) {
@@ -78,11 +81,22 @@ export default function AssignmentsPage() {
   const { showError } = useToast();
 
   const [assignments, setAssignments] = useState<LearnerAssignment[]>([]);
+  const [escalations, setEscalations] = useState<Escalation[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<AssignmentTab>('all');
 
   useEffect(() => {
     let cancelled = false;
+
+    // Escalations come from fixtures for now; they resolve immediately and
+    // must not stop the assignments from rendering.
+    listEscalations()
+      .then((list) => {
+        if (!cancelled) setEscalations(list);
+      })
+      .catch(() => {
+        /* fixtures cannot fail — the tab simply stays empty if they ever do */
+      });
 
     listLearnerAssignments()
       .then((list) => {
@@ -150,7 +164,21 @@ export default function AssignmentsPage() {
       </div>
 
       <div className="rounded-card bg-background p-5">
-        {loading ? (
+        {activeTab === 'escalations' ? (
+          escalations.length === 0 ? (
+            <AppEmptyState
+              image={emptyStateImage}
+              title="No escalation"
+              description="Questions you send to a trainer will appear here"
+            />
+          ) : (
+            <div className="flex flex-col gap-4">
+              {escalations.map((escalation) => (
+                <EscalationCard key={escalation.id} escalation={escalation} />
+              ))}
+            </div>
+          )
+        ) : loading ? (
           <LoadingGrid />
         ) : visible.length === 0 ? (
           <AppEmptyState
