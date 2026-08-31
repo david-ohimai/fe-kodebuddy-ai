@@ -14,8 +14,14 @@ export interface AssignmentItem {
  * `is_overdue` as independent booleans on the learner dashboard; the UI wants
  * one value to render a single pill from. Precedence is graded > submitted >
  * overdue > in-progress, so a graded-but-late assignment reads as graded.
+ *
+ * `pending` (not yet released to the learner) is in the union because the
+ * Assignments tabs offer it, but nothing produces it today: the backend's
+ * `AssignmentResponse` has no start/release date, only `due_date`. Until it
+ * does, the Pending tab is correctly empty rather than guessing.
  */
 export type AssignmentStatus =
+  | 'pending'
   | 'in-progress'
   | 'submitted'
   | 'graded'
@@ -45,9 +51,15 @@ export interface LearnerAssignment extends Assignment {
   graded: boolean;
   score: number | null;
   isOverdue: boolean;
+
+  /** From the learner's own submission, when one exists. */
+  submittedAt: string | null;
+  submissionContent: string | null;
+  feedback: string | null;
 }
 
 export const ASSIGNMENT_STATUS_LABEL: Record<AssignmentStatus, string> = {
+  pending: 'Pending',
   'in-progress': 'In-progress',
   submitted: 'Submitted',
   graded: 'Graded',
@@ -56,10 +68,11 @@ export const ASSIGNMENT_STATUS_LABEL: Record<AssignmentStatus, string> = {
 
 export const ASSIGNMENT_STATUS_COLOR: Record<
   AssignmentStatus,
-  'primary' | 'secondary' | 'success' | 'error'
+  'primary' | 'warning' | 'success' | 'error'
 > = {
+  pending: 'warning',
   'in-progress': 'primary',
-  submitted: 'secondary',
+  submitted: 'success',
   graded: 'success',
   overdue: 'error',
 };
@@ -75,7 +88,12 @@ export function deriveAssignmentStatus(input: {
   return 'in-progress';
 }
 
-/** "01-Feb-2026" — the due-date pill format in the Figma. */
+/** Whether the learner can still open and work on this assignment. */
+export function isAssignmentLocked(status: AssignmentStatus): boolean {
+  return status === 'pending';
+}
+
+/** "01-Feb-2026" — the date format used on cards and pills. */
 export function formatDueDate(iso: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return '—';
