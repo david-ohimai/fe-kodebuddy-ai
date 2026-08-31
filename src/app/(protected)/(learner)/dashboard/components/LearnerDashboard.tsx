@@ -1,43 +1,78 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { BarChart3, BookOpen, CalendarClock, Clock, Send } from 'lucide-react';
+import {
+  BarChart3,
+  BookOpen,
+  CalendarClock,
+  Clock,
+  Send,
+  Sparkles,
+} from 'lucide-react';
 
 import AppButton from '@/components/ui/AppButton';
 import { AppCard } from '@/components/ui/AppCard';
 import AppInlineEmpty from '@/components/ui/AppInlineEmpty';
 import AppSpinner from '@/components/ui/AppSpinner';
+import KodeBuddyChatPanel from '@/components/chat/KodeBuddyChatPanel';
 import { useCurrentUserContext } from '@/lib/auth/CurrentUserContext';
 import { listCourses, type Course } from '@/lib/api/courses.api';
 
-function AskKodeBuddyWidget() {
+/**
+ * Dashboard quick ask.
+ *
+ * Collects a question and hands it to the assistant panel, which asks it on
+ * open. There is no standalone assistant route — the panel is opened in place
+ * wherever the learner is.
+ */
+function AskKodeBuddyWidget({ onAsk }: { onAsk: (question: string) => void }) {
   const [question, setQuestion] = useState('');
+  const trimmed = question.trim();
+
+  const submit = () => {
+    if (!trimmed) return;
+    onAsk(trimmed);
+    setQuestion('');
+  };
 
   return (
-    <AppCard padding="lg" className="flex flex-col gap-2">
-      <p className="b2-b text-text">Ask KodeBuddy</p>
+    <div className="rounded-card bg-slate-900 p-5 text-white">
+      <div className="flex items-center gap-2">
+        <Sparkles size={18} className="shrink-0 text-secondary" />
+        <p className="b1-b">Ask KodeBuddy</p>
+      </div>
+
+      <p className="mt-1.5 b2-r text-white/60">
+        Quick help with your code or concepts.
+      </p>
+
       <textarea
         value={question}
         onChange={(e) => setQuestion(e.target.value)}
-        placeholder="What are you stuck on?"
+        onKeyDown={(e) => {
+          // Enter asks; Shift+Enter is a newline, matching the chat composer.
+          if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            submit();
+          }
+        }}
+        placeholder="What are arrow functions?"
         rows={3}
-        className="b2-r mt-1 w-full resize-none rounded-input border border-white/15 bg-white/5 p-3 text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-primary/50"
+        aria-label="Ask KodeBuddy a question"
+        className="b2-r mt-4 w-full resize-none rounded-input border border-white/15 bg-white/5 p-3 text-white outline-none transition-colors placeholder:text-white/40 focus:border-white/30"
       />
+
       <AppButton
-        href={
-          question.trim()
-            ? `/kodebuddy-ai?q=${encodeURIComponent(question.trim())}`
-            : undefined
-        }
-        disabled={!question.trim()}
+        onClick={submit}
+        disabled={!trimmed}
         startIcon={<Send size={16} />}
         fullWidth
         radius="full"
-        className="mt-1"
+        className="mt-4"
       >
         Ask Question
       </AppButton>
-    </AppCard>
+    </div>
   );
 }
 
@@ -47,6 +82,9 @@ export default function LearnerDashboard() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  /** The question the assistant was opened with; null while it is closed. */
+  const [askedQuestion, setAskedQuestion] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -174,9 +212,32 @@ export default function LearnerDashboard() {
             />
           </AppCard>
 
-          <AskKodeBuddyWidget />
+          <AskKodeBuddyWidget onAsk={setAskedQuestion} />
         </div>
       </div>
+
+      {/* The assistant opens in place — there is no separate route for it. */}
+      {askedQuestion !== null && (
+        <>
+          <div
+            role="presentation"
+            onClick={() => setAskedQuestion(null)}
+            className="fixed inset-0 z-40 bg-black/40"
+          />
+          <aside className="fixed inset-x-4 top-4 bottom-4 z-50 lg:inset-y-6 lg:right-6 lg:left-auto lg:w-100">
+            <KodeBuddyChatPanel
+              context={{
+                courseId: activeCourses[0]?.id ?? courses[0]?.id ?? 0,
+                moduleId: null,
+                assignmentId: null,
+                label: activeCourses[0]?.title ?? courses[0]?.title ?? 'General',
+              }}
+              initialQuestion={askedQuestion}
+              onClose={() => setAskedQuestion(null)}
+            />
+          </aside>
+        </>
+      )}
     </div>
   );
 }
