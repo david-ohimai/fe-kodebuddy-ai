@@ -67,7 +67,7 @@ const AppTab: React.FC<AppTabProps> = ({
       role="tablist"
       aria-label={ariaLabel}
       className={cx(
-        'flex gap-1 border-b border-disabled',
+        'flex gap-1 overflow-x-auto border-b border-disabled',
         'md:rounded-btn md:border-b-0 md:bg-primary-light md:p-1',
         className,
       )}
@@ -82,7 +82,7 @@ const AppTab: React.FC<AppTabProps> = ({
             aria-selected={isActive}
             onClick={() => onChange(tab.id)}
             className={cx(
-              'b2-m -mb-px border-b-2 px-3 py-2.5 transition-colors',
+              'b2-m -mb-px shrink-0 whitespace-nowrap border-b-2 px-3 py-2.5 transition-colors',
               'md:mb-0 md:rounded-btn md:border-b-0 md:px-3.5 md:py-2',
               isActive
                 ? 'border-primary text-primary md:bg-primary md:text-background'

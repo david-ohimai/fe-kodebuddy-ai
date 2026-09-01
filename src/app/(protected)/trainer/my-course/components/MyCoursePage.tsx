@@ -33,9 +33,6 @@ const TABS = [
   { id: 'resources', label: 'Resources' },
 ];
 
-// TODO: Assignments/FAQs/Resources tabs are pending their Figma designs
-// (per the person building this — "I will upload the designs for other
-// flows later").
 function ComingSoonTab({ label }: { label: string }) {
   return (
     <div className="flex min-h-[240px] flex-col items-center justify-center gap-1 p-6 text-center">
@@ -47,7 +44,7 @@ function ComingSoonTab({ label }: { label: string }) {
 
 export default function MyCoursePage() {
   const { user } = useCurrentUserContext();
-  const { showSuccess, showError } = useToast();
+  const { showError } = useToast();
   const { data, loading: loadingCourse } = useMyAssignedCourse(user?.id);
   const content = useCourseContent(data?.course.id ?? 0);
 
@@ -62,9 +59,6 @@ export default function MyCoursePage() {
   const [isAddContentOpen, setIsAddContentOpen] = useState(false);
   const [editingLesson, setEditingLesson] = useState<Lesson | null>(null);
 
-  // Assignment count for the Overview tab — a real number pulled from
-  // GET /modules/{id}/assignments per module, summed. Full Assignments
-  // tab CRUD is pending its design.
   useEffect(() => {
     if (content.modules.length === 0) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -94,15 +88,13 @@ export default function MyCoursePage() {
   );
   const selectedLesson =
     selectedModuleId != null
-      ? (content.lessonsByModule[selectedModuleId] ?? []).find(
+      ? ((content.lessonsByModule[selectedModuleId] ?? []).find(
           (l) => l.id === selectedLessonId,
-        ) ?? null
+        ) ?? null)
       : null;
 
   const handleSelectTab = (tab: string) => {
     if (tab === 'learning-content' && !selectedModuleId) {
-      // Default to the first module when jumping to this tab directly,
-      // since learning content is always scoped to a module.
       if (content.modules[0]) setSelectedModuleId(content.modules[0].id);
     }
     setSelectedLessonId(null);
@@ -230,7 +222,10 @@ export default function MyCoursePage() {
             await content.addModule(formData);
             setIsAddModuleOpen(false);
           } catch (err) {
-            showError('Could not add module', getErrorMessage(err, 'Please try again.'));
+            showError(
+              'Could not add module',
+              getErrorMessage(err, 'Please try again.'),
+            );
           }
         }}
       />
@@ -245,10 +240,16 @@ export default function MyCoursePage() {
         onSubmit={async (formData) => {
           if (!editingModule) return;
           try {
-            await content.editModule(editingModule.id, formData);
+            await content.editModule(editingModule.id, formData, {
+              title: 'Module updated successfully.',
+              message: `"${formData.title}" has been saved.`,
+            });
             setEditingModule(null);
           } catch (err) {
-            showError('Could not update module', getErrorMessage(err, 'Please try again.'));
+            showError(
+              'Could not update module',
+              getErrorMessage(err, 'Please try again.'),
+            );
           }
         }}
       />
@@ -262,17 +263,23 @@ export default function MyCoursePage() {
           onClose={() => setIsAddContentOpen(false)}
           onSubmit={async (formData) => {
             try {
-              await content.addLesson(selectedModule.id, {
-                title: formData.title,
-                description: formData.content,
-              });
-              setIsAddContentOpen(false);
-              showSuccess(
-                'Learning content added.',
-                `"${formData.title}" was added to this module.`,
+              await content.addLesson(
+                selectedModule.id,
+                {
+                  title: formData.title,
+                  description: formData.content,
+                },
+                {
+                  title: 'Learning content added successfully.',
+                  message: `"${formData.title}" was added to this module.`,
+                },
               );
+              setIsAddContentOpen(false);
             } catch (err) {
-              showError('Could not add learning content', getErrorMessage(err, 'Please try again.'));
+              showError(
+                'Could not add learning content',
+                getErrorMessage(err, 'Please try again.'),
+              );
             }
           }}
         />
@@ -292,17 +299,24 @@ export default function MyCoursePage() {
           onClose={() => setEditingLesson(null)}
           onSubmit={async (formData) => {
             try {
-              await content.editLesson(selectedModule.id, editingLesson.id, {
-                title: formData.title,
-                description: formData.content,
-              });
-              setEditingLesson(null);
-              showSuccess(
-                'Learning content updated.',
-                `"${formData.title}" has been saved.`,
+              await content.editLesson(
+                selectedModule.id,
+                editingLesson.id,
+                {
+                  title: formData.title,
+                  description: formData.content,
+                },
+                {
+                  title: 'Learning content updated successfully.',
+                  message: `"${formData.title}" has been saved.`,
+                },
               );
+              setEditingLesson(null);
             } catch (err) {
-              showError('Could not update learning content', getErrorMessage(err, 'Please try again.'));
+              showError(
+                'Could not update learning content',
+                getErrorMessage(err, 'Please try again.'),
+              );
             }
           }}
         />
