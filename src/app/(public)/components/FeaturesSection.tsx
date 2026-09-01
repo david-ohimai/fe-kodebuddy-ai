@@ -1,14 +1,28 @@
-// TODO: build out per the "Everything you need to keep learning" section
-// of the Figma — the 4 feature callouts (Learn, Practise, Resources,
-// Support) arranged around the hero photo.
+import Image from 'next/image';
+import featureCollage from '@/assets/images/landing/learning-space-collage.png';
+import SectionHeader from './SectionHeader';
+
 export default function FeaturesSection() {
   return (
-    <section id="learning-space" className="mx-auto max-w-6xl px-6 py-20 text-center">
-      <p className="b2-b text-primary">Your learning space</p>
-      <h2 className="h3-b mt-2 text-text">Everything you need to keep learning</h2>
-      <p className="b1-r mt-2 text-text-secondary">
-        Designed to help you succeed at every step of your path.
-      </p>
+    <section
+      id="learning-space"
+      className="scroll-mt-24 bg-background px-5 pb-20 pt-16 text-center sm:px-8 lg:pb-28"
+    >
+      <div className="mx-auto max-w-[1216px]">
+        <SectionHeader
+          badge="Your learning space"
+          title="Everything you need to keep learning"
+          description="Designed to help you succeed at every step of your path."
+          className="max-w-[820px]"
+        />
+        <div className="relative mx-auto mt-8 max-w-[920px]">
+          <Image
+            src={featureCollage}
+            alt="Learner surrounded by KodeBuddy learning tools"
+            className="mx-auto h-auto w-full"
+          />
+        </div>
+      </div>
     </section>
   );
 }
