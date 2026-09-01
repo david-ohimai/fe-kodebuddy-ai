@@ -48,6 +48,14 @@ export async function listCourseModules(
   return dtos.map(mapModule).sort((a, b) => a.order - b.order);
 }
 
+export async function getModule(moduleId: number): Promise<CourseModule> {
+  const dto = await apiFetch<ModuleResponseDto>(`/modules/${moduleId}`, {
+    method: 'GET',
+    auth: true,
+  });
+  return mapModule(dto);
+}
+
 export async function createModule(input: {
   courseId: number;
   title: string;
