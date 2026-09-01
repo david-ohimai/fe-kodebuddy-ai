@@ -3,8 +3,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import PageHeader from '@/components/ui/AppPageHeader';
 import AppEmptyState from '@/components/ui/AppEmptyState';
+import AppTab from '@/components/ui/AppTab';
 import { useToast } from '@/components/ui/ToastProvider';
-import { cx } from '@/lib/utils/cx';
 import { listLearnerAssignments } from '@/lib/api/assignments.api';
 import { getErrorMessage } from '@/lib/api/client';
 import type { LearnerAssignment } from '@/types/assignment.types';
@@ -15,11 +15,7 @@ import EscalationCard from './EscalationCard';
 import emptyStateImage from '@/assets/images/empty state assign.webp';
 
 type AssignmentTab =
-  | 'all'
-  | 'pending'
-  | 'in-progress'
-  | 'submitted'
-  | 'escalations';
+  'all' | 'pending' | 'in-progress' | 'submitted' | 'escalations';
 
 const TABS: ReadonlyArray<{ id: AssignmentTab; label: string }> = [
   { id: 'all', label: 'All' },
@@ -32,16 +28,6 @@ const TABS: ReadonlyArray<{ id: AssignmentTab; label: string }> = [
 const GRID =
   'grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4';
 
-/**
- * Which statuses each tab shows.
- *
- * Overdue work sits under In-progress rather than getting a tab of its own:
- * it is still outstanding and still actionable, and the design has no Overdue
- * tab, so anything else would leave it visible only under All.
- *
- * Escalations are not assignments at all — that tab renders its own list, so
- * this never has to answer for it.
- */
 function matchesTab(assignment: LearnerAssignment, tab: AssignmentTab) {
   switch (tab) {
     case 'all':
@@ -53,7 +39,9 @@ function matchesTab(assignment: LearnerAssignment, tab: AssignmentTab) {
         assignment.status === 'in-progress' || assignment.status === 'overdue'
       );
     case 'submitted':
-      return assignment.status === 'submitted' || assignment.status === 'graded';
+      return (
+        assignment.status === 'submitted' || assignment.status === 'graded'
+      );
     case 'escalations':
       return false;
   }
@@ -88,15 +76,11 @@ export default function AssignmentsPage() {
   useEffect(() => {
     let cancelled = false;
 
-    // Escalations come from fixtures for now; they resolve immediately and
-    // must not stop the assignments from rendering.
     listEscalations()
       .then((list) => {
         if (!cancelled) setEscalations(list);
       })
-      .catch(() => {
-        /* fixtures cannot fail — the tab simply stays empty if they ever do */
-      });
+      .catch(() => {});
 
     listLearnerAssignments()
       .then((list) => {
@@ -131,37 +115,13 @@ export default function AssignmentsPage() {
         subtitle="Here's what's happening on KodeBuddy today."
       />
 
-      {/* Underlined tabs, per the Assignments design. AppTab is a filled
-          segmented control from md up, so it is not reused here. */}
-      <div
-        role="tablist"
-        aria-label="Filter assignments"
-        className="flex items-center gap-6 overflow-x-auto rounded-card bg-background px-5"
-      >
-        {TABS.map((tab) => {
-          const isActive = tab.id === activeTab;
-          return (
-            <button
-              key={tab.id}
-              type="button"
-              role="tab"
-              aria-selected={isActive}
-              onClick={() => setActiveTab(tab.id)}
-              className={cx(
-                'relative shrink-0 py-3 b2-m transition-colors',
-                isActive
-                  ? 'text-primary'
-                  : 'text-muted hover:text-text-secondary',
-              )}
-            >
-              {tab.label}
-              {isActive && (
-                <span className="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-primary" />
-              )}
-            </button>
-          );
-        })}
-      </div>
+      <AppTab
+        tabs={TABS}
+        activeTab={activeTab}
+        onChange={(id) => setActiveTab(id as AssignmentTab)}
+        variant="underline"
+        ariaLabel="Filter assignments"
+      />
 
       <div className="rounded-card bg-background p-5">
         {activeTab === 'escalations' ? (

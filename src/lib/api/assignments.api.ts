@@ -1,5 +1,10 @@
 import { apiFetch } from './client';
 import {
+  getLearnerDashboard,
+  type LearnerDashboardCourse,
+  type LearnerDashboardAssignmentStatus,
+} from './dashboard.api';
+import {
   deriveAssignmentStatus,
   type AssignmentItem,
   type LearnerAssignment,
@@ -7,13 +12,6 @@ import {
 import { DEMO_ASSIGNMENTS } from '@/lib/mocks/assignment.mocks';
 import { listMySubmissions, type Submission } from './submissions.api';
 
-// ---------------------------------------------------------------------------
-// Trainer-facing listing (from dev — used by trainer/my-course)
-// ---------------------------------------------------------------------------
-
-// Minimal for now — only what's needed to show a real assignment count
-// on the Overview tab. Full CRUD (create/edit/grade) will follow once
-// the Assignments tab design is available.
 export interface Assignment {
   id: number;
   moduleId: number;
@@ -27,7 +25,6 @@ interface AssignmentResponseDto {
   [key: string]: unknown;
 }
 
-/** GET /modules/{module_id}/assignments */
 export async function listModuleAssignments(
   moduleId: number,
 ): Promise<Assignment[]> {
@@ -41,15 +38,6 @@ export async function listModuleAssignments(
     title: dto.title,
   }));
 }
-
-// ---------------------------------------------------------------------------
-// Learner-facing listing
-// ---------------------------------------------------------------------------
-//
-// Separate from `listModuleAssignments` above rather than replacing it: that
-// one answers "how many assignments does this module have" for the trainer
-// overview and is deliberately minimal. The learner screens need the full
-// record plus this learner's own status, which no single endpoint returns.
 
 interface AssignmentDetailDto {
   id: number;
@@ -75,34 +63,6 @@ interface ModuleResponseDto {
   is_active: boolean;
 }
 
-interface LearnerCourseProgressDto {
-  course_id: number;
-  course_title: string;
-}
-
-interface LearnerAssignmentStatusDto {
-  assignment_id: number;
-  title: string;
-  due_date: string;
-  submitted: boolean;
-  graded: boolean;
-  score: number | null;
-  is_overdue: boolean;
-}
-
-interface LearnerDashboardDto {
-  courses: LearnerCourseProgressDto[];
-  assignments: LearnerAssignmentStatusDto[];
-}
-
-/**
- * Whether to fall back to fixtures when the API yields nothing usable.
- *
- * Defaults to ON so a demo against an unseeded environment still shows the
- * screens. Set NEXT_PUBLIC_DEMO_FALLBACK=false to force real-data-only and see
- * the genuine empty state. Real data is always preferred — the fallback only
- * engages on error or an empty result, never over live rows.
- */
 function fallbackEnabled(): boolean {
   return process.env.NEXT_PUBLIC_DEMO_FALLBACK !== 'false';
 }
@@ -123,16 +83,13 @@ function withFallback(
 function mapLearnerAssignment(
   dto: AssignmentDetailDto,
   module: ModuleResponseDto,
-  course: LearnerCourseProgressDto,
-  status: LearnerAssignmentStatusDto | undefined,
+  course: LearnerDashboardCourse,
+  status: LearnerDashboardAssignmentStatus | undefined,
   submission: Submission | undefined,
 ): LearnerAssignment {
-  // The dashboard is authoritative for `graded`/`is_overdue`, which it derives
-  // server-side. A submission row is authoritative for "did I submit", since it
-  // is the record itself — and it carries the timestamp the dashboard omits.
   const submitted = status?.submitted ?? submission !== undefined;
   const graded = status?.graded ?? submission?.score != null;
-  const isOverdue = status?.is_overdue ?? false;
+  const isOverdue = status?.isOverdue ?? false;
 
   return {
     id: dto.id,
@@ -147,8 +104,8 @@ function mapLearnerAssignment(
 
     moduleTitle: module.title,
     moduleOrder: module.order,
-    courseId: course.course_id,
-    courseTitle: course.course_title,
+    courseId: course.courseId,
+    courseTitle: course.courseTitle,
 
     status: deriveAssignmentStatus({ submitted, graded, isOverdue }),
     submitted,
@@ -162,39 +119,17 @@ function mapLearnerAssignment(
   };
 }
 
-/**
- * Every assignment visible to the signed-in learner, with module/course
- * context and per-learner status.
- *
- * PERFORMANCE CAVEAT — this fans out: 1 dashboard call, then one call per
- * enrolled course for its modules, then one call per module for its
- * assignments. That is N+1 by construction, because there is no
- * `GET /assignments/me` on the backend and `/dashboard/learner` returns
- * assignment *status* without the `module_id` needed to reach the full record
- * (`/modules/{module_id}/assignments/{id}`).
- *
- * Fine at current scale. The fix is one backend endpoint returning the joined
- * rows; until then this is the only way to assemble the screen. Requests at
- * each level run in parallel, so latency is ~3 round trips, not N.
- */
 export async function listLearnerAssignments(): Promise<LearnerAssignment[]> {
   try {
-    // Independent of each other, so they share one round trip. A submissions
-    // failure must not blank the whole screen — the assignments are still
-    // readable without it, just without submitted-at dates.
     const [dashboard, submissions] = await Promise.all([
-      apiFetch<LearnerDashboardDto>('/dashboard/learner', {
-        method: 'GET',
-        auth: true,
-      }),
+      getLearnerDashboard(),
       listMySubmissions().catch(() => [] as Submission[]),
     ]);
 
     const statusById = new Map(
-      (dashboard.assignments ?? []).map((a) => [a.assignment_id, a]),
+      (dashboard.assignments ?? []).map((a) => [a.assignmentId, a]),
     );
 
-    // Newest submission wins if an assignment somehow has more than one.
     const submissionByAssignment = new Map<number, Submission>();
     for (const submission of submissions) {
       const existing = submissionByAssignment.get(submission.assignmentId);
@@ -211,18 +146,16 @@ export async function listLearnerAssignments(): Promise<LearnerAssignment[]> {
       return withFallback([], 'learner has no enrolled courses');
     }
 
-    // Level 2: modules per course, in parallel.
     const moduleGroups = await Promise.all(
       courses.map(async (course) => {
         const modules = await apiFetch<ModuleResponseDto[]>(
-          `/modules/course/${course.course_id}`,
+          `/modules/course/${course.courseId}`,
           { method: 'GET', auth: true },
         );
         return { course, modules: modules ?? [] };
       }),
     );
 
-    // Level 3: assignments per module, in parallel across every course.
     const assignmentGroups = await Promise.all(
       moduleGroups.flatMap(({ course, modules }) =>
         modules.map(async (module) => {
@@ -255,14 +188,6 @@ export async function listLearnerAssignments(): Promise<LearnerAssignment[]> {
   }
 }
 
-/**
- * One assignment by id.
- *
- * Goes through the same fan-out as the list because the detail endpoint is
- * keyed by `(module_id, assignment_id)` and the id in the URL carries no
- * module. Once the backend exposes the module on the dashboard payload — or a
- * flat `GET /assignments/{id}` — this collapses to a single request.
- */
 export async function getLearnerAssignment(
   id: number,
 ): Promise<LearnerAssignment | null> {

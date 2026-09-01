@@ -1,35 +1,85 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { CheckCircle2, ExternalLink, Folder, Sparkles } from 'lucide-react';
 
 import PageHeader from '@/components/ui/AppPageHeader';
 import { AppCard } from '@/components/ui/AppCard';
+import AppButton from '@/components/ui/AppButton';
+import AppSpinner from '@/components/ui/AppSpinner';
+import { useToast } from '@/components/ui/ToastProvider';
+import KodeBuddyChatPanel from '@/components/chat/KodeBuddyChatPanel';
+import { getLearnerResource } from '@/lib/api/resources.api';
+import { getErrorMessage } from '@/lib/api/client';
+import type { LearnerResource } from '@/types/resource.types';
 
-interface Resource {
-  id: string;
-  title: string;
-  description: string;
-  type: string;
-  category: string;
-  author: string;
-  level: string;
-  content: string;
-  code?: string;
-}
+const PLACEHOLDER_LEVEL = 'Beginner';
 
 interface ResourceDetailsProps {
-  resource: Resource;
+  resourceId: number;
 }
 
-export default function ResourceDetails({
-  resource,
-}: ResourceDetailsProps) {
+export default function ResourceDetails({ resourceId }: ResourceDetailsProps) {
+  const { showError } = useToast();
+  const [resource, setResource] = useState<LearnerResource | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
   const [resourceUsed, setResourceUsed] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
 
-  const handleUseResource = () => {
-    setResourceUsed(true);
-  };
+  useEffect(() => {
+    let cancelled = false;
+    getLearnerResource(resourceId)
+      .then((found) => {
+        if (cancelled) return;
+        if (!found) setNotFound(true);
+        else setResource(found);
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          showError(
+            'Could not load resource',
+            getErrorMessage(err, 'Please try again.'),
+          );
+          setNotFound(true);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resourceId]);
+
+  if (loading) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <AppSpinner size={40} />
+      </div>
+    );
+  }
+
+  if (notFound || !resource) {
+    return (
+      <div className="flex flex-col gap-4">
+        <Link
+          href="/resources"
+          className="b2-b inline-flex w-fit items-center gap-1.5 text-primary hover:underline"
+        >
+          <Folder size={16} /> Back to Resources
+        </Link>
+        <AppCard padding="lg" className="text-center">
+          <p className="b1-b text-text">Resource not found</p>
+          <p className="b2-r mt-1 text-muted">
+            This resource may have been removed, or the link is incorrect.
+          </p>
+        </AppCard>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -38,220 +88,119 @@ export default function ResourceDetails({
         subtitle="Explore this resource and continue your learning."
       />
 
-      {/* Success message */}
       {resourceUsed && (
-        <div className="flex items-start gap-3 rounded-lg border border-success/30 bg-success-light px-4 py-3">
-          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-success text-sm text-white">
-            ✓
-          </div>
-
+        <div className="flex items-start gap-3 rounded-card border border-success/20 bg-success-light px-5 py-4">
+          <CheckCircle2
+            size={20}
+            className="mt-0.5 shrink-0 text-success-dark"
+          />
           <div>
-            <p className="text-sm font-semibold text-success-dark">
+            <p className="b2-b text-success-dark">
               Resource added to your learning
             </p>
-
-            <p className="mt-1 text-xs text-success-dark/80">
-              This resource is now part of your learning journey.
+            <p className="b2-r mt-0.5 text-success-dark/80">
+              This resource is available to support your learning in{' '}
+              {resource.moduleTitle}.
             </p>
           </div>
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_280px]">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_300px]">
         {/* Main content */}
         <div className="min-w-0">
-          {/* Resource header */}
-          <div className="border-b border-disabled pb-5">
-            <div className="flex flex-wrap items-center gap-2 text-[10px] font-medium uppercase">
-              <span className="text-primary">
-                {resource.type}
-              </span>
+          <div className="flex flex-col gap-4 border-b border-disabled pb-6 sm:flex-row sm:items-start sm:justify-between">
+            <div className="max-w-2xl">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="f1-b rounded-full bg-warning/15 px-2.5 py-1 uppercase text-warning">
+                  {resource.type}
+                </span>
+                <span className="f1-m uppercase text-muted">
+                  {resource.courseTitle} · {PLACEHOLDER_LEVEL}
+                </span>
+              </div>
 
-              <span className="text-text-secondary">
-                {resource.category}
-              </span>
-
-              <span className="text-text-secondary">
-                {resource.level}
-              </span>
+              <h1 className="h5-b mt-3 text-text">{resource.title}</h1>
+              <p className="b2-r mt-2 text-text-secondary">
+                {resource.description || 'No description added yet.'}
+              </p>
             </div>
 
-            <div className="mt-4 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-              <div className="max-w-2xl">
-                <h1 className="text-2xl font-semibold leading-tight text-text-primary">
-                  {resource.title}
-                </h1>
-
-                <p className="mt-2 max-w-xl text-xs leading-5 text-text-secondary">
-                  {resource.description}
-                </p>
-              </div>
-
-              {/* Top actions */}
-              <div className="flex shrink-0 flex-col gap-2">
-                {resourceUsed ? (
-                  <Link
-                    href="/learn"
-                    className="rounded-full bg-primary px-5 py-2.5 text-center text-[10px] font-medium text-white transition hover:opacity-90"
-                  >
-                    Continue Learning →
-                  </Link>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={handleUseResource}
-                    className="rounded-full bg-primary px-5 py-2.5 text-[10px] font-medium text-white transition hover:opacity-90"
-                  >
-                    Use Resource in Learning →
-                  </button>
-                )}
-
-                <Link
-                  href="/resources"
-                  className="rounded-full border border-disabled px-5 py-2.5 text-center text-[10px] font-medium text-text-secondary transition hover:border-primary hover:text-primary"
-                >
-                  ← Back to Resources
-                </Link>
-              </div>
+            <div className="flex shrink-0 flex-col gap-2">
+              {resourceUsed ? (
+                <AppButton href="/learn" radius="full">
+                  Continue Learning →
+                </AppButton>
+              ) : (
+                <AppButton radius="full" onClick={() => setResourceUsed(true)}>
+                  Use Resource in Learning →
+                </AppButton>
+              )}
+              <AppButton
+                href="/resources"
+                variant="outlined"
+                color="neutral"
+                radius="full"
+                startIcon={<Folder size={14} />}
+              >
+                Back to Resources
+              </AppButton>
             </div>
           </div>
 
-          {/* Article content */}
           <article className="pt-6">
-            <h2 className="text-base font-semibold text-text-primary">
-              JavaScript Functions
-            </h2>
+            {resource.url && (
+              <a
+                href={resource.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="b2-m mb-6 flex w-fit items-center gap-2 rounded-full bg-primary-light px-4 py-2.5 text-primary transition hover:opacity-90"
+              >
+                <ExternalLink size={16} />
+                Open resource
+              </a>
+            )}
 
-            <p className="mt-3 max-w-3xl text-xs leading-5 text-text-secondary">
-              Functions are reusable blocks of code that perform a
-              specific task. They help developers organize code and
-              reduce repeated instructions.
+            <h2 className="b1-b text-text">Overview</h2>
+            <p className="b2-r mt-3 max-w-3xl whitespace-pre-wrap text-text-secondary">
+              {resource.description ||
+                'No further details have been added to this resource yet.'}
             </p>
 
-            {/* What is a function */}
-            <section className="mt-6">
-              <h3 className="text-sm font-semibold text-text-primary">
-                What is a Function?
-              </h3>
-
-              <p className="mt-2 max-w-3xl text-xs leading-5 text-text-secondary">
-                Think of a function as a &quot;recipe&quot; for a
-                specific action. You define the steps once, and then
-                you can &quot;call&quot; or &quot;invoke&quot; that
-                function whenever you need that action performed.
-                This makes your code cleaner, easier to read, and
-                much simpler to maintain.
-              </p>
-            </section>
-
-            {/* Why use functions */}
-            <section className="mt-6">
-              <h3 className="text-sm font-semibold text-text-primary">
-                Why Use Functions?
-              </h3>
-
-              <ul className="mt-3 space-y-2">
-                <li className="flex gap-2 text-xs leading-5 text-text-secondary">
-                  <span className="text-primary">•</span>
-
-                  <span>
-                    <strong className="font-medium text-text-primary">
-                      Reusability:
-                    </strong>{' '}
-                    Write code once, use it multiple times across
-                    your application.
-                  </span>
-                </li>
-
-                <li className="flex gap-2 text-xs leading-5 text-text-secondary">
-                  <span className="text-primary">•</span>
-
-                  <span>
-                    <strong className="font-medium text-text-primary">
-                      Organization:
-                    </strong>{' '}
-                    Break complex programs into smaller,
-                    manageable, and logical pieces.
-                  </span>
-                </li>
-
-                <li className="flex gap-2 text-xs leading-5 text-text-secondary">
-                  <span className="text-primary">•</span>
-
-                  <span>
-                    <strong className="font-medium text-text-primary">
-                      Maintenance:
-                    </strong>{' '}
-                    If you need to change a logic, you only have to
-                    update it in one place.
-                  </span>
-                </li>
-              </ul>
-            </section>
-
-            {/* Basic function structure */}
-            <section className="mt-6">
-              <h3 className="text-sm font-semibold text-text-primary">
-                Basic Function Structure
-              </h3>
-
-              <p className="mt-2 max-w-3xl text-xs leading-5 text-text-secondary">
-                A standard function declaration consists of the
-                function keyword, followed by a name, parentheses
-                for parameters, and curly braces for the code block.
-              </p>
-
-              {resource.code && (
-                <pre className="mt-4 max-w-3xl overflow-x-auto rounded-lg bg-slate-950 px-5 py-4 text-[10px] leading-4 text-white">
-                  <code>{resource.code}</code>
-                </pre>
-              )}
-            </section>
-
-            {/* Bottom action */}
-            <div className="mt-6 flex flex-col gap-4 border-t border-disabled pt-5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="mt-8 flex flex-col gap-4 border-t border-disabled pt-5 sm:flex-row sm:items-center sm:justify-between">
               {resourceUsed ? (
                 <>
                   <div>
-                    <p className="text-xs font-medium text-text-primary">
-                      Action successful!
-                    </p>
-
-                    <p className="mt-1 text-[10px] text-text-secondary">
-                      This resource is now part of your learning
-                      journey.
+                    <p className="b2-m text-text">Action successful!</p>
+                    <p className="b2-r mt-0.5 text-muted">
+                      Return to your learning journey or browse more resources.
                     </p>
                   </div>
-
                   <div className="flex items-center gap-3">
-                    <Link
+                    <AppButton
                       href="/resources"
-                      className="rounded-full border border-disabled px-4 py-2.5 text-[10px] font-medium text-text-secondary transition hover:border-primary hover:text-primary"
+                      variant="outlined"
+                      color="neutral"
+                      radius="full"
                     >
                       Back to Resources
-                    </Link>
-
-                    <Link
-                      href="/learn"
-                      className="rounded-full bg-primary px-5 py-2.5 text-[10px] font-medium text-white transition hover:opacity-90"
-                    >
+                    </AppButton>
+                    <AppButton href="/learn" radius="full">
                       Continue Learning →
-                    </Link>
+                    </AppButton>
                   </div>
                 </>
               ) : (
                 <>
-                  <p className="text-[10px] text-text-secondary">
+                  <p className="b2-r text-muted">
                     Ready to apply this to your course?
                   </p>
-
-                  <button
-                    type="button"
-                    onClick={handleUseResource}
-                    className="rounded-full bg-primary px-5 py-2.5 text-[10px] font-medium text-white transition hover:opacity-90"
+                  <AppButton
+                    radius="full"
+                    onClick={() => setResourceUsed(true)}
                   >
                     Use Resource in Learning →
-                  </button>
+                  </AppButton>
                 </>
               )}
             </div>
@@ -260,90 +209,78 @@ export default function ResourceDetails({
 
         {/* Right sidebar */}
         <aside className="flex flex-col gap-4">
-          {/* Resource information */}
           <AppCard padding="md">
-            <p className="text-[9px] font-medium uppercase text-text-secondary">
-              Resources Information
-            </p>
+            <p className="f1-m uppercase text-muted">Resources Information</p>
 
-            <div className="mt-4 space-y-4">
-              <div>
-                <p className="text-[8px] uppercase text-text-secondary">
-                  Type
-                </p>
-
-                <p className="mt-1 flex items-center gap-1 text-xs font-medium text-text-primary">
-                  <span className="text-primary">▤</span>
-                  {resource.type}
-                </p>
+            <div className="mt-4 flex flex-col divide-y divide-disabled">
+              <div className="pb-3">
+                <p className="f1-m uppercase text-muted">Type</p>
+                <p className="b2-m mt-1 text-text">{resource.type}</p>
               </div>
 
-              <div>
-                <p className="text-[8px] uppercase text-text-secondary">
-                  Level
-                </p>
-
-                <p className="mt-1 text-xs font-medium text-text-primary">
-                  {resource.level}
-                </p>
+              <div className="py-3">
+                <p className="f1-m uppercase text-muted">Level</p>
+                <p className="b2-m mt-1 text-text">{PLACEHOLDER_LEVEL}</p>
               </div>
 
-              <div>
-                <p className="text-[8px] uppercase text-text-secondary">
-                  Topic
-                </p>
-
-                <p className="mt-1 text-xs font-medium text-text-primary">
-                  {resource.category}
-                </p>
+              <div className="py-3">
+                <p className="f1-m uppercase text-muted">Topic</p>
+                <p className="b2-m mt-1 text-text">{resource.moduleTitle}</p>
               </div>
 
-              <div className="border-t border-disabled pt-4">
-                <p className="text-[8px] uppercase text-text-secondary">
-                  Related Course
-                </p>
-
-                <p className="mt-1 text-xs font-medium text-primary">
-                  Frontend Development
-                </p>
+              <div className="pt-3">
+                <p className="f1-m uppercase text-muted">Related Course</p>
+                <p className="b2-b mt-1 text-primary">{resource.courseTitle}</p>
               </div>
 
-              <div>
-                <p className="text-[8px] uppercase text-text-secondary">
-                  Related Module
-                </p>
-
-                <p className="mt-1 text-xs font-medium text-primary">
-                  JavaScript Fundamentals
-                </p>
+              <div className="pt-3">
+                <p className="f1-m uppercase text-muted">Related Module</p>
+                <p className="b2-b mt-1 text-primary">{resource.moduleTitle}</p>
               </div>
             </div>
           </AppCard>
 
-          {/* AI help card */}
-          <div className="rounded-xl bg-slate-950 p-4 text-white">
-            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-lime-400 text-xs font-bold text-slate-950">
-              ✦
-            </div>
-
-            <h2 className="mt-4 text-sm font-semibold">
-              Stuck on functions?
-            </h2>
-
-            <p className="mt-2 text-[10px] leading-4 text-white/60">
-              Ask KodeBuddy AI to explain function scope or arrow
-              functions in more detail.
+          <div className="rounded-card bg-slate-950 p-4 text-white">
+            <span className="flex h-8 w-8 items-center justify-center rounded-md bg-secondary text-slate-950">
+              <Sparkles size={16} />
+            </span>
+            <h2 className="b2-b mt-4 text-white">Stuck on this?</h2>
+            <p className="b2-r mt-2 text-white/60">
+              Ask KodeBuddy AI to explain {resource.title.toLowerCase()} in more
+              detail.
             </p>
-
             <button
               type="button"
-              className="mt-4 w-full rounded-full bg-white/25 px-4 py-2 text-[10px] font-medium text-white transition hover:bg-white/35"
+              onClick={() => setChatOpen(true)}
+              className="b2-m mt-4 w-full rounded-full bg-white/25 px-4 py-2.5 text-white transition hover:bg-white/35"
             >
               Chat with AI
             </button>
           </div>
         </aside>
       </div>
+
+      {chatOpen && (
+        <>
+          <div
+            role="presentation"
+            onClick={() => setChatOpen(false)}
+            className="fixed inset-0 z-40 bg-black/40"
+          />
+          <aside className="fixed inset-x-4 top-4 bottom-4 z-50 lg:inset-y-6 lg:right-6 lg:left-auto lg:w-100">
+            <KodeBuddyChatPanel
+              context={{
+                courseId: resource.courseId,
+                moduleId: resource.moduleId,
+                assignmentId: null,
+                label: resource.title,
+              }}
+              initialQuestion={`Can you explain more about "${resource.title}"?`}
+              onClose={() => setChatOpen(false)}
+            />
+          </aside>
+        </>
+      )}
     </div>
   );
 }

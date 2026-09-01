@@ -12,19 +12,15 @@ import {
 
 import AppButton from '@/components/ui/AppButton';
 import { AppCard } from '@/components/ui/AppCard';
-import AppInlineEmpty from '@/components/ui/AppInlineEmpty';
+import AppEmptyState from '@/components/ui/AppEmptyState';
 import AppSpinner from '@/components/ui/AppSpinner';
 import KodeBuddyChatPanel from '@/components/chat/KodeBuddyChatPanel';
 import { useCurrentUserContext } from '@/lib/auth/CurrentUserContext';
-import { listCourses, type Course } from '@/lib/api/courses.api';
+import {
+  getLearnerDashboard,
+  type LearnerDashboardCourse,
+} from '@/lib/api/dashboard.api';
 
-/**
- * Dashboard quick ask.
- *
- * Collects a question and hands it to the assistant panel, which asks it on
- * open. There is no standalone assistant route — the panel is opened in place
- * wherever the learner is.
- */
 function AskKodeBuddyWidget({ onAsk }: { onAsk: (question: string) => void }) {
   const [question, setQuestion] = useState('');
   const trimmed = question.trim();
@@ -39,7 +35,7 @@ function AskKodeBuddyWidget({ onAsk }: { onAsk: (question: string) => void }) {
     <div className="rounded-card bg-slate-900 p-5 text-white">
       <div className="flex items-center gap-2">
         <Sparkles size={18} className="shrink-0 text-secondary" />
-        <p className="b1-b">Ask KodeBuddy</p>
+        <p className="b2-b">Ask KodeBuddy</p>
       </div>
 
       <p className="mt-1.5 b2-r text-white/60">
@@ -50,7 +46,6 @@ function AskKodeBuddyWidget({ onAsk }: { onAsk: (question: string) => void }) {
         value={question}
         onChange={(e) => setQuestion(e.target.value)}
         onKeyDown={(e) => {
-          // Enter asks; Shift+Enter is a newline, matching the chat composer.
           if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
             submit();
@@ -79,21 +74,21 @@ function AskKodeBuddyWidget({ onAsk }: { onAsk: (question: string) => void }) {
 export default function LearnerDashboard() {
   const { user } = useCurrentUserContext();
 
-  const [courses, setCourses] = useState<Course[]>([]);
+  const [courses, setCourses] = useState<LearnerDashboardCourse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  /** The question the assistant was opened with; null while it is closed. */
   const [askedQuestion, setAskedQuestion] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    listCourses()
-      .then((list) => {
-        if (!cancelled) setCourses(list);
+    getLearnerDashboard()
+      .then((dashboard) => {
+        if (!cancelled) setCourses(dashboard.courses);
       })
       .catch(() => {
-        if (!cancelled) setError('Could not load your dashboard. Please try again.');
+        if (!cancelled)
+          setError('Could not load your dashboard. Please try again.');
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -107,7 +102,7 @@ export default function LearnerDashboard() {
     user?.fullName?.trim().split(' ')[0] ||
     user?.email?.split('@')[0] ||
     undefined;
-  const activeCourses = courses.filter((c) => c.isActive);
+  const activeCourses = courses;
   const hasCourseInProgress = activeCourses.length > 0;
 
   if (loading) {
@@ -136,14 +131,17 @@ export default function LearnerDashboard() {
       )}
 
       {!hasCourseInProgress && !error && (
-        <AppCard padding="lg" className="flex flex-col items-center py-12 text-center">
+        <AppCard
+          padding="lg"
+          className="flex flex-col items-center py-12 text-center"
+        >
           <AppCard.Icon variant="primary" className="mb-4">
             <BookOpen />
           </AppCard.Icon>
           <p className="b1-b text-text">Start your learning journey</p>
           <p className="b2-r mt-1 max-w-sm text-muted">
-            You don&apos;t have a course in progress yet. Explore your
-            courses to get started.
+            You don&apos;t have a course in progress yet. Explore your courses
+            to get started.
           </p>
           <AppButton href="/learn" radius="full" className="mt-5">
             Explore My Courses
@@ -155,7 +153,7 @@ export default function LearnerDashboard() {
         <div className="grid grid-cols-1 gap-4">
           {activeCourses.map((course) => (
             <AppCard
-              key={course.id}
+              key={course.courseId}
               padding="lg"
               className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center"
             >
@@ -163,12 +161,15 @@ export default function LearnerDashboard() {
                 <span className="text-xs font-semibold uppercase tracking-wider text-primary bg-primary/10 px-2.5 py-1 rounded-full">
                   Active Course
                 </span>
-                <h3 className="b1-b text-text mt-2">{course.title}</h3>
+                <h3 className="b1-b text-text mt-2">{course.courseTitle}</h3>
                 <p className="b2-r text-muted">
                   Continue where you left off in your curriculum.
                 </p>
               </div>
-              <AppButton href={`/learn/courses/${course.id}`} radius="full">
+              <AppButton
+                href={`/learn/courses/${course.courseId}`}
+                radius="full"
+              >
                 Continue Course
               </AppButton>
             </AppCard>
@@ -182,7 +183,8 @@ export default function LearnerDashboard() {
             <div className="border-b border-muted/20 px-5 py-3">
               <p className="b2-b text-text">Learning Progress</p>
             </div>
-            <AppInlineEmpty
+            <AppEmptyState
+              size="compact"
               icon={<BarChart3 />}
               title="No learning progress yet"
               description="Complete your first lesson to start tracking your progress."
@@ -193,7 +195,8 @@ export default function LearnerDashboard() {
             <div className="border-b border-muted/20 px-5 py-3">
               <p className="b2-b text-text">Recent Activity</p>
             </div>
-            <AppInlineEmpty
+            <AppEmptyState
+              size="compact"
               icon={<Clock />}
               title="No recent activity"
               description="Your learning activity will appear here."
@@ -206,7 +209,8 @@ export default function LearnerDashboard() {
             <div className="border-b border-muted/20 px-5 py-3">
               <p className="b2-b text-text">Upcoming Deadlines</p>
             </div>
-            <AppInlineEmpty
+            <AppEmptyState
+              size="compact"
               icon={<CalendarClock />}
               title="No upcoming deadlines"
             />
@@ -216,7 +220,6 @@ export default function LearnerDashboard() {
         </div>
       </div>
 
-      {/* The assistant opens in place — there is no separate route for it. */}
       {askedQuestion !== null && (
         <>
           <div
@@ -227,10 +230,10 @@ export default function LearnerDashboard() {
           <aside className="fixed inset-x-4 top-4 bottom-4 z-50 lg:inset-y-6 lg:right-6 lg:left-auto lg:w-100">
             <KodeBuddyChatPanel
               context={{
-                courseId: activeCourses[0]?.id ?? courses[0]?.id ?? 0,
+                courseId: activeCourses[0]?.courseId ?? 0,
                 moduleId: null,
                 assignmentId: null,
-                label: activeCourses[0]?.title ?? courses[0]?.title ?? 'General',
+                label: activeCourses[0]?.courseTitle ?? 'General',
               }}
               initialQuestion={askedQuestion}
               onClose={() => setAskedQuestion(null)}

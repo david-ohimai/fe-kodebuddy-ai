@@ -8,9 +8,11 @@ export interface AppTabItem {
 }
 
 export interface AppTabProps {
-  tabs: AppTabItem[];
+  tabs: readonly AppTabItem[];
   activeTab: string;
   onChange: (id: string) => void;
+  variant?: 'pill' | 'underline';
+  ariaLabel?: string;
   className?: string;
 }
 
@@ -22,11 +24,48 @@ const AppTab: React.FC<AppTabProps> = ({
   tabs,
   activeTab,
   onChange,
+  variant = 'pill',
+  ariaLabel,
   className,
 }) => {
+  if (variant === 'underline') {
+    return (
+      <div
+        role="tablist"
+        aria-label={ariaLabel}
+        className={cx(
+          'flex flex-wrap gap-6 border-b border-disabled',
+          className,
+        )}
+      >
+        {tabs.map((tab) => {
+          const isActive = tab.id === activeTab;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              role="tab"
+              aria-selected={isActive}
+              onClick={() => onChange(tab.id)}
+              className={cx(
+                'b2-m -mb-px shrink-0 border-b-2 pb-3 transition-colors',
+                isActive
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted hover:text-text-secondary',
+              )}
+            >
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
+
   return (
     <div
       role="tablist"
+      aria-label={ariaLabel}
       className={cx(
         'flex gap-1 border-b border-disabled',
         'md:rounded-btn md:border-b-0 md:bg-primary-light md:p-1',

@@ -6,13 +6,15 @@ import { Plus } from 'lucide-react';
 import AppButton from './AppButton';
 
 export interface AppEmptyStateProps {
-  image: StaticImageData | string;
+  image?: StaticImageData | string;
+  icon?: React.ReactNode;
   title: string;
   description?: string;
   actionLabel?: string;
   actionIcon?: React.ReactNode;
   onAction?: () => void;
   actionRadius?: 'none' | 'sm' | 'md' | 'lg' | 'xl' | '2xl' | 'full';
+  size?: 'default' | 'compact';
   className?: string;
 }
 
@@ -22,24 +24,46 @@ function cx(...classes: Array<string | false | undefined | null>) {
 
 const AppEmptyState: React.FC<AppEmptyStateProps> = ({
   image,
+  icon,
   title,
   description,
   actionLabel,
   actionIcon = <Plus size={16} />,
   onAction,
   actionRadius = 'full',
+  size = 'default',
   className,
 }) => {
+  const isCompact = size === 'compact';
+
   return (
     <div
       className={cx(
-        'flex min-h-[420px] flex-col items-center justify-center px-6 py-14 text-center',
+        'flex flex-col items-center justify-center text-center',
+        isCompact ? 'px-4 py-8' : 'min-h-[420px] px-6 py-14',
         className,
       )}
     >
-      <Image src={image} alt="" width={160} height={120} className="mb-4" />
-      <p className="b1-b text-text">{title}</p>
-      {description && <p className="b2-r mt-1 max-w-sm text-muted">{description}</p>}
+      {icon ? (
+        <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-full bg-disabled text-muted [&_svg]:h-4 [&_svg]:w-4">
+          {icon}
+        </div>
+      ) : (
+        image && (
+          <Image src={image} alt="" width={160} height={120} className="mb-4" />
+        )
+      )}
+      <p className={cx(isCompact ? 'b2-m' : 'b1-b', 'text-text')}>{title}</p>
+      {description && (
+        <p
+          className={cx(
+            'b2-r mt-1 text-muted',
+            isCompact ? 'max-w-xs' : 'max-w-sm',
+          )}
+        >
+          {description}
+        </p>
+      )}
       {actionLabel && onAction && (
         <AppButton
           className="mt-6"
