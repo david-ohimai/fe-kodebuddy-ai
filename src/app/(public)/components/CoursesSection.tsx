@@ -1,24 +1,59 @@
-import AppButton from '@/components/ui/AppButton';
+import dataAnalysisImage from '@/assets/images/landing/course-data-analysis.png';
+import productImage from '@/assets/images/landing/course-product-management.png';
+import uiUxImage from '@/assets/images/landing/course-ui-ux.png';
+import CourseCard from './CourseCard';
+import LandingOutlineButton from './LandingOutlineButton';
+import SectionHeader from './SectionHeader';
 
-// TODO: build out per the "Find a course that fits your goal" section of
-// the Figma — the 3 course cards (Data Analysis, UI/UX Design, Product
-// Management) and "Explore courses" action.
+const COURSES = [
+  {
+    title: 'Data Analysis',
+    level: 'Intermediate',
+    description: 'Work with data, draw insights, and present findings clearly.',
+    image: dataAnalysisImage,
+    href: '#courses',
+  },
+  {
+    title: 'UI/UX Design',
+    level: 'Intermediate',
+    description: 'Design usable interfaces and practical digital experiences.',
+    image: uiUxImage,
+    href: '#courses',
+  },
+  {
+    title: 'Product Management',
+    level: 'Intermediate',
+    description: 'Plan, prioritise, and guide products from idea to delivery.',
+    image: productImage,
+    href: '#courses',
+  },
+];
+
 export default function CoursesSection() {
   return (
-    <section id="courses" className="mx-auto max-w-6xl px-6 py-20 text-center">
-      <p className="b2-b text-primary">Explore courses</p>
-      <h2 className="h3-b mt-2 text-text">Find a course that fits your goal</h2>
-      <p className="b1-r mt-2 text-text-secondary">
-        Explore practical learning opportunities from the KodeCamp ecosystem.
-      </p>
-      <AppButton
-        href="#courses"
-        variant="outlined"
-        radius="full"
-        className="mt-6"
-      >
-        Explore courses
-      </AppButton>
+    <section
+      id="courses"
+      className="scroll-mt-24 bg-[#f8fbfd] px-5 py-20 sm:px-8 lg:py-28"
+    >
+      <div className="mx-auto max-w-[1320px]">
+        <SectionHeader
+          badge="Explore courses"
+          title="Find a course that fits your goal"
+          description="Explore practical learning opportunities from the KodeCamp ecosystem."
+          className="max-w-[860px]"
+        />
+
+        <div className="mt-10 grid gap-4 md:grid-cols-3 lg:gap-6">
+          {COURSES.map((course) => (
+            <CourseCard key={course.title} {...course} />
+          ))}
+        </div>
+        <div className="mt-10 flex justify-center">
+          <LandingOutlineButton href="#courses" className="w-fit">
+            Explore courses
+          </LandingOutlineButton>
+        </div>
+      </div>
     </section>
   );
 }
