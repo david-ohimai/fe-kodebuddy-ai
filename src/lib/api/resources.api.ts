@@ -3,6 +3,7 @@ import {
   getLearnerDashboard,
   type LearnerDashboardCourse,
 } from './dashboard.api';
+import { isFaqResourceType } from './faqs.api';
 import { DEMO_RESOURCES } from '@/lib/mocks/resource.mocks';
 import {
   normaliseResourceType,
@@ -101,7 +102,9 @@ export async function listLearnerResources(): Promise<LearnerResource[]> {
       ),
     );
 
-    const live = resourceGroups.flat().filter((r) => r.isActive);
+    const live = resourceGroups
+      .flat()
+      .filter((r) => r.isActive && !isFaqResourceType(r.rawType));
     return withFallback(live, 'API returned no resources');
   } catch (err) {
     if (!fallbackEnabled()) throw err;
@@ -115,4 +118,109 @@ export async function getLearnerResource(
 ): Promise<LearnerResource | null> {
   const all = await listLearnerResources();
   return all.find((r) => r.id === id) ?? null;
+}
+
+export interface CourseResource {
+  id: number;
+  moduleId: number;
+  title: string;
+  description: string | null;
+  type: string;
+  url: string | null;
+  createdBy: number;
+  createdAt: string;
+  updatedAt: string;
+  isActive: boolean;
+}
+
+function mapCourseResource(dto: ResourceResponseDto): CourseResource {
+  return {
+    id: dto.id,
+    moduleId: dto.module_id,
+    title: dto.title,
+    description: dto.description,
+    type: dto.type,
+    url: dto.url,
+    createdBy: dto.created_by,
+    createdAt: dto.created_at,
+    updatedAt: dto.updated_at,
+    isActive: dto.is_active,
+  };
+}
+
+export async function listModuleResourcesFull(
+  moduleId: number,
+): Promise<CourseResource[]> {
+  const dtos = await apiFetch<ResourceResponseDto[]>(
+    `/modules/${moduleId}/resources`,
+    { method: 'GET', auth: true },
+  );
+  return (dtos ?? [])
+    .filter((dto) => !isFaqResourceType(dto.type))
+    .map(mapCourseResource);
+}
+
+export interface CourseResourceInput {
+  title: string;
+  type: string;
+  url?: string;
+  description?: string;
+}
+
+export async function createModuleResource(
+  moduleId: number,
+  input: CourseResourceInput,
+): Promise<CourseResource> {
+  const dto = await apiFetch<ResourceResponseDto>(
+    `/modules/${moduleId}/resources`,
+    {
+      method: 'POST',
+      auth: true,
+      body: {
+        title: input.title,
+        type: input.type,
+        url: input.url,
+        description: input.description,
+      },
+    },
+  );
+  return mapCourseResource(dto);
+}
+
+export interface CourseResourceUpdateInput {
+  title?: string;
+  type?: string;
+  url?: string;
+  description?: string;
+}
+
+export async function updateModuleResource(
+  moduleId: number,
+  resourceId: number,
+  input: CourseResourceUpdateInput,
+): Promise<CourseResource> {
+  const dto = await apiFetch<ResourceResponseDto>(
+    `/modules/${moduleId}/resources/${resourceId}`,
+    {
+      method: 'PATCH',
+      auth: true,
+      body: {
+        title: input.title,
+        type: input.type,
+        url: input.url,
+        description: input.description,
+      },
+    },
+  );
+  return mapCourseResource(dto);
+}
+
+export async function deleteModuleResource(
+  moduleId: number,
+  resourceId: number,
+): Promise<void> {
+  await apiFetch<void>(`/modules/${moduleId}/resources/${resourceId}`, {
+    method: 'DELETE',
+    auth: true,
+  });
 }

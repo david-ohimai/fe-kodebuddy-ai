@@ -5,6 +5,7 @@ import React from 'react';
 export interface AppTabItem {
   id: string;
   label: string;
+  icon?: React.ReactNode;
 }
 
 export interface AppTabProps {
@@ -84,11 +85,14 @@ const AppTab: React.FC<AppTabProps> = ({
             className={cx(
               'b2-m -mb-px shrink-0 whitespace-nowrap border-b-2 px-3 py-2.5 transition-colors',
               'md:mb-0 md:rounded-btn md:border-b-0 md:px-3.5 md:py-2',
+              Boolean(tab.icon) &&
+                'inline-flex items-center gap-1.5 [&_svg]:h-4 [&_svg]:w-4',
               isActive
                 ? 'border-primary text-primary md:bg-primary md:text-background'
                 : 'border-transparent text-muted hover:text-text-secondary md:hover:bg-background',
             )}
           >
+            {tab.icon}
             {tab.label}
           </button>
         );
