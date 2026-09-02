@@ -112,10 +112,7 @@ export interface ChatAnswer {
  * docs/chat-api-contract.md for why that ordering is load-bearing.
  */
 export type ChatStreamStage =
-  | 'retrieving'
-  | 'reasoning'
-  | 'checking'
-  | 'answering';
+  'retrieving' | 'reasoning' | 'checking' | 'answering';
 
 export type ChatStreamEvent =
   | { type: 'stage'; stage: ChatStreamStage }
@@ -246,4 +243,52 @@ export interface ChatContext {
   moduleId?: number | null;
   assignmentId?: number | null;
   label: string;
+}
+
+// ---------------------------------------------------------------------------
+// Trainer-facing escalation inbox — GET /chat/escalations, POST .../respond
+// ---------------------------------------------------------------------------
+//
+// CONFIRMED ABSENT from the live /openapi.json (checked directly, not
+// inferred): the only chat-related routes that exist are POST /agent/chat
+// and GET /agent/history, both scoped to the requesting learner via
+// get_current_learner. There is no /escalations path, no way to list
+// escalations, and no way for a trainer to respond to one — the agent
+// writes an escalation row internally (AgentTurnResponse.escalation_id)
+// but nothing exposes it afterwards. The paths below are this frontend's
+// own placeholder for when that trainer-side surface gets built, not
+// something either team has agreed on. Mocked the same way as the rest of
+// `/chat`/`/agent`, gated by the same `isLiveChat()` switch in
+// lib/api/chat.api.ts — flipping that switch will not make this part live
+// on its own; it needs the backend route to exist first.
+
+export interface EscalationDto {
+  id: number;
+  learner_id: number;
+  learner_name: string;
+  question: string;
+  course_id: number | null;
+  module_id: number | null;
+  status: string;
+  created_at: string;
+  response: string | null;
+  responded_at: string | null;
+}
+
+export interface Escalation {
+  id: number;
+  learnerId: number;
+  learnerName: string;
+  question: string;
+  courseId: number | null;
+  moduleId: number | null;
+  status: 'open' | 'resolved';
+  createdAt: string;
+  response: string | null;
+  respondedAt: string | null;
+}
+
+export interface RespondToEscalationRequest {
+  escalationId: number;
+  message: string;
 }
