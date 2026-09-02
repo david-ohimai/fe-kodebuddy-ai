@@ -1,7 +1,15 @@
 'use client';
 
 import React from 'react';
-import { ArrowLeft, Pencil, User, Users, BookOpen, GraduationCap, ChevronRight } from 'lucide-react';
+import {
+  ArrowLeft,
+  Pencil,
+  User,
+  Users,
+  BookOpen,
+  GraduationCap,
+  ChevronRight,
+} from 'lucide-react';
 import AppButton from '@/components/ui/AppButton';
 import AppPill from '@/components/ui/AppPill';
 import { AppCard } from '@/components/ui/AppCard';
@@ -132,11 +140,15 @@ const CohortDetailsView: React.FC<CohortDetailsViewProps> = ({
             <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-3">
               <div>
                 <p className="f1-r text-muted">Start date</p>
-                <p className="b1-b mt-1 text-text">{formatDate(cohort.startDate)}</p>
+                <p className="b1-b mt-1 text-text">
+                  {formatDate(cohort.startDate)}
+                </p>
               </div>
               <div>
                 <p className="f1-r text-muted">End date</p>
-                <p className="b1-b mt-1 text-text">{formatDate(cohort.endDate)}</p>
+                <p className="b1-b mt-1 text-text">
+                  {formatDate(cohort.endDate)}
+                </p>
               </div>
               <div>
                 <p className="f1-r text-muted">Total learners</p>
@@ -170,7 +182,7 @@ const CohortDetailsView: React.FC<CohortDetailsViewProps> = ({
             title="Assigned course"
             description="Course assigned to this cohort"
             value={cohort.course ?? 'Not assigned'}
-            actionLabel="Change course"
+            actionLabel={cohort.course ? 'Edit course' : 'Add course'}
             onAction={onChangeCourse}
           />
 

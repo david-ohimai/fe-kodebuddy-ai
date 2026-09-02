@@ -53,7 +53,11 @@ const TABS = [
 export default function MyCoursePage() {
   const { user } = useCurrentUserContext();
   const { showError } = useToast();
-  const { data, loading: loadingCourse } = useMyAssignedCourse(user?.id);
+  const {
+    data,
+    cohortWithoutCourse,
+    loading: loadingCourse,
+  } = useMyAssignedCourse(user?.id);
   const content = useCourseContent(data?.course.id ?? 0);
   const assignmentsState = useCourseAssignments(
     content.modules,
@@ -123,8 +127,16 @@ export default function MyCoursePage() {
         <AppCard padding="lg">
           <AppEmptyState
             image={noCourses}
-            title="No course assigned yet"
-            description="Once an admin assigns you a course, it'll show up here."
+            title={
+              cohortWithoutCourse
+                ? `${cohortWithoutCourse.name} doesn't have a course yet`
+                : 'No course assigned yet'
+            }
+            description={
+              cohortWithoutCourse
+                ? "You're assigned to this cohort, but an admin hasn't added its course yet. Check back soon."
+                : "Once an admin assigns you a course, it'll show up here."
+            }
           />
         </AppCard>
       </div>

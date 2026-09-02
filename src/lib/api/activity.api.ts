@@ -45,3 +45,35 @@ export async function listTrainerActivity(
   );
   return (dtos ?? []).map(mapActivity);
 }
+
+export async function listAdminActivity(limit = 20): Promise<ActivityEntry[]> {
+  const dtos = await apiFetch<ActivityResponseDto[]>(
+    `/activity/admin?limit=${limit}`,
+    { method: 'GET', auth: true },
+  );
+  return (dtos ?? []).map(mapActivity);
+}
+
+export async function listMentorActivity(limit = 20): Promise<ActivityEntry[]> {
+  const dtos = await apiFetch<ActivityResponseDto[]>(
+    `/activity/mentor?limit=${limit}`,
+    { method: 'GET', auth: true },
+  );
+  return (dtos ?? []).map(mapActivity);
+}
+
+export async function listMyActivity(limit = 20): Promise<ActivityEntry[]> {
+  const dtos = await apiFetch<ActivityResponseDto[]>(
+    `/activity/learner?limit=${limit}`,
+    { method: 'GET', auth: true },
+  );
+  return (dtos ?? []).map(mapActivity);
+}
+
+export const ACTIVITY_TYPE_LABEL: Record<ActivityType, string> = {
+  lesson_completed: 'completed a lesson',
+  assignment_submitted: 'submitted an assignment',
+  assignment_graded: 'had an assignment graded',
+  progress_updated: 'updated their progress',
+  check_in_completed: 'completed a check-in',
+};
