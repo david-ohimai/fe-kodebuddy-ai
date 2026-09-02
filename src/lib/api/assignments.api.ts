@@ -194,3 +194,129 @@ export async function getLearnerAssignment(
   const all = await listLearnerAssignments();
   return all.find((a) => a.id === id) ?? null;
 }
+
+export interface CourseAssignment {
+  id: number;
+  moduleId: number;
+  title: string;
+  description: string | null;
+  instructions: AssignmentItem[];
+  requirements: AssignmentItem[];
+  dueDate: string;
+  maximumScore: number;
+  createdBy: number;
+  createdAt: string;
+  updatedAt: string;
+  isActive: boolean;
+}
+
+function mapCourseAssignment(dto: AssignmentDetailDto): CourseAssignment {
+  return {
+    id: dto.id,
+    moduleId: dto.module_id,
+    title: dto.title,
+    description: dto.description,
+    instructions: dto.instructions ?? [],
+    requirements: dto.requirements ?? [],
+    dueDate: dto.due_date,
+    maximumScore: dto.maximum_score,
+    createdBy: dto.created_by,
+    createdAt: dto.created_at,
+    updatedAt: dto.updated_at,
+    isActive: dto.is_active,
+  };
+}
+
+export async function listModuleAssignmentsFull(
+  moduleId: number,
+): Promise<CourseAssignment[]> {
+  const dtos = await apiFetch<AssignmentDetailDto[]>(
+    `/modules/${moduleId}/assignments`,
+    { method: 'GET', auth: true },
+  );
+  return (dtos ?? []).map(mapCourseAssignment);
+}
+
+export async function getModuleAssignment(
+  moduleId: number,
+  assignmentId: number,
+): Promise<CourseAssignment> {
+  const dto = await apiFetch<AssignmentDetailDto>(
+    `/modules/${moduleId}/assignments/${assignmentId}`,
+    { method: 'GET', auth: true },
+  );
+  return mapCourseAssignment(dto);
+}
+
+export interface CourseAssignmentInput {
+  title: string;
+  description?: string;
+  instructions?: AssignmentItem[];
+  requirements?: AssignmentItem[];
+  dueDate: string;
+  maximumScore: number;
+}
+
+export async function createModuleAssignment(
+  moduleId: number,
+  input: CourseAssignmentInput,
+): Promise<CourseAssignment> {
+  const dto = await apiFetch<AssignmentDetailDto>(
+    `/modules/${moduleId}/assignments`,
+    {
+      method: 'POST',
+      auth: true,
+      body: {
+        title: input.title,
+        description: input.description,
+        instructions: input.instructions,
+        requirements: input.requirements,
+        due_date: input.dueDate,
+        maximum_score: input.maximumScore,
+      },
+    },
+  );
+  return mapCourseAssignment(dto);
+}
+
+export interface CourseAssignmentUpdateInput {
+  title?: string;
+  description?: string;
+  instructions?: AssignmentItem[];
+  requirements?: AssignmentItem[];
+  dueDate?: string;
+  maximumScore?: number;
+}
+
+export async function updateModuleAssignment(
+  moduleId: number,
+  assignmentId: number,
+  input: CourseAssignmentUpdateInput,
+): Promise<CourseAssignment> {
+  const dto = await apiFetch<AssignmentDetailDto>(
+    `/modules/${moduleId}/assignments/${assignmentId}`,
+    {
+      method: 'PATCH',
+      auth: true,
+      body: {
+        title: input.title,
+        description: input.description,
+        instructions: input.instructions,
+        requirements: input.requirements,
+        due_date: input.dueDate,
+        maximum_score: input.maximumScore,
+      },
+    },
+  );
+  return mapCourseAssignment(dto);
+}
+
+export async function deleteModuleAssignment(
+  moduleId: number,
+  assignmentId: number,
+): Promise<void> {
+  await apiFetch<void>(`/modules/${moduleId}/assignments/${assignmentId}`, {
+    method: 'DELETE',
+    auth: true,
+  });
+}
