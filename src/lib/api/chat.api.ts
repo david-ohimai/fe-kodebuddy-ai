@@ -11,6 +11,9 @@ import type {
   EscalationReceipt,
   EscalationReceiptDto,
   EscalationStage,
+  Escalation,
+  EscalationDto,
+  RespondToEscalationRequest,
 } from '@/types/chat.types';
 
 // ---------------------------------------------------------------------------
@@ -67,12 +70,12 @@ function mockAnswer(request: AskKodeBuddyRequest): string {
 
   if (q.includes('part a') || q.includes('card')) {
     return (
-      "Part A is the card, and the trick is to build it boringly first.\n\n" +
+      'Part A is the card, and the trick is to build it boringly first.\n\n' +
       'Drop in the four elements stacked in the order you want them — image, ' +
       'title, description, button. Ignore spacing entirely at this stage; just ' +
       'get them on the canvas in the right order.\n\n' +
       'Then select all four and apply vertical Auto-layout. Everything will snap ' +
-      'into a column and probably look wrong — that\'s expected. Now set the gap ' +
+      "into a column and probably look wrong — that's expected. Now set the gap " +
       'and the padding, and it will start looking like the design.\n\n' +
       'The reason for that order: if you space things manually first, you fight ' +
       'Auto-layout when you apply it.\n\n' +
@@ -211,6 +214,104 @@ async function escalateMock(): Promise<EscalationReceipt> {
   };
 }
 
+/**
+ * Fixture data for the trainer inbox mock — matches the Figma exactly so the
+ * demo reads as real content rather than lorem ipsum. Mutated in place by
+ * `respondToEscalationMock` so a response persists for the rest of the
+ * session (not across reloads — there's nowhere real to write it yet).
+ */
+const mockEscalations: EscalationDto[] = [
+  {
+    id: 1,
+    learner_id: 101,
+    learner_name: 'Aisha Mohammed',
+    question:
+      "I'm stuck on the last part of the data analysis assignment and need help understanding it.",
+    course_id: 1,
+    module_id: 3,
+    status: 'open',
+    created_at: '2026-01-30T09:12:00Z',
+    response: null,
+    responded_at: null,
+  },
+  {
+    id: 2,
+    learner_id: 102,
+    learner_name: 'John Daniel',
+    question:
+      "KodeBuddy provided an answer but I'm still not clear on how to approach this question.",
+    course_id: 1,
+    module_id: 2,
+    status: 'open',
+    created_at: '2026-01-30T11:40:00Z',
+    response: null,
+    responded_at: null,
+  },
+  {
+    id: 3,
+    learner_id: 103,
+    learner_name: 'Sarah Okoro',
+    question:
+      'I need more guidance on how to calculate the metrics for this project.',
+    course_id: 1,
+    module_id: 3,
+    status: 'open',
+    created_at: '2026-01-31T08:05:00Z',
+    response: null,
+    responded_at: null,
+  },
+  {
+    id: 4,
+    learner_id: 104,
+    learner_name: 'Emeka Tanaka',
+    question:
+      'I cannot understand the instructions for this task. Please assist.',
+    course_id: 1,
+    module_id: 1,
+    status: 'open',
+    created_at: '2026-01-31T14:22:00Z',
+    response: null,
+    responded_at: null,
+  },
+  {
+    id: 5,
+    learner_id: 105,
+    learner_name: 'Michael Benson',
+    question:
+      "I'm experiencing an issue with the code in this lesson. Please help.",
+    course_id: 1,
+    module_id: 2,
+    status: 'open',
+    created_at: '2026-02-01T07:50:00Z',
+    response: null,
+    responded_at: null,
+  },
+];
+
+async function listEscalationsMock(): Promise<EscalationDto[]> {
+  await delay(500);
+  return mockEscalations.filter((e) => e.status === 'open');
+}
+
+async function getEscalationMock(id: number): Promise<EscalationDto | null> {
+  await delay(400);
+  return mockEscalations.find((e) => e.id === id) ?? null;
+}
+
+async function respondToEscalationMock(
+  id: number,
+  message: string,
+): Promise<void> {
+  await delay(700);
+  const escalation = mockEscalations.find((e) => e.id === id);
+  if (!escalation) {
+    throw new ApiError('Escalation not found', 404);
+  }
+  escalation.response = message;
+  escalation.responded_at = new Date().toISOString();
+  escalation.status = 'resolved';
+}
+
 // ---------------------------------------------------------------------------
 // Mappers
 // ---------------------------------------------------------------------------
@@ -258,6 +359,21 @@ function mapReceipt(dto: EscalationReceiptDto): EscalationReceipt {
     trainerId: dto.trainer_id,
     stage: mapStage(dto.status),
     createdAt: dto.created_at,
+  };
+}
+
+function mapEscalation(dto: EscalationDto): Escalation {
+  return {
+    id: dto.id,
+    learnerId: dto.learner_id,
+    learnerName: dto.learner_name,
+    question: dto.question,
+    courseId: dto.course_id,
+    moduleId: dto.module_id,
+    status: dto.status.toLowerCase() === 'resolved' ? 'resolved' : 'open',
+    createdAt: dto.created_at,
+    response: dto.response,
+    respondedAt: dto.responded_at,
   };
 }
 
@@ -421,4 +537,54 @@ export async function escalateToTrainer(
 /** True when answers are canned — the UI surfaces this so nobody is misled. */
 export function isChatMocked(): boolean {
   return !isLiveChat();
+}
+
+// ---------------------------------------------------------------------------
+// Trainer escalation inbox — see the SPECULATIVE note on Escalation in
+// types/chat.types.ts. Same mock/live switch as everything else in this file.
+// ---------------------------------------------------------------------------
+
+export async function listMyEscalations(): Promise<Escalation[]> {
+  if (!isLiveChat()) {
+    const dtos = await listEscalationsMock();
+    return dtos.map(mapEscalation);
+  }
+
+  const dtos = await apiFetch<EscalationDto[]>('/chat/escalations', {
+    method: 'GET',
+    auth: true,
+  });
+  return (dtos ?? []).map(mapEscalation);
+}
+
+export async function getEscalation(id: number): Promise<Escalation | null> {
+  if (!isLiveChat()) {
+    const dto = await getEscalationMock(id);
+    return dto ? mapEscalation(dto) : null;
+  }
+
+  try {
+    const dto = await apiFetch<EscalationDto>(`/chat/escalations/${id}`, {
+      method: 'GET',
+      auth: true,
+    });
+    return mapEscalation(dto);
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) return null;
+    throw err;
+  }
+}
+
+export async function respondToEscalation(
+  request: RespondToEscalationRequest,
+): Promise<void> {
+  if (!isLiveChat()) {
+    return respondToEscalationMock(request.escalationId, request.message);
+  }
+
+  await apiFetch<unknown>(`/chat/escalations/${request.escalationId}/respond`, {
+    method: 'POST',
+    auth: true,
+    body: { message: request.message },
+  });
 }
