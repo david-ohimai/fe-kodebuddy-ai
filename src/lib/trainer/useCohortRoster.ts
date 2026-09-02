@@ -32,6 +32,8 @@ export function useCohortRoster(
   const [loading, setLoading] = useState(true);
   const [sendingReminder, setSendingReminder] = useState(false);
 
+  const [now] = useState(() => Date.now());
+
   const loadRoster = () => {
     if (!cohortId || !courseId) {
       setLoading(false);
@@ -99,7 +101,6 @@ export function useCohortRoster(
   }, [cohortId, courseId]);
 
   const stats = useMemo(() => {
-    const now = Date.now();
     const needsAttention = roster.filter(
       (r) => r.status === 'needs_attention',
     ).length;
@@ -109,7 +110,7 @@ export function useCohortRoster(
       return days <= 7;
     }).length;
     return { total: roster.length, needsAttention, active };
-  }, [roster]);
+  }, [roster, now]);
 
   const sendReminder = async (subject: string, message: string) => {
     setSendingReminder(true);
