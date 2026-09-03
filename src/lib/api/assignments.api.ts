@@ -1,9 +1,5 @@
 import { apiFetch } from './client';
-import {
-  getLearnerDashboard,
-  type LearnerDashboardCourse,
-  type LearnerDashboardAssignmentStatus,
-} from './dashboard.api';
+import { listMyCourses, type MyCourseRef } from './myCourses';
 import {
   deriveAssignmentStatus,
   type AssignmentItem,
@@ -91,8 +87,7 @@ function withFallback(
 function mapLearnerAssignment(
   dto: AssignmentDetailDto,
   module: ModuleResponseDto,
-  course: LearnerDashboardCourse,
-  status: LearnerDashboardAssignmentStatus | undefined,
+  course: MyCourseRef,
   submission: Submission | undefined,
 ): LearnerAssignment {
   const submitted = status?.submitted ?? submission !== undefined;
@@ -127,7 +122,7 @@ function mapLearnerAssignment(
     }),
     submitted,
     graded,
-    score: status?.score ?? submission?.score ?? null,
+    score: submission?.score ?? null,
     isOverdue,
 
     submittedAt: submission?.submittedAt ?? null,
@@ -138,14 +133,10 @@ function mapLearnerAssignment(
 
 export async function listLearnerAssignments(): Promise<LearnerAssignment[]> {
   try {
-    const [dashboard, submissions] = await Promise.all([
-      getLearnerDashboard(),
+    const [courses, submissions] = await Promise.all([
+      listMyCourses(),
       listMySubmissions().catch(() => [] as Submission[]),
     ]);
-
-    const statusById = new Map(
-      (dashboard.assignments ?? []).map((a) => [a.assignmentId, a]),
-    );
 
     const submissionByAssignment = new Map<number, Submission>();
     for (const submission of submissions) {
@@ -158,7 +149,6 @@ export async function listLearnerAssignments(): Promise<LearnerAssignment[]> {
       }
     }
 
-    const courses = dashboard.courses ?? [];
     if (courses.length === 0) {
       return withFallback([], 'learner has no enrolled courses');
     }
@@ -185,7 +175,6 @@ export async function listLearnerAssignments(): Promise<LearnerAssignment[]> {
               dto,
               module,
               course,
-              statusById.get(dto.id),
               submissionByAssignment.get(dto.id),
             ),
           );

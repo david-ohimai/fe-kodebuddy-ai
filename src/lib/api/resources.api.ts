@@ -1,8 +1,5 @@
 import { apiFetch } from './client';
-import {
-  getLearnerDashboard,
-  type LearnerDashboardCourse,
-} from './dashboard.api';
+import { listMyCourses, type MyCourseRef } from './myCourses';
 import { isFaqResourceType } from './faqs.api';
 import { DEMO_RESOURCES } from '@/lib/mocks/resource.mocks';
 import {
@@ -52,7 +49,7 @@ function withFallback(
 function mapResource(
   dto: ResourceResponseDto,
   module: ModuleResponseDto,
-  course: LearnerDashboardCourse,
+  course: MyCourseRef,
 ): LearnerResource {
   return {
     id: dto.id,
@@ -72,8 +69,7 @@ function mapResource(
 
 export async function listLearnerResources(): Promise<LearnerResource[]> {
   try {
-    const dashboard = await getLearnerDashboard();
-    const courses = dashboard.courses ?? [];
+    const courses = await listMyCourses();
     if (courses.length === 0) {
       return withFallback([], 'learner has no enrolled courses');
     }
