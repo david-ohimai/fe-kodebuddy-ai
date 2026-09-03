@@ -1,4 +1,5 @@
 import { ApiError, apiFetch, getAccessToken, getApiBaseUrl } from './client';
+import { LEARNER_INITIATED_ESCALATION_REASON } from '@/types/chat.types';
 import type {
   AskKodeBuddyRequest,
   AskKodeBuddyRequestDto,
@@ -8,8 +9,9 @@ import type {
   ChatStreamHandlers,
   ChatStreamStage,
   EscalateRequest,
+  EscalateRequestDto,
   EscalationReceipt,
-  EscalationReceiptDto,
+  EscalationResponseDto,
   EscalationStage,
   Escalation,
   EscalationDto,
@@ -204,15 +206,8 @@ async function streamMock(
   return full;
 }
 
-async function escalateMock(): Promise<EscalationReceipt> {
-  await delay(800);
-  return {
-    escalationId: (mockMessageId += 1),
-    trainerId: null,
-    stage: 'sent',
-    createdAt: new Date().toISOString(),
-  };
-}
+// No escalateMock: POST /agent/escalate is live and writes a real row, so the
+// handoff always goes to the server even while answers are still mocked.
 
 /**
  * Fixture data for the trainer inbox mock — matches the Figma exactly so the
@@ -351,15 +346,6 @@ function mapStage(status: string): EscalationStage {
     return 'reviewing';
   }
   return 'sent';
-}
-
-function mapReceipt(dto: EscalationReceiptDto): EscalationReceipt {
-  return {
-    escalationId: dto.escalation_id,
-    trainerId: dto.trainer_id,
-    stage: mapStage(dto.status),
-    createdAt: dto.created_at,
-  };
 }
 
 function mapEscalation(dto: EscalationDto): Escalation {
@@ -516,22 +502,39 @@ export async function askKodeBuddy(
   return mapAnswer(dto);
 }
 
+/**
+ * Hands the question to a trainer.
+ *
+ * Live against POST /agent/escalate regardless of NEXT_PUBLIC_CHAT_API: the
+ * endpoint exists and writes a real row, so mocking it would silently drop
+ * a learner's request for help. Only the *answers* are still mocked.
+ */
 export async function escalateToTrainer(
   request: EscalateRequest,
 ): Promise<EscalationReceipt> {
-  if (!isLiveChat()) return escalateMock();
+  const body: EscalateRequestDto = {
+    course_id: request.courseId,
+    module_id: request.moduleId ?? null,
+    assignment_id: request.assignmentId ?? null,
+    question: request.question,
+    reason: request.reason || LEARNER_INITIATED_ESCALATION_REASON,
+    detail: request.detail ?? null,
+    draft_response: request.draftResponse ?? null,
+    confidence_score: request.confidenceScore ?? null,
+  };
 
-  const dto = await apiFetch<EscalationReceiptDto>('/chat/escalate', {
+  const dto = await apiFetch<EscalationResponseDto>('/agent/escalate', {
     method: 'POST',
     auth: true,
-    body: {
-      question: request.question,
-      course_id: request.assignmentId ? null : (request.courseId ?? null),
-      module_id: request.moduleId ?? null,
-      assignment_id: request.assignmentId ?? null,
-    },
+    body,
   });
-  return mapReceipt(dto);
+
+  return {
+    escalationId: dto.id,
+    trainerId: dto.trainer_id,
+    stage: mapStage(dto.status),
+    createdAt: dto.created_at,
+  };
 }
 
 /** True when answers are canned — the UI surfaces this so nobody is misled. */
