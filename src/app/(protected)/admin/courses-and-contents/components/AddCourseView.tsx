@@ -9,9 +9,11 @@ import AppSearchSelect from '@/components/ui/AppSearchSelect';
 import { useToast } from '@/components/ui/ToastProvider';
 import * as coursesApi from '@/lib/api/courses.api';
 import * as cohortsApi from '@/lib/api/cohorts.api';
+import * as profileApi from '@/lib/api/profile.api';
 import { getErrorMessage } from '@/lib/api/client';
 import type { Course } from '@/lib/api/courses.api';
 import type { Cohort } from '@/lib/api/cohorts.api';
+import type { AuthUser } from '@/types/auth.types';
 
 interface AddCourseViewProps {
   onBack: () => void;
@@ -31,6 +33,9 @@ const AddCourseView: React.FC<AddCourseViewProps> = ({
   const [cohortId, setCohortId] = useState('');
   const [cohorts, setCohorts] = useState<Cohort[]>([]);
   const [loadingCohorts, setLoadingCohorts] = useState(!isEdit);
+  const [trainerId, setTrainerId] = useState('');
+  const [trainers, setTrainers] = useState<AuthUser[]>([]);
+  const [loadingTrainers, setLoadingTrainers] = useState(!isEdit);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -48,6 +53,31 @@ const AddCourseView: React.FC<AddCourseViewProps> = ({
       })
       .finally(() => {
         if (!cancelled) setLoadingCohorts(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isEdit]);
+
+  useEffect(() => {
+    if (isEdit) return;
+    let cancelled = false;
+    // Every trainer, not just the cohort's: unlike learners, the backend
+    // places no cohort constraint on who can be assigned to a course.
+    profileApi
+      .listUsers()
+      .then((list) => {
+        if (!cancelled) {
+          setTrainers(list.filter((user) => user.role === 'trainer'));
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          showError('Could not load trainers', 'Please try again.');
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingTrainers(false);
       });
     return () => {
       cancelled = true;
@@ -76,10 +106,37 @@ const AddCourseView: React.FC<AddCourseViewProps> = ({
         const draft = await coursesApi.updateCourse(created.id, {
           isActive: false,
         });
-        showSuccess(
-          'Course saved as draft successfully.',
-          `"${draft.title}" is ready to build on.`,
-        );
+
+        /*
+         * The trainer is a second request — CourseCreate has no trainer field.
+         * If it fails the course still exists, so the draft is kept and the
+         * admin is told, rather than deleting work they just did or reporting
+         * a success that only half happened. A trainer can be added later from
+         * the course details page.
+         */
+        let trainerAssigned = false;
+        if (trainerId) {
+          try {
+            await coursesApi.assignCourseTrainer(draft.id, Number(trainerId));
+            trainerAssigned = true;
+          } catch (trainerError) {
+            showError(
+              'Course saved, but the trainer was not assigned',
+              getErrorMessage(
+                trainerError,
+                'You can assign a trainer from the course details page.',
+              ),
+            );
+          }
+        }
+
+        if (!trainerId || trainerAssigned) {
+          showSuccess(
+            'Course saved as draft successfully.',
+            `"${draft.title}" is ready to build on.`,
+          );
+        }
+
         onSaved(draft);
       }
     } catch (err) {
@@ -167,6 +224,50 @@ const AddCourseView: React.FC<AddCourseViewProps> = ({
           </div>
         )}
 
+        {!isEdit && (
+          <div className="flex flex-col gap-1.5">
+            <label className="b2-m text-text">Trainer</label>
+            <AppSearchSelect
+              value={trainerId}
+              onChange={setTrainerId}
+              loading={loadingTrainers}
+              options={trainers.map((trainer) => ({
+                value: String(trainer.id),
+                label: trainer.fullName || trainer.email,
+                description: trainer.fullName ? trainer.email : undefined,
+              }))}
+              placeholder="Search and select a trainer"
+              searchPlaceholder="Type a trainer name..."
+              emptyMessage={
+                loadingTrainers ? 'Loading trainers...' : 'No trainers found.'
+              }
+              ariaLabel="Select trainer"
+            />
+            <p className="f1-r text-muted">
+              Optional. You can assign a trainer later from the course details
+              page.
+            </p>
+            {!loadingTrainers && trainers.length === 0 && (
+              <div className="mt-1 flex items-start gap-2 rounded-input bg-warning/10 px-3.5 py-2.5">
+                <AlertTriangle
+                  size={16}
+                  className="mt-0.5 shrink-0 text-warning"
+                />
+                <p className="f1-r text-text-secondary">
+                  No trainers exist yet.{' '}
+                  <Link
+                    href="/admin/users"
+                    className="b2-b text-primary hover:underline"
+                  >
+                    Invite a trainer
+                  </Link>{' '}
+                  to assign one to this course.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="flex gap-3 rounded-input bg-primary-light p-4">
           <Info size={18} className="mt-0.5 shrink-0 text-primary" />
           <div>
@@ -174,7 +275,7 @@ const AddCourseView: React.FC<AddCourseViewProps> = ({
             <p className="b2-r text-text-secondary">
               {isEdit
                 ? 'Your changes will be saved immediately.'
-                : "After saving the draft, you'll be taken to the course details page where you can add modules, lessons and content."}
+                : "After saving the draft, you'll be taken to the course details page where you can add modules, lessons and content, and assign more trainers."}
             </p>
           </div>
         </div>
