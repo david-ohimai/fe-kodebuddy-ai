@@ -543,17 +543,25 @@ export function isChatMocked(): boolean {
 }
 
 // ---------------------------------------------------------------------------
-// Trainer escalation inbox — see the SPECULATIVE note on Escalation in
-// types/chat.types.ts. Same mock/live switch as everything else in this file.
+// Trainer escalation inbox.
+//
+// No screen consumes these yet. The paths were written speculatively against a
+// `/chat/escalations/...` prefix that never existed; they now match what the
+// backend actually shipped, so whoever builds the trainer inbox starts from
+// something correct. The learner side lives in lib/api/escalations.api.ts.
+//
+// Still behind the mock switch, unlike the learner endpoints, because there is
+// no trainer screen to exercise them against.
 // ---------------------------------------------------------------------------
 
-export async function listMyEscalations(): Promise<Escalation[]> {
+/** GET /escalations/trainer — escalations assigned to the signed-in trainer. */
+export async function listTrainerEscalations(): Promise<Escalation[]> {
   if (!isLiveChat()) {
     const dtos = await listEscalationsMock();
     return dtos.map(mapEscalation);
   }
 
-  const dtos = await apiFetch<EscalationDto[]>('/chat/escalations', {
+  const dtos = await apiFetch<EscalationDto[]>('/escalations/trainer', {
     method: 'GET',
     auth: true,
   });
@@ -567,7 +575,7 @@ export async function getEscalation(id: number): Promise<Escalation | null> {
   }
 
   try {
-    const dto = await apiFetch<EscalationDto>(`/chat/escalations/${id}`, {
+    const dto = await apiFetch<EscalationDto>(`/escalations/${id}`, {
       method: 'GET',
       auth: true,
     });
@@ -578,6 +586,12 @@ export async function getEscalation(id: number): Promise<Escalation | null> {
   }
 }
 
+/**
+ * PATCH /escalations/{id} — the trainer's reply.
+ *
+ * `status` rides along with the response because the backend treats them as
+ * one update; sending a reply without it would leave the escalation open.
+ */
 export async function respondToEscalation(
   request: RespondToEscalationRequest,
 ): Promise<void> {
@@ -585,9 +599,9 @@ export async function respondToEscalation(
     return respondToEscalationMock(request.escalationId, request.message);
   }
 
-  await apiFetch<unknown>(`/chat/escalations/${request.escalationId}/respond`, {
-    method: 'POST',
+  await apiFetch<unknown>(`/escalations/${request.escalationId}`, {
+    method: 'PATCH',
     auth: true,
-    body: { message: request.message },
+    body: { response: request.message, status: 'resolved' },
   });
 }

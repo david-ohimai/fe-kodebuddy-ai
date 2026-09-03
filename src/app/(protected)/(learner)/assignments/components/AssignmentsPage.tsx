@@ -9,7 +9,7 @@ import { listLearnerAssignments } from '@/lib/api/assignments.api';
 import { getErrorMessage } from '@/lib/api/client';
 import type { LearnerAssignment } from '@/types/assignment.types';
 import type { Escalation } from '@/types/escalation.types';
-import { listEscalations } from '@/lib/mocks/escalation.mocks';
+import { listMyEscalations } from '@/lib/api/escalations.api';
 import AssignmentCard from './AssignmentCard';
 import EscalationCard from './EscalationCard';
 import emptyStateImage from '@/assets/images/empty state assign.webp';
@@ -70,17 +70,30 @@ export default function AssignmentsPage() {
 
   const [assignments, setAssignments] = useState<LearnerAssignment[]>([]);
   const [escalations, setEscalations] = useState<Escalation[]>([]);
+  const [escalationsLoading, setEscalationsLoading] = useState(true);
+  const [escalationsError, setEscalationsError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<AssignmentTab>('all');
 
   useEffect(() => {
     let cancelled = false;
 
-    listEscalations()
+    // Loaded alongside the assignments rather than on tab switch: the two are
+    // independent, and a failure in one must not blank the other.
+    listMyEscalations()
       .then((list) => {
         if (!cancelled) setEscalations(list);
       })
-      .catch(() => {});
+      .catch((err) => {
+        if (!cancelled) {
+          setEscalationsError(
+            getErrorMessage(err, 'Could not load your escalations.'),
+          );
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setEscalationsLoading(false);
+      });
 
     listLearnerAssignments()
       .then((list) => {
@@ -125,7 +138,15 @@ export default function AssignmentsPage() {
 
       <div className="rounded-card bg-background p-5">
         {activeTab === 'escalations' ? (
-          escalations.length === 0 ? (
+          escalationsLoading ? (
+            <LoadingGrid />
+          ) : escalationsError ? (
+            <AppEmptyState
+              image={emptyStateImage}
+              title="Could not load your escalations"
+              description={escalationsError}
+            />
+          ) : escalations.length === 0 ? (
             <AppEmptyState
               image={emptyStateImage}
               title="No escalation"
