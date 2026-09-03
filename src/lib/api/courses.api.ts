@@ -43,18 +43,6 @@ export async function listCourses(): Promise<Course[]> {
   return dtos.map(mapCourse);
 }
 
-export async function assignCourseToCohort(
-  courseId: number,
-  cohortId: number,
-): Promise<Course> {
-  const dto = await apiFetch<CourseResponseDto>(`/courses/${courseId}`, {
-    method: 'PATCH',
-    auth: true,
-    body: { cohort_id: cohortId },
-  });
-  return mapCourse(dto);
-}
-
 export async function getCourse(courseId: number): Promise<Course> {
   const dto = await apiFetch<CourseResponseDto>(`/courses/${courseId}`, {
     method: 'GET',
@@ -100,5 +88,26 @@ export async function deleteCourse(courseId: number): Promise<void> {
   await apiFetch<void>(`/courses/${courseId}`, {
     method: 'DELETE',
     auth: true,
+  });
+}
+
+/**
+ * Adds a trainer to a course. Admin only.
+ *
+ * A separate call because `CourseCreate` takes no trainer — creating a course
+ * with one is always create-then-assign, and the two can fail independently.
+ *
+ * Additive, not exclusive: the backend rejects a duplicate (course, trainer)
+ * pair with a 409 but otherwise appends, so a course can carry several
+ * trainers.
+ */
+export async function assignCourseTrainer(
+  courseId: number,
+  trainerId: number,
+): Promise<void> {
+  await apiFetch<{ message: string }>(`/courses/${courseId}/assign-trainer`, {
+    method: 'POST',
+    auth: true,
+    body: { trainer_id: trainerId },
   });
 }

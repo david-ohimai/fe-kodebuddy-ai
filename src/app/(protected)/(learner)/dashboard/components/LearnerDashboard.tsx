@@ -6,6 +6,7 @@ import {
   BookOpen,
   CalendarClock,
   Clock,
+  RotateCcw,
   Send,
   Sparkles,
 } from 'lucide-react';
@@ -14,12 +15,12 @@ import AppButton from '@/components/ui/AppButton';
 import { AppCard } from '@/components/ui/AppCard';
 import AppEmptyState from '@/components/ui/AppEmptyState';
 import AppSpinner from '@/components/ui/AppSpinner';
+import AppProgressBar from '@/components/ui/AppProgressBar';
 import KodeBuddyChatPanel from '@/components/chat/KodeBuddyChatPanel';
 import { useCurrentUserContext } from '@/lib/auth/CurrentUserContext';
-import {
-  getLearnerDashboard,
-  type LearnerDashboardCourse,
-} from '@/lib/api/dashboard.api';
+import { useMyEnrolledCourses } from '@/lib/learn/useMyEnrolledCourses';
+import { listMyActivity, ACTIVITY_TYPE_LABEL } from '@/lib/api/activity.api';
+import type { ActivityEntry } from '@/lib/api/activity.api';
 
 function AskKodeBuddyWidget({ onAsk }: { onAsk: (question: string) => void }) {
   const [question, setQuestion] = useState('');
@@ -74,24 +75,21 @@ function AskKodeBuddyWidget({ onAsk }: { onAsk: (question: string) => void }) {
 export default function LearnerDashboard() {
   const { user } = useCurrentUserContext();
 
-  const [courses, setCourses] = useState<LearnerDashboardCourse[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { courses, loading, error, refresh } = useMyEnrolledCourses(user?.id);
+  const [activities, setActivities] = useState<ActivityEntry[]>([]);
+  const [activityLoading, setActivityLoading] = useState(true);
 
   const [askedQuestion, setAskedQuestion] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    getLearnerDashboard()
-      .then((dashboard) => {
-        if (!cancelled) setCourses(dashboard.courses);
+    listMyActivity(10)
+      .then((entries) => {
+        if (!cancelled) setActivities(entries);
       })
-      .catch(() => {
-        if (!cancelled)
-          setError('Could not load your dashboard. Please try again.');
-      })
+      .catch(() => {})
       .finally(() => {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) setActivityLoading(false);
       });
     return () => {
       cancelled = true;
@@ -126,7 +124,19 @@ export default function LearnerDashboard() {
 
       {error && (
         <AppCard padding="lg" className="border border-error/30 bg-error/5">
-          <p className="b2-r text-error">{error}</p>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="b2-r text-error">{error}</p>
+            <AppButton
+              variant="outlined"
+              color="error"
+              size="small"
+              radius="full"
+              startIcon={<RotateCcw size={14} />}
+              onClick={refresh}
+            >
+              Retry
+            </AppButton>
+          </div>
         </AppCard>
       )}
 
@@ -183,24 +193,72 @@ export default function LearnerDashboard() {
             <div className="border-b border-muted/20 px-5 py-3">
               <p className="b2-b text-text">Learning Progress</p>
             </div>
-            <AppEmptyState
-              size="compact"
-              icon={<BarChart3 />}
-              title="No learning progress yet"
-              description="Complete your first lesson to start tracking your progress."
-            />
+            {activeCourses.length === 0 ? (
+              <AppEmptyState
+                size="compact"
+                icon={<BarChart3 />}
+                title="No learning progress yet"
+                description="Complete your first lesson to start tracking your progress."
+              />
+            ) : (
+              <ul className="divide-y divide-muted/20">
+                {activeCourses.map((course) => (
+                  <li key={course.courseId} className="px-5 py-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="b2-m text-text">{course.courseTitle}</p>
+                      <span className="f1-r text-muted">
+                        {course.completionPercentage}%
+                      </span>
+                    </div>
+                    <AppProgressBar
+                      percent={course.completionPercentage}
+                      className="mt-2"
+                    />
+                    <p className="f1-r mt-1.5 text-muted">
+                      {course.completedLessons} of {course.totalLessons} lessons
+                      complete
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            )}
           </AppCard>
 
           <AppCard padding="none">
             <div className="border-b border-muted/20 px-5 py-3">
               <p className="b2-b text-text">Recent Activity</p>
             </div>
-            <AppEmptyState
-              size="compact"
-              icon={<Clock />}
-              title="No recent activity"
-              description="Your learning activity will appear here."
-            />
+            {activityLoading ? (
+              <div className="flex min-h-[140px] items-center justify-center">
+                <AppSpinner size={28} />
+              </div>
+            ) : activities.length === 0 ? (
+              <AppEmptyState
+                size="compact"
+                icon={<Clock />}
+                title="No recent activity"
+                description="Your learning activity will appear here."
+              />
+            ) : (
+              <ul className="divide-y divide-muted/20">
+                {activities.map((entry) => (
+                  <li
+                    key={entry.id}
+                    className="flex flex-wrap items-center justify-between gap-2 px-5 py-3"
+                  >
+                    <p className="b2-r text-text-secondary">
+                      {entry.title || ACTIVITY_TYPE_LABEL[entry.activityType]}
+                    </p>
+                    <span className="f1-r shrink-0 text-muted">
+                      {new Date(entry.createdAt).toLocaleDateString('en-US', {
+                        day: 'numeric',
+                        month: 'short',
+                      })}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </AppCard>
         </div>
 

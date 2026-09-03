@@ -162,18 +162,61 @@ export interface ChatHistoryQuery {
  * `explicit_user_request` — the value already reserved (and documented as "not
  * yet triggered anywhere in this graph") in EscalationReason.
  */
+/** Body of POST /agent/escalate — mirrors EscalationCreate on the backend. */
 export interface EscalateRequestDto {
-  question: string;
-  course_id?: number | null;
+  course_id: number;
   module_id?: number | null;
   assignment_id?: number | null;
+  question: string;
+  reason: string;
+  detail?: string | null;
+  draft_response?: string | null;
+  confidence_score?: number | null;
 }
 
 export interface EscalateRequest {
-  question: string;
-  courseId?: number | null;
+  /** Required by the API — an escalation is always scoped to a course. */
+  courseId: number;
   moduleId?: number | null;
   assignmentId?: number | null;
+  question: string;
+  /**
+   * Why the handoff is happening. Round-tripped from the chat turn's
+   * `escalationReason` when the agent offered the handoff itself; otherwise
+   * the learner asked for it outright.
+   */
+  reason?: string | null;
+  detail?: string | null;
+  /** The answer the agent had drafted, carried over so the trainer sees it. */
+  draftResponse?: string | null;
+  confidenceScore?: number | null;
+}
+
+/**
+ * Sent when the learner presses "Ask a Trainer" without the agent having
+ * offered. The backend's EscalationReason enum has no learner-initiated
+ * member, and `reason` is a plain string on EscalationCreate, so this is
+ * accepted — but it will not aggregate alongside the enum values in the
+ * team's escalation analytics.
+ */
+export const LEARNER_INITIATED_ESCALATION_REASON = 'explicit_user_request';
+
+/** The row POST /agent/escalate returns — EscalationResponse on the backend. */
+export interface EscalationResponseDto {
+  id: number;
+  learner_id: number;
+  course_id: number;
+  module_id: number | null;
+  assignment_id: number | null;
+  trainer_id: number | null;
+  question: string;
+  reason: string;
+  detail: string | null;
+  draft_response: string | null;
+  confidence_score: number | null;
+  status: string;
+  created_at: string;
+  updated_at: string;
 }
 
 /**
@@ -231,6 +274,15 @@ export interface ChatMessage {
   offersEscalation?: boolean;
   escalated?: boolean;
   escalationId?: number | null;
+
+  /**
+   * Carried from the agent turn so that pressing "Ask a Trainer" can hand the
+   * trainer the agent's own reasoning rather than just the question. Absent on
+   * turns where the agent answered confidently.
+   */
+  escalationReason?: string | null;
+  escalationDetail?: string | null;
+  confidenceScore?: number | null;
 }
 
 /**

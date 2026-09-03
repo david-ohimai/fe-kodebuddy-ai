@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getLearnerDashboard } from '@/lib/api/dashboard.api';
+import { listMyCourses } from '@/lib/api/myCourses';
 import { getCourseProgress } from '@/lib/api/progress.api';
 
 export interface EnrolledCourseSummary {
@@ -13,19 +13,24 @@ export interface EnrolledCourseSummary {
   completedLessons: number;
 }
 
-export function useMyEnrolledCourses() {
+export function useMyEnrolledCourses(learnerId: number | undefined) {
   const [courses, setCourses] = useState<EnrolledCourseSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  useEffect(() => {
-    let cancelled = false;
+  const load = () => {
+    if (!learnerId) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    setError(null);
 
-    async function load() {
-      try {
-        const dashboard = await getLearnerDashboard();
-        const withProgress = await Promise.all(
-          dashboard.courses.map(async (course) => {
+    listMyCourses()
+      .then((myCourses) =>
+        Promise.all(
+          myCourses.map(async (course) => {
             const progress = await getCourseProgress(course.courseId).catch(
               () => null,
             );
@@ -38,22 +43,25 @@ export function useMyEnrolledCourses() {
               completedLessons: progress?.completedLessons ?? 0,
             };
           }),
-        );
-        if (!cancelled) setCourses(withProgress);
-      } catch {
-        if (!cancelled) {
-          setError('Could not load your courses. Please try again.');
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
+        ),
+      )
+      .then(setCourses)
+      .catch(() => {
+        setError('Could not load your courses. Please try again.');
+      })
+      .finally(() => setLoading(false));
+  };
 
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [learnerId, refreshKey]);
 
-  return { courses, loading, error };
+  return {
+    courses,
+    loading,
+    error,
+    refresh: () => setRefreshKey((k) => k + 1),
+  };
 }

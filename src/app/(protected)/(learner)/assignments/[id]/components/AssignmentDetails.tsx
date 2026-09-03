@@ -10,6 +10,7 @@ import {
   Clock,
   Info,
   Link2,
+  Lock,
   Sparkles,
 } from 'lucide-react';
 import { AppCard } from '@/components/ui/AppCard';
@@ -32,6 +33,7 @@ import {
   ASSIGNMENT_STATUS_LABEL,
   formatDueDate,
   formatModuleLabel,
+  isNotYetOpen,
   type AssignmentItem,
   type LearnerAssignment,
 } from '@/types/assignment.types';
@@ -257,6 +259,55 @@ export default function AssignmentDetails({
     );
   }
 
+  /*
+   * An assignment that has not opened yet shows only when it opens — never the
+   * brief, the instructions or the submission form, however the learner got to
+   * the URL.
+   *
+   * This is the client half of the rule. The API still returns the full record
+   * to anyone who asks, so the brief is readable from the network tab and
+   * `POST /submissions` still accepts early work. Enforcing it properly means
+   * the server withholding unopened assignments and rejecting submissions
+   * against them.
+   */
+  if (isNotYetOpen(assignment.startDate)) {
+    return (
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
+        <Link
+          href="/assignments"
+          className="inline-flex w-fit items-center gap-2 b2-m text-primary underline underline-offset-4"
+        >
+          <ArrowLeft size={16} />
+          Back to Assignments
+        </Link>
+
+        <AppCard padding="lg">
+          <p className="f1-b tracking-widest text-text-secondary">
+            {formatModuleLabel(assignment.moduleOrder)}
+          </p>
+          <h1 className="h5-b mt-3 text-text">{assignment.title}</h1>
+
+          <div className="mt-5 flex items-start gap-3 rounded-btn bg-warning-light px-4 py-3.5">
+            <Lock size={18} className="mt-0.5 shrink-0 text-warning-dark" />
+            <div>
+              <p className="b2-m text-text">This assignment is not open yet</p>
+              <p className="b2-r mt-1 text-text-secondary">
+                It opens on{' '}
+                {formatDueDate(assignment.startDate ?? assignment.dueDate)}.
+                You&apos;ll be able to read the brief and submit your work from
+                then.
+              </p>
+            </div>
+          </div>
+
+          <AppButton className="mt-6" radius="full" href="/assignments">
+            Back to Assignments
+          </AppButton>
+        </AppCard>
+      </div>
+    );
+  }
+
   const moduleLabel = formatModuleLabel(assignment.moduleOrder);
   const paragraphs = (assignment.description ?? '')
     .split(/\n{2,}/)
@@ -306,10 +357,30 @@ export default function AssignmentDetails({
 
           {/* Overview */}
           <AppCard padding="lg">
-            <p className="f1-b tracking-widest text-text-secondary">
-              {moduleLabel}
-            </p>
-            <h2 className="h4-b mt-3 text-text">{assignment.title}</h2>
+            <div className="flex items-start justify-between gap-6">
+              <div className="min-w-0">
+                <p className="f1-b tracking-widest text-text-secondary">
+                  {moduleLabel}
+                </p>
+                <h2 className="h4-b mt-3 text-text">{assignment.title}</h2>
+              </div>
+
+              {/* Hidden entirely when the trainer has set no full name, rather
+                  than rendering an empty avatar row. */}
+              {assignment.createdByName && (
+                <div className="flex shrink-0 items-center gap-3">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-light b2-b text-primary">
+                    {assignment.createdByName.charAt(0).toUpperCase()}
+                  </span>
+                  <span className="hidden flex-col leading-tight sm:flex">
+                    <span className="b2-b text-text">
+                      {assignment.createdByName}
+                    </span>
+                    <span className="f1-r text-muted">Trainer</span>
+                  </span>
+                </div>
+              )}
+            </div>
 
             {summary && (
               <p className="b1-r mt-3 max-w-3xl text-text-secondary">

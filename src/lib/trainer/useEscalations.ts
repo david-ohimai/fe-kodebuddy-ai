@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useToast } from '@/components/ui/ToastProvider';
-import { listMyEscalations, isChatMocked } from '@/lib/api/chat.api';
+import { listTrainerEscalations, isChatMocked } from '@/lib/api/chat.api';
 import { getErrorMessage } from '@/lib/api/client';
 import type { Escalation } from '@/types/chat.types';
 
@@ -13,9 +13,9 @@ export function useEscalations() {
 
   const load = () => {
     setLoading(true);
-    listMyEscalations()
+    listTrainerEscalations()
       .then(setEscalations)
-      .catch((err) => {
+      .catch((err: unknown) => {
         showError(
           'Could not load escalations',
           getErrorMessage(err, 'Please try again.'),

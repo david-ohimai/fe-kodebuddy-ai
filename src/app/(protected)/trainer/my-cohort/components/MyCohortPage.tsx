@@ -63,7 +63,11 @@ function ProgressBar({
 
 export default function MyCohortPage() {
   const { user } = useCurrentUserContext();
-  const { data, loading: loadingCourse } = useMyAssignedCourse(user?.id);
+  const {
+    data,
+    cohortWithoutCourse,
+    loading: loadingCourse,
+  } = useMyAssignedCourse(user?.id);
   const { roster, loading, stats, sendingReminder, sendReminder } =
     useCohortRoster(data?.cohort.id, data?.course.id);
 
@@ -174,8 +178,16 @@ export default function MyCohortPage() {
         <AppCard padding="lg">
           <AppEmptyState
             image={noCohorts}
-            title="No cohort assigned yet"
-            description="Once an admin assigns you a cohort, its learners will show up here."
+            title={
+              cohortWithoutCourse
+                ? `${cohortWithoutCourse.name} doesn't have a course yet`
+                : 'No cohort assigned yet'
+            }
+            description={
+              cohortWithoutCourse
+                ? "You're assigned to this cohort, but learner progress needs a course to measure against — an admin needs to add one first."
+                : 'Once an admin assigns you a cohort, its learners will show up here.'
+            }
           />
         </AppCard>
       </div>

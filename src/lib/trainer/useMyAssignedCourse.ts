@@ -11,18 +11,12 @@ export interface AssignedCourseInfo {
   cohort: Cohort;
   learners: CohortLearner[];
   learnerCount: number;
-  /**
-   * Percentage of active learners who have completed the cohort
-   * (CohortLearner.completedAt is set). There's no endpoint exposing
-   * granular per-learner lesson/module completion to trainers, so this
-   * is the most honest real signal available for "cohort progress" —
-   * it's completion-count based, not content-progress based.
-   */
   completionPercent: number;
 }
 
 interface UseMyAssignedCourseResult {
   data: AssignedCourseInfo | null;
+  cohortWithoutCourse: Cohort | null;
   loading: boolean;
   error: string | null;
 }
@@ -31,6 +25,9 @@ export function useMyAssignedCourse(
   trainerId: number | undefined,
 ): UseMyAssignedCourseResult {
   const [data, setData] = useState<AssignedCourseInfo | null>(null);
+  const [cohortWithoutCourse, setCohortWithoutCourse] = useState<Cohort | null>(
+    null,
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -58,12 +55,22 @@ export function useMyAssignedCourse(
           trainers.some((t) => t.trainerId === trainerId && !t.removedAt),
         );
 
-        const course = myAssignment
-          ? (courses.find((c) => c.cohortId === myAssignment.cohort.id) ?? null)
-          : null;
+        if (!myAssignment) {
+          if (!cancelled) {
+            setData(null);
+            setCohortWithoutCourse(null);
+          }
+          return;
+        }
 
-        if (!myAssignment || !course) {
-          if (!cancelled) setData(null);
+        const course =
+          courses.find((c) => c.cohortId === myAssignment.cohort.id) ?? null;
+
+        if (!course) {
+          if (!cancelled) {
+            setData(null);
+            setCohortWithoutCourse(myAssignment.cohort);
+          }
           return;
         }
 
@@ -81,6 +88,7 @@ export function useMyAssignedCourse(
               );
 
         if (!cancelled) {
+          setCohortWithoutCourse(null);
           setData({
             course,
             cohort: myAssignment.cohort,
@@ -103,5 +111,5 @@ export function useMyAssignedCourse(
     };
   }, [trainerId]);
 
-  return { data, loading, error };
+  return { data, cohortWithoutCourse, loading, error };
 }

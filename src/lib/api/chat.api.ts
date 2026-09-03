@@ -1,4 +1,5 @@
 import { ApiError, apiFetch, getAccessToken, getApiBaseUrl } from './client';
+import { LEARNER_INITIATED_ESCALATION_REASON } from '@/types/chat.types';
 import type {
   AskKodeBuddyRequest,
   AskKodeBuddyRequestDto,
@@ -8,8 +9,9 @@ import type {
   ChatStreamHandlers,
   ChatStreamStage,
   EscalateRequest,
+  EscalateRequestDto,
   EscalationReceipt,
-  EscalationReceiptDto,
+  EscalationResponseDto,
   EscalationStage,
   Escalation,
   EscalationDto,
@@ -204,15 +206,8 @@ async function streamMock(
   return full;
 }
 
-async function escalateMock(): Promise<EscalationReceipt> {
-  await delay(800);
-  return {
-    escalationId: (mockMessageId += 1),
-    trainerId: null,
-    stage: 'sent',
-    createdAt: new Date().toISOString(),
-  };
-}
+// No escalateMock: POST /agent/escalate is live and writes a real row, so the
+// handoff always goes to the server even while answers are still mocked.
 
 /**
  * Fixture data for the trainer inbox mock — matches the Figma exactly so the
@@ -351,15 +346,6 @@ function mapStage(status: string): EscalationStage {
     return 'reviewing';
   }
   return 'sent';
-}
-
-function mapReceipt(dto: EscalationReceiptDto): EscalationReceipt {
-  return {
-    escalationId: dto.escalation_id,
-    trainerId: dto.trainer_id,
-    stage: mapStage(dto.status),
-    createdAt: dto.created_at,
-  };
 }
 
 function mapEscalation(dto: EscalationDto): Escalation {
@@ -516,22 +502,39 @@ export async function askKodeBuddy(
   return mapAnswer(dto);
 }
 
+/**
+ * Hands the question to a trainer.
+ *
+ * Live against POST /agent/escalate regardless of NEXT_PUBLIC_CHAT_API: the
+ * endpoint exists and writes a real row, so mocking it would silently drop
+ * a learner's request for help. Only the *answers* are still mocked.
+ */
 export async function escalateToTrainer(
   request: EscalateRequest,
 ): Promise<EscalationReceipt> {
-  if (!isLiveChat()) return escalateMock();
+  const body: EscalateRequestDto = {
+    course_id: request.courseId,
+    module_id: request.moduleId ?? null,
+    assignment_id: request.assignmentId ?? null,
+    question: request.question,
+    reason: request.reason || LEARNER_INITIATED_ESCALATION_REASON,
+    detail: request.detail ?? null,
+    draft_response: request.draftResponse ?? null,
+    confidence_score: request.confidenceScore ?? null,
+  };
 
-  const dto = await apiFetch<EscalationReceiptDto>('/chat/escalate', {
+  const dto = await apiFetch<EscalationResponseDto>('/agent/escalate', {
     method: 'POST',
     auth: true,
-    body: {
-      question: request.question,
-      course_id: request.assignmentId ? null : (request.courseId ?? null),
-      module_id: request.moduleId ?? null,
-      assignment_id: request.assignmentId ?? null,
-    },
+    body,
   });
-  return mapReceipt(dto);
+
+  return {
+    escalationId: dto.id,
+    trainerId: dto.trainer_id,
+    stage: mapStage(dto.status),
+    createdAt: dto.created_at,
+  };
 }
 
 /** True when answers are canned — the UI surfaces this so nobody is misled. */
@@ -540,17 +543,25 @@ export function isChatMocked(): boolean {
 }
 
 // ---------------------------------------------------------------------------
-// Trainer escalation inbox — see the SPECULATIVE note on Escalation in
-// types/chat.types.ts. Same mock/live switch as everything else in this file.
+// Trainer escalation inbox.
+//
+// No screen consumes these yet. The paths were written speculatively against a
+// `/chat/escalations/...` prefix that never existed; they now match what the
+// backend actually shipped, so whoever builds the trainer inbox starts from
+// something correct. The learner side lives in lib/api/escalations.api.ts.
+//
+// Still behind the mock switch, unlike the learner endpoints, because there is
+// no trainer screen to exercise them against.
 // ---------------------------------------------------------------------------
 
-export async function listMyEscalations(): Promise<Escalation[]> {
+/** GET /escalations/trainer — escalations assigned to the signed-in trainer. */
+export async function listTrainerEscalations(): Promise<Escalation[]> {
   if (!isLiveChat()) {
     const dtos = await listEscalationsMock();
     return dtos.map(mapEscalation);
   }
 
-  const dtos = await apiFetch<EscalationDto[]>('/chat/escalations', {
+  const dtos = await apiFetch<EscalationDto[]>('/escalations/trainer', {
     method: 'GET',
     auth: true,
   });
@@ -564,7 +575,7 @@ export async function getEscalation(id: number): Promise<Escalation | null> {
   }
 
   try {
-    const dto = await apiFetch<EscalationDto>(`/chat/escalations/${id}`, {
+    const dto = await apiFetch<EscalationDto>(`/escalations/${id}`, {
       method: 'GET',
       auth: true,
     });
@@ -575,6 +586,12 @@ export async function getEscalation(id: number): Promise<Escalation | null> {
   }
 }
 
+/**
+ * PATCH /escalations/{id} — the trainer's reply.
+ *
+ * `status` rides along with the response because the backend treats them as
+ * one update; sending a reply without it would leave the escalation open.
+ */
 export async function respondToEscalation(
   request: RespondToEscalationRequest,
 ): Promise<void> {
@@ -582,9 +599,9 @@ export async function respondToEscalation(
     return respondToEscalationMock(request.escalationId, request.message);
   }
 
-  await apiFetch<unknown>(`/chat/escalations/${request.escalationId}/respond`, {
-    method: 'POST',
+  await apiFetch<unknown>(`/escalations/${request.escalationId}`, {
+    method: 'PATCH',
     auth: true,
-    body: { message: request.message },
+    body: { response: request.message, status: 'resolved' },
   });
 }

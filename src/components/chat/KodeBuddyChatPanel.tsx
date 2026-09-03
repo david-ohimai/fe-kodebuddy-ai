@@ -256,11 +256,22 @@ export default function KodeBuddyChatPanel({
 
     setSendingEscalation(true);
     try {
+      // The agent's own reason, draft and confidence are carried over when it
+      // offered the handoff, so the trainer sees what the learner already got
+      // rather than a bare question. Absent when the learner asked outright.
+      const lastAnswer = [...messages]
+        .reverse()
+        .find((m) => m.role === 'assistant');
+
       const receipt = await escalateToTrainer({
         question: note,
         courseId: context.courseId,
         moduleId: context.moduleId,
         assignmentId: context.assignmentId,
+        reason: lastAnswer?.escalationReason ?? null,
+        detail: lastAnswer?.escalationDetail ?? null,
+        draftResponse: lastAnswer?.content ?? null,
+        confidenceScore: lastAnswer?.confidenceScore ?? null,
       });
       setEscalationStage(receipt.stage);
       setDraft('');
@@ -272,7 +283,7 @@ export default function KodeBuddyChatPanel({
     } finally {
       setSendingEscalation(false);
     }
-  }, [escalationNote, sendingEscalation, context, showError]);
+  }, [escalationNote, sendingEscalation, context, messages, showError]);
 
   const handleCopy = useCallback(
     (text: string) => {
