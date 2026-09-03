@@ -1,8 +1,18 @@
-import React from 'react';
+'use client';
+
+import React, { useState } from 'react';
 import { ArrowLeft, Pencil } from 'lucide-react';
 import { AppCard } from '@/components/ui/AppCard';
 import AppButton from '@/components/ui/AppButton';
+import AppPill from '@/components/ui/AppPill';
+import AppSpinner from '@/components/ui/AppSpinner';
+import AppEmptyState from '@/components/ui/AppEmptyState';
+import { useToast } from '@/components/ui/ToastProvider';
+import { getErrorMessage } from '@/lib/api/client';
+import { useAssignmentSubmissions } from '@/lib/trainer/useAssignmentSubmissions';
+import GradeSubmissionModal from './GradeSubmissionModal';
 import type { CourseAssignment } from '@/lib/api/assignments.api';
+import type { SubmissionWithLearner } from '@/lib/trainer/useAssignmentSubmissions';
 
 export interface AssignmentDetailViewProps {
   courseName: string;
@@ -11,16 +21,45 @@ export interface AssignmentDetailViewProps {
   onEdit: () => void;
 }
 
+function formatDate(iso: string) {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso;
+  return date.toLocaleDateString('en-US', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+}
+
 export default function AssignmentDetailView({
   courseName,
   assignment,
   onBack,
   onEdit,
 }: AssignmentDetailViewProps) {
+  const { showError } = useToast();
+  const { submissions, loading, grading, gradeSubmission } =
+    useAssignmentSubmissions(assignment.id);
+  const [gradingSubmission, setGradingSubmission] =
+    useState<SubmissionWithLearner | null>(null);
+
   const instructionsText = assignment.instructions[0]?.description?.trim();
   const requirementLines = assignment.requirements
     .map((r) => r.title.trim())
     .filter(Boolean);
+
+  const handleGrade = async (data: { score: number; feedback?: string }) => {
+    if (!gradingSubmission) return;
+    try {
+      await gradeSubmission(gradingSubmission, data);
+      setGradingSubmission(null);
+    } catch (err) {
+      showError(
+        'Could not save grade',
+        getErrorMessage(err, 'Please try again.'),
+      );
+    }
+  };
 
   return (
     <div className="flex flex-col gap-4">
@@ -94,6 +133,92 @@ export default function AssignmentDetailView({
           </ol>
         </AppCard>
       )}
+
+      <AppCard padding="none">
+        <div className="border-b border-disabled p-5 sm:p-6">
+          <p className="b2-b text-text">Submissions</p>
+          <p className="f1-r text-muted">
+            {loading
+              ? 'Loading submissions…'
+              : `${submissions.length} learner${submissions.length === 1 ? '' : 's'} submitted so far.`}
+          </p>
+        </div>
+
+        {loading ? (
+          <div className="flex min-h-[200px] items-center justify-center">
+            <AppSpinner size={32} />
+          </div>
+        ) : submissions.length === 0 ? (
+          <AppEmptyState
+            title="No submissions yet"
+            description="Submissions will show up here as learners turn in their work."
+            className="!min-h-0 py-14"
+          />
+        ) : (
+          <ul className="divide-y divide-disabled">
+            {submissions.map((submission) => {
+              const isGraded =
+                submission.score !== null && submission.score !== undefined;
+              return (
+                <li
+                  key={submission.id}
+                  className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 sm:px-6"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-light b2-b text-primary">
+                      {(
+                        submission.learnerName ||
+                        submission.learnerEmail ||
+                        '?'
+                      )
+                        .charAt(0)
+                        .toUpperCase()}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="b2-m truncate text-text">
+                        {submission.learnerName ||
+                          submission.learnerEmail ||
+                          'Unknown learner'}
+                      </p>
+                      <p className="f1-r text-muted">
+                        Submitted {formatDate(submission.submittedAt)}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    {isGraded ? (
+                      <AppPill
+                        label={`${submission.score}/${assignment.maximumScore}`}
+                        color="success"
+                      />
+                    ) : (
+                      <AppPill label="Ungraded" color="warning" />
+                    )}
+                    <AppButton
+                      variant={isGraded ? 'outlined' : 'contained'}
+                      size="small"
+                      radius="full"
+                      onClick={() => setGradingSubmission(submission)}
+                    >
+                      {isGraded ? 'Edit grade' : 'Grade'}
+                    </AppButton>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </AppCard>
+
+      <GradeSubmissionModal
+        open={!!gradingSubmission}
+        submission={gradingSubmission}
+        maximumScore={assignment.maximumScore}
+        saving={grading}
+        onClose={() => setGradingSubmission(null)}
+        onSubmit={handleGrade}
+      />
     </div>
   );
 }

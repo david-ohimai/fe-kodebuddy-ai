@@ -59,3 +59,30 @@ export async function createSubmission(
   });
   return mapSubmission(dto);
 }
+
+export async function listAssignmentSubmissions(
+  assignmentId: number,
+): Promise<Submission[]> {
+  const dtos = await apiFetch<SubmissionResponseDto[]>(
+    `/submissions/assignment/${assignmentId}`,
+    { method: 'GET', auth: true },
+  );
+  return (dtos ?? []).map(mapSubmission);
+}
+
+export const FEEDBACK_MAX_LENGTH = 1000;
+
+export async function gradeSubmission(
+  submissionId: number,
+  input: { score: number; feedback?: string },
+): Promise<Submission> {
+  const dto = await apiFetch<SubmissionResponseDto>(
+    `/submissions/${submissionId}/grade`,
+    {
+      method: 'PATCH',
+      auth: true,
+      body: { score: input.score, feedback: input.feedback },
+    },
+  );
+  return mapSubmission(dto);
+}

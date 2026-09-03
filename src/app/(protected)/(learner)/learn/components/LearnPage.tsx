@@ -9,11 +9,13 @@ import AppSpinner from '@/components/ui/AppSpinner';
 import AppEmptyState from '@/components/ui/AppEmptyState';
 import AppProgressBar from '@/components/ui/AppProgressBar';
 import { useMyEnrolledCourses } from '@/lib/learn/useMyEnrolledCourses';
+import { useCurrentUserContext } from '@/lib/auth/CurrentUserContext';
 import emptyStateImage from '@/assets/images/empty state.webp';
 
 export default function LearnPage() {
   const router = useRouter();
-  const { courses, loading, error } = useMyEnrolledCourses();
+  const { user } = useCurrentUserContext();
+  const { courses, loading, error } = useMyEnrolledCourses(user?.id);
 
   return (
     <div className="flex flex-col gap-6">
