@@ -12,6 +12,9 @@ export interface AppNotification {
   subject: string;
   createdAt: string;
   read: boolean;
+  /** What the notification refers to, e.g. "escalation". Null for general ones. */
+  relatedEntityType?: string | null;
+  relatedEntityId?: number | null;
 }
 
 /** "10mins ago" / "2hrs ago" / "3days ago", matching the notifications design. */

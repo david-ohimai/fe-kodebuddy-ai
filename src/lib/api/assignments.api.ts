@@ -90,9 +90,18 @@ function mapLearnerAssignment(
   course: MyCourseRef,
   submission: Submission | undefined,
 ): LearnerAssignment {
-  const submitted = status?.submitted ?? submission !== undefined;
-  const graded = status?.graded ?? submission?.score != null;
-  const isOverdue = status?.isOverdue ?? false;
+  // Derived from the learner's own submission. These previously came from the
+  // learner dashboard payload; that source went away when this switched to
+  // listMyCourses, and the three `status?.…` reads it left behind resolved to
+  // the global `window.status` string rather than failing loudly.
+  const submitted = submission !== undefined;
+  const graded = submission?.score != null;
+
+  // Past the due date and nothing handed in. The dashboard used to compute
+  // this server-side; there is no other source for it now.
+  const isOverdue =
+    !submitted && new Date(dto.due_date).getTime() < Date.now();
+
   const startDate = dto.start_date ?? null;
 
   return {
