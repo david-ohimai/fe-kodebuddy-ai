@@ -45,3 +45,13 @@ export async function listTrainerActivity(
   );
   return (dtos ?? []).map(mapActivity);
 }
+
+export async function listMentorActivity(
+  limit = 100,
+): Promise<ActivityEntry[]> {
+  const dtos = await apiFetch<ActivityResponseDto[]>(
+    `/activity/mentor?limit=${limit}`,
+    { method: 'GET', auth: true },
+  );
+  return (dtos ?? []).map(mapActivity);
+}

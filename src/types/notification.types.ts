@@ -1,3 +1,13 @@
+export type MentorNotificationKind =
+  | 'lesson_completed'
+  | 'assignment_submitted'
+  | 'assignment_graded'
+  | 'progress_updated'
+  | 'check_in_completed'
+  | 'check_in_sent';
+
+export type MentorNotificationTone = 'warning' | 'success' | 'neutral';
+
 export type NotificationKind =
   | 'escalation_reply'
   | 'assignment_deadline'
@@ -6,12 +16,35 @@ export type NotificationKind =
 export interface AppNotification {
   id: string;
   kind: NotificationKind;
-  /** Bold headline, e.g. "Your trainer responded to your escalation". */
   title: string;
-  /** The thing it concerns, e.g. the assignment title. */
   subject: string;
   createdAt: string;
   read: boolean;
+}
+
+export interface MentorNotification {
+  id: string;
+  learnerId: number;
+  learnerName: string;
+  kind: MentorNotificationKind;
+  title: string;
+  subject: string;
+  createdAt: string;
+  read: boolean;
+  tone: MentorNotificationTone;
+}
+
+const TONE_BY_KIND: Record<MentorNotificationKind, MentorNotificationTone> = {
+  lesson_completed: 'neutral',
+  assignment_submitted: 'success',
+  assignment_graded: 'success',
+  progress_updated: 'neutral',
+  check_in_completed: 'neutral',
+  check_in_sent: 'neutral',
+};
+
+export function toneForKind(kind: MentorNotificationKind): MentorNotificationTone {
+  return TONE_BY_KIND[kind] ?? 'neutral';
 }
 
 /** "10mins ago" / "2hrs ago" / "3days ago", matching the notifications design. */
