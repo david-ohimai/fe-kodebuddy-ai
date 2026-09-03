@@ -46,9 +46,17 @@ interface AssignmentDetailDto {
   description: string | null;
   instructions: AssignmentItem[] | null;
   requirements: AssignmentItem[] | null;
+  /**
+   * When the assignment opens. Required by the API, but read as optional here:
+   * rows created before the column existed can still come back without it, and
+   * a missing release date means "already open".
+   */
+  start_date?: string | null;
   due_date: string;
   maximum_score: number;
   created_by: number;
+  /** Resolved server-side; null when the trainer has set no full name. */
+  created_by_name?: string | null;
   created_at: string;
   updated_at: string;
   is_active: boolean;
@@ -90,6 +98,7 @@ function mapLearnerAssignment(
   const submitted = status?.submitted ?? submission !== undefined;
   const graded = status?.graded ?? submission?.score != null;
   const isOverdue = status?.isOverdue ?? false;
+  const startDate = dto.start_date ?? null;
 
   return {
     id: dto.id,
@@ -107,7 +116,15 @@ function mapLearnerAssignment(
     courseId: course.courseId,
     courseTitle: course.courseTitle,
 
-    status: deriveAssignmentStatus({ submitted, graded, isOverdue }),
+    startDate,
+    createdByName: dto.created_by_name ?? null,
+
+    status: deriveAssignmentStatus({
+      submitted,
+      graded,
+      isOverdue,
+      startDate,
+    }),
     submitted,
     graded,
     score: status?.score ?? submission?.score ?? null,

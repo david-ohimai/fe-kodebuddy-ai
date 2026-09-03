@@ -76,6 +76,8 @@ export const DEMO_ASSIGNMENTS: LearnerAssignment[] = [
     dueDate: '2026-02-01T23:59:00Z',
     maximumScore: 100,
     isActive: true,
+    startDate: '2026-01-05T09:00:00Z',
+    createdByName: 'Tunmise Deji',
 
     status: 'in-progress',
     submitted: false,
@@ -123,6 +125,8 @@ export const DEMO_ASSIGNMENTS: LearnerAssignment[] = [
     dueDate: '2026-01-18T23:59:00Z',
     maximumScore: 100,
     isActive: true,
+    startDate: '2026-01-05T09:00:00Z',
+    createdByName: 'Tunmise Deji',
 
     status: 'graded',
     submitted: true,
@@ -166,6 +170,8 @@ export const DEMO_ASSIGNMENTS: LearnerAssignment[] = [
     dueDate: '2026-02-14T23:59:00Z',
     maximumScore: 100,
     isActive: true,
+    startDate: '2026-01-05T09:00:00Z',
+    createdByName: 'Tunmise Deji',
 
     status: 'submitted',
     submitted: true,
@@ -174,6 +180,54 @@ export const DEMO_ASSIGNMENTS: LearnerAssignment[] = [
     isOverdue: false,
     submittedAt: '2026-02-10T09:05:00Z',
     submissionContent: 'https://www.figma.com/file/example-button-variants',
+    feedback: null,
+  },
+
+  {
+    // Release date well in the future, so this one exercises the Pending tab
+    // and the Locked card. `status` is recomputed from startDate for live data;
+    // it is set here only because the fixtures are already-built objects.
+    id: 4,
+    moduleId: 4,
+    moduleTitle: 'Prototyping',
+    moduleOrder: 4,
+    courseId: 1,
+    courseTitle: 'Product Design Fundamentals',
+
+    title: 'Interactive Prototypes',
+    description:
+      'Wire your components into a clickable flow and test it on a real device.',
+
+    instructions: [
+      {
+        title: 'Part A - Connect the screens',
+        description: [
+          'Link the three screens from Module 3 into a single flow.',
+          'Use Smart Animate between states that share layer names.',
+        ].join('\n'),
+      },
+    ],
+
+    requirements: [
+      {
+        title: 'Flow completes end to end',
+        description: 'Every entry point reaches the confirmation screen',
+      },
+    ],
+
+    dueDate: '2026-03-14T23:59:00Z',
+    maximumScore: 100,
+    isActive: true,
+    startDate: '2099-03-01T09:00:00Z',
+    createdByName: 'Tunmise Deji',
+
+    status: 'pending',
+    submitted: false,
+    graded: false,
+    score: null,
+    isOverdue: false,
+    submittedAt: null,
+    submissionContent: null,
     feedback: null,
   },
 ];

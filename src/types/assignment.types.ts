@@ -46,6 +46,17 @@ export interface LearnerAssignment extends Assignment {
   courseId: number;
   courseTitle: string;
 
+  /**
+   * When the assignment opens to learners. Optional here even though the API
+   * declares it required, because older rows and the demo fixtures predate it.
+   */
+  startDate: string | null;
+  /**
+   * Display name of the trainer who set the assignment. Null when they have
+   * not set a full name — the byline is hidden rather than left blank.
+   */
+  createdByName: string | null;
+
   status: AssignmentStatus;
   submitted: boolean;
   graded: boolean;
@@ -81,11 +92,31 @@ export function deriveAssignmentStatus(input: {
   submitted: boolean;
   graded: boolean;
   isOverdue: boolean;
+  /** Absent for an assignment that carries no release date. */
+  startDate?: string | null;
+  now?: Date;
 }): AssignmentStatus {
+  // Work the learner has already handed in outranks the release date: an
+  // assignment cannot be both submitted and not yet open, and if the two ever
+  // disagree the submission is the fact.
   if (input.graded) return 'graded';
   if (input.submitted) return 'submitted';
+
+  if (isNotYetOpen(input.startDate, input.now)) return 'pending';
+
   if (input.isOverdue) return 'overdue';
   return 'in-progress';
+}
+
+/** True while the assignment's release date is still in the future. */
+export function isNotYetOpen(
+  startDate: string | null | undefined,
+  now: Date = new Date(),
+): boolean {
+  if (!startDate) return false;
+  const start = new Date(startDate);
+  if (Number.isNaN(start.getTime())) return false;
+  return start.getTime() > now.getTime();
 }
 
 /** Whether the learner can still open and work on this assignment. */

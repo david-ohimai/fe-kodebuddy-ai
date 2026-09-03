@@ -43,7 +43,8 @@ function metaLine(assignment: LearnerAssignment): string {
     return `Submitted: ${formatDueDate(assignment.submittedAt)}`;
   }
   if (isAssignmentLocked(assignment.status)) {
-    return `Start: ${formatDueDate(assignment.dueDate)}`;
+    // A locked card answers "when can I start", not "when is it due".
+    return `Start: ${formatDueDate(assignment.startDate ?? assignment.dueDate)}`;
   }
   return `Due: ${formatDueDate(assignment.dueDate)}`;
 }
