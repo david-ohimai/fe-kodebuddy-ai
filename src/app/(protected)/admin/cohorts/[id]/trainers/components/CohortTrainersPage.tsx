@@ -109,16 +109,6 @@ export default function CohortTrainersPage({
           </p>
         </div>
 
-        <div className="flex items-start gap-3 border-b border-disabled bg-warning/10 px-6 py-4">
-          <AlertTriangle size={16} className="mt-0.5 shrink-0 text-warning" />
-          <p className="f1-r text-text-secondary">
-            This shows cohort-level assignment only. Which specific course(s) a
-            trainer is tied to isn&apos;t something the API currently exposes a
-            way to look up — assigning is possible (via &quot;Assign trainers to
-            course&quot;), reading it back isn&apos;t.
-          </p>
-        </div>
-
         {trainers.length === 0 ? (
           <p className="b2-r px-6 py-10 text-center text-muted">
             No trainers are assigned to this cohort yet.
