@@ -58,6 +58,7 @@ export async function createCourse(input: {
   title: string;
   cohortId: number;
   description?: string;
+  level?: string;
 }): Promise<Course> {
   const dto = await apiFetch<CourseResponseDto>('/courses', {
     method: 'POST',
@@ -65,6 +66,7 @@ export async function createCourse(input: {
       title: input.title,
       cohort_id: input.cohortId,
       description: input.description,
+      level: input.level,
     },
     auth: true,
   });
@@ -73,7 +75,12 @@ export async function createCourse(input: {
 
 export async function updateCourse(
   courseId: number,
-  input: { title?: string; description?: string; isActive?: boolean },
+  input: {
+    title?: string;
+    description?: string;
+    isActive?: boolean;
+    level?: string;
+  },
 ): Promise<Course> {
   const dto = await apiFetch<CourseResponseDto>(`/courses/${courseId}`, {
     method: 'PATCH',
@@ -81,6 +88,7 @@ export async function updateCourse(
       title: input.title,
       description: input.description,
       is_active: input.isActive,
+      level: input.level,
     },
     auth: true,
   });
@@ -94,16 +102,6 @@ export async function deleteCourse(courseId: number): Promise<void> {
   });
 }
 
-/**
- * Adds a trainer to a course. Admin only.
- *
- * A separate call because `CourseCreate` takes no trainer — creating a course
- * with one is always create-then-assign, and the two can fail independently.
- *
- * Additive, not exclusive: the backend rejects a duplicate (course, trainer)
- * pair with a 409 but otherwise appends, so a course can carry several
- * trainers.
- */
 export async function assignCourseTrainer(
   courseId: number,
   trainerId: number,
@@ -138,14 +136,6 @@ export async function selectCourse(
   };
 }
 
-/**
- * Puts a learner on a course. Admin only.
- *
- * Not additive: a learner can be on one course at a time, so the backend
- * REPLACES any existing assignment silently. Callers should tell the admin
- * what is being moved before invoking this. Re-assigning the same course 409s,
- * and the course's cohort must match the learner's.
- */
 export async function assignLearnerToCourse(
   courseId: number,
   learnerId: number,

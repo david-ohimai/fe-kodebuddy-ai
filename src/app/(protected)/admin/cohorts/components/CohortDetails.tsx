@@ -22,9 +22,8 @@ export interface CohortDetails {
   startDate: string;
   endDate: string;
   totalLearners: number;
-  trainer?: string;
-  trainerEmail?: string;
-  course?: string;
+  trainers: { id: number; name: string; email: string }[];
+  courses: { id: number; title: string }[];
 }
 
 interface CohortDetailsViewProps {
@@ -33,8 +32,8 @@ interface CohortDetailsViewProps {
   onEditCohort?: () => void;
   onViewLearners?: () => void;
   onAddLearners?: () => void;
-  onChangeTrainer?: () => void;
-  onChangeCourse?: () => void;
+  onAssignTrainer?: () => void;
+  onEditCourse?: () => void;
   onChangeStatus?: () => void;
 }
 
@@ -59,10 +58,6 @@ const DetailListItem: React.FC<{
   value: React.ReactNode;
   actionLabel: string;
   onAction?: () => void;
-  /**
-   * When present the action becomes a menu instead of a single button. Rows
-   * with one thing to do keep the plain button.
-   */
   menu?: Array<{ label: string; onSelect?: () => void }>;
 }> = ({ icon, title, description, value, actionLabel, onAction, menu }) => {
   const [open, setOpen] = React.useState(false);
@@ -149,8 +144,8 @@ const CohortDetailsView: React.FC<CohortDetailsViewProps> = ({
   onEditCohort,
   onViewLearners,
   onAddLearners,
-  onChangeTrainer,
-  onChangeCourse,
+  onAssignTrainer,
+  onEditCourse,
   onChangeStatus,
 }) => {
   return (
@@ -233,19 +228,37 @@ const CohortDetailsView: React.FC<CohortDetailsViewProps> = ({
           <DetailListItem
             icon={<Users size={16} />}
             title="Assigned trainer"
-            description={cohort.trainerEmail ?? 'No trainer assigned yet'}
-            value={cohort.trainer ?? 'Not assigned'}
-            actionLabel="Change trainer"
-            onAction={onChangeTrainer}
+            description={
+              cohort.trainers.length === 0
+                ? 'No trainer assigned yet'
+                : cohort.trainers.map((t) => t.email).join(', ')
+            }
+            value={
+              cohort.trainers.length === 0
+                ? 'Not assigned'
+                : cohort.trainers.map((t) => t.name).join(', ')
+            }
+            actionLabel="Assign trainer"
+            onAction={onAssignTrainer}
           />
 
           <DetailListItem
             icon={<BookOpen size={16} />}
-            title="Assigned course"
-            description="Course assigned to this cohort"
-            value={cohort.course ?? 'Not assigned'}
-            actionLabel={cohort.course ? 'Edit course' : 'Add course'}
-            onAction={onChangeCourse}
+            title="Courses"
+            description={
+              cohort.courses.length === 0
+                ? 'No courses assigned yet'
+                : `${cohort.courses.length} course${cohort.courses.length === 1 ? '' : 's'} assigned to this cohort`
+            }
+            value={
+              cohort.courses.length === 0
+                ? 'Not assigned'
+                : cohort.courses.length === 1
+                  ? cohort.courses[0].title
+                  : `${cohort.courses.length} courses`
+            }
+            actionLabel="Edit course"
+            onAction={onEditCourse}
           />
 
           <DetailListItem
