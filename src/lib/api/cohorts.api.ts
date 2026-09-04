@@ -105,18 +105,7 @@ export interface CohortLearner {
   joinedAt: string;
   completedAt: string | null;
   isActive: boolean;
-
-  /**
-   * The course this learner is currently on, if any.
-   *
-   * NOT RETURNED BY THE API YET — requested from the backend team as an
-   * addition to CohortLearnerResponse. Undefined means "unknown", which is
-   * different from null ("on no course"): the assign screen hides its
-   * already-assigned and will-be-moved states while it is unknown, rather
-   * than claiming a learner is free when nobody has said so.
-   */
-  currentCourseId?: number | null;
-  currentCourseTitle?: string | null;
+  currentCourseId: number | null;
 }
 
 interface CohortLearnerResponseDto {
@@ -126,8 +115,6 @@ interface CohortLearnerResponseDto {
   joined_at: string;
   completed_at: string | null;
   is_active: boolean;
-  current_course_id?: number | null;
-  current_course_title?: string | null;
 }
 
 export async function listCohortLearners(
@@ -153,14 +140,8 @@ export async function listCohortLearners(
       email: user?.email ?? '—',
       joinedAt: enrollment.joined_at,
       completedAt: enrollment.completed_at,
-      // A learner enrolled (is_active on the enrollment) whose account
-      // has since been suspended shouldn't read as "active".
       isActive: enrollment.is_active && (user?.isActive ?? true),
-
-      // Passed through untouched: absent today, populated once the backend
-      // adds these to CohortLearnerResponse.
-      currentCourseId: enrollment.current_course_id,
-      currentCourseTitle: enrollment.current_course_title,
+      currentCourseId: user?.courseId ?? null,
     };
   });
 }

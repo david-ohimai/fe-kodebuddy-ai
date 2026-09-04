@@ -2,9 +2,10 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { AlertTriangle, ArrowLeft, Search } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, Check, Search } from 'lucide-react';
 import AppButton from '@/components/ui/AppButton';
 import { AppCard } from '@/components/ui/AppCard';
+import AppSearchSelect from '@/components/ui/AppSearchSelect';
 import AppSpinner from '@/components/ui/AppSpinner';
 import { useToast } from '@/components/ui/ToastProvider';
 import { cx } from '@/lib/utils/cx';
@@ -18,7 +19,6 @@ export interface AssignLearnersPageProps {
   cohortId: number;
 }
 
-/** Outcome of one assignment, kept per learner so partial runs stay legible. */
 interface AssignResult {
   learnerId: number;
   name: string;
@@ -37,7 +37,8 @@ export default function AssignLearnersPage({
   const { showError, showSuccess } = useToast();
 
   const [learners, setLearners] = useState<CohortLearner[]>([]);
-  const [course, setCourse] = useState<Course | null>(null);
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [selectedCourseId, setSelectedCourseId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -51,14 +52,12 @@ export default function AssignLearnersPage({
 
     Promise.all([
       cohortsApi.listCohortLearners(cohortId),
-      // The cohort's own course: assignment is rejected server-side when the
-      // course's cohort differs, so there is nothing to choose here.
       coursesApi.listCourses(),
     ])
-      .then(([cohortLearners, courses]) => {
+      .then(([cohortLearners, allCourses]) => {
         if (cancelled) return;
         setLearners(cohortLearners);
-        setCourse(courses.find((c) => c.cohortId === cohortId) ?? null);
+        setCourses(allCourses.filter((c) => c.cohortId === cohortId));
       })
       .catch((err) => {
         if (!cancelled) {
@@ -74,6 +73,12 @@ export default function AssignLearnersPage({
     };
   }, [cohortId]);
 
+  const course = courses.find((c) => c.id === selectedCourseId) ?? null;
+  const courseTitleById = useMemo(
+    () => new Map(courses.map((c) => [c.id, c.title])),
+    [courses],
+  );
+
   const visible = useMemo(() => {
     const term = search.trim().toLowerCase();
     if (!term) return learners;
@@ -84,28 +89,20 @@ export default function AssignLearnersPage({
     );
   }, [learners, search]);
 
-  /** Already on this course — selecting them would only earn a 409. */
   const isAlreadyAssigned = useCallback(
     (learner: CohortLearner) =>
-      course !== null &&
-      learner.currentCourseId !== undefined &&
-      learner.currentCourseId === course.id,
+      course !== null && learner.currentCourseId === course.id,
     [course],
   );
 
-  /**
-   * On a different course. Assigning replaces that silently server-side, so
-   * the row says so before the admin commits.
-   */
   const movesFrom = useCallback(
     (learner: CohortLearner): string | null => {
       if (course === null) return null;
-      if (learner.currentCourseId === undefined) return null;
       if (learner.currentCourseId === null) return null;
       if (learner.currentCourseId === course.id) return null;
-      return learner.currentCourseTitle || 'another course';
+      return courseTitleById.get(learner.currentCourseId) ?? 'another course';
     },
-    [course],
+    [course, courseTitleById],
   );
 
   const toggle = useCallback((learnerId: number) => {
@@ -144,6 +141,12 @@ export default function AssignLearnersPage({
     [learners, selected, movesFrom],
   );
 
+  const handleCourseChange = (value: string) => {
+    setSelectedCourseId(Number(value));
+    setSelected(new Set());
+    setResults(null);
+  };
+
   const handleAssign = useCallback(async () => {
     if (!course || selected.size === 0 || submitting) return;
 
@@ -153,9 +156,6 @@ export default function AssignLearnersPage({
     const targets = learners.filter((l) => selected.has(l.learnerId));
     const collected: AssignResult[] = [];
 
-    // Sequential, not parallel: the endpoint takes one learner per call and
-    // each is a separate write. Firing them together would make a partial
-    // failure much harder to report accurately.
     for (const learner of targets) {
       try {
         await coursesApi.assignLearnerToCourse(course.id, learner.learnerId);
@@ -192,21 +192,25 @@ export default function AssignLearnersPage({
       );
     }
 
-    // Clear only what worked, so a retry targets the failures.
     setSelected((prev) => {
       const next = new Set(prev);
       collected.filter((r) => r.ok).forEach((r) => next.delete(r.learnerId));
       return next;
     });
 
-    // Refresh so already-assigned state reflects what just happened.
     cohortsApi
       .listCohortLearners(cohortId)
       .then(setLearners)
-      .catch(() => {
-        /* the results list already reports the outcome */
-      });
-  }, [course, selected, submitting, learners, cohortId, showSuccess, showError]);
+      .catch(() => {});
+  }, [
+    course,
+    selected,
+    submitting,
+    learners,
+    cohortId,
+    showSuccess,
+    showError,
+  ]);
 
   if (loading) {
     return (
@@ -231,9 +235,9 @@ export default function AssignLearnersPage({
         <div className="border-b border-disabled px-6 py-5">
           <h1 className="h5-b text-text">Add learners to course</h1>
           <p className="b2-r mt-1 text-muted">
-            {course
-              ? `Assign learners from this cohort to ${course.title}.`
-              : 'This cohort has no course assigned yet.'}
+            {courses.length === 0
+              ? 'This cohort has no course assigned yet.'
+              : 'Choose a course, then select learners to assign to it.'}
           </p>
         </div>
 
@@ -242,7 +246,7 @@ export default function AssignLearnersPage({
             <p className="b1-b text-text">Could not load learners</p>
             <p className="b2-r mt-1 text-text-secondary">{loadError}</p>
           </div>
-        ) : !course ? (
+        ) : courses.length === 0 ? (
           <div className="flex items-start gap-3 px-6 py-6">
             <AlertTriangle size={18} className="mt-0.5 shrink-0 text-warning" />
             <p className="b2-r text-text-secondary">
@@ -250,8 +254,27 @@ export default function AssignLearnersPage({
             </p>
           </div>
         ) : (
+          <div className="px-6 py-5">
+            <label className="b2-b mb-1.5 block text-text">Course</label>
+            <AppSearchSelect
+              hideSearch
+              value={selectedCourseId ? String(selectedCourseId) : ''}
+              options={courses.map((c) => ({
+                value: String(c.id),
+                label: c.title,
+                description: c.level ?? undefined,
+              }))}
+              onChange={handleCourseChange}
+              placeholder="Select a course"
+              ariaLabel="Select a course"
+              className="w-full max-w-md"
+            />
+          </div>
+        )}
+
+        {course && (
           <>
-            <div className="flex flex-col gap-3 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-3 border-t border-disabled px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex w-full max-w-xs items-center gap-2 rounded-input border border-disabled px-3 py-2">
                 <Search size={16} className="text-muted" />
                 <input
@@ -310,12 +333,20 @@ export default function AssignLearnersPage({
                         <span
                           aria-hidden="true"
                           className={cx(
-                            'flex h-5 w-5 shrink-0 items-center justify-center rounded-[5px] border transition-colors',
+                            'flex h-5 w-5 shrink-0 items-center justify-center rounded-[5px] border-2 transition-colors',
                             isChecked
                               ? 'border-primary bg-primary'
                               : 'border-muted/60',
                           )}
-                        />
+                        >
+                          {isChecked && (
+                            <Check
+                              size={13}
+                              strokeWidth={3}
+                              className="text-white"
+                            />
+                          )}
+                        </span>
 
                         <span className="min-w-0 flex-1">
                           <span className="block b2-b text-text">
@@ -360,9 +391,7 @@ export default function AssignLearnersPage({
             )}
 
             <div className="flex items-center justify-between gap-4 px-6 py-5">
-              <p className="b2-r text-muted">
-                {selected.size} selected
-              </p>
+              <p className="b2-r text-muted">{selected.size} selected</p>
               <AppButton
                 radius="full"
                 disabled={selected.size === 0 || submitting}

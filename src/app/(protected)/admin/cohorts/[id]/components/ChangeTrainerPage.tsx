@@ -5,7 +5,7 @@ import { AlertTriangle, ArrowLeft } from 'lucide-react';
 import AppButton from '@/components/ui/AppButton';
 import { AppCard } from '@/components/ui/AppCard';
 import AppConfirmModal from '@/components/ui/AppConfirmModal';
-import AppRadioCard from '@/components/ui/AppRadioCard';
+import AppCheckboxCard from '@/components/ui/AppCheckboxCard';
 import AppSpinner from '@/components/ui/AppSpinner';
 import { useToast } from '@/components/ui/ToastProvider';
 import { getErrorMessage } from '@/lib/api/client';
@@ -18,7 +18,7 @@ interface ChangeTrainerPageProps {
   cohortId: number;
   cohort: CohortDetails;
   onBack: () => void;
-  onAssigned: (trainer: AuthUser) => void;
+  onAssigned: (trainers: AuthUser[]) => void;
 }
 
 export default function ChangeTrainerPage({
@@ -29,8 +29,8 @@ export default function ChangeTrainerPage({
 }: ChangeTrainerPageProps) {
   const { showError, showSuccess } = useToast();
   const [trainers, setTrainers] = useState<AuthUser[]>([]);
-  const [currentTrainer, setCurrentTrainer] = useState<AuthUser | null>(null);
-  const [selectedId, setSelectedId] = useState<string>('');
+  const [assignedIds, setAssignedIds] = useState<Set<number>>(new Set());
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -44,13 +44,12 @@ export default function ChangeTrainerPage({
       .then(([users, assignments]) => {
         if (cancelled) return;
         const available = users.filter((user) => user.role === 'trainer');
-        const activeAssignment = assignments.find((item) => !item.removedAt);
-        const assigned = available.find(
-          (user) => user.id === activeAssignment?.trainerId,
+        const active = new Set(
+          assignments.filter((a) => !a.removedAt).map((a) => a.trainerId),
         );
         setTrainers(available);
-        setCurrentTrainer(assigned ?? null);
-        setSelectedId(assigned ? String(assigned.id) : '');
+        setAssignedIds(active);
+        setSelectedIds(new Set(active));
       })
       .catch((error) => {
         if (!cancelled) {
@@ -69,18 +68,41 @@ export default function ChangeTrainerPage({
     };
   }, [cohortId, showError]);
 
-  const selectedTrainer = trainers.find(
-    (trainer) => String(trainer.id) === selectedId,
+  const currentTrainers = trainers.filter((t) => assignedIds.has(t.id));
+  const newlySelected = trainers.filter(
+    (t) => selectedIds.has(t.id) && !assignedIds.has(t.id),
   );
-  const canAssign = Boolean(selectedTrainer && selectedTrainer.id !== currentTrainer?.id);
+  const canAssign = newlySelected.length > 0;
 
-  const assignTrainer = async () => {
-    if (!selectedTrainer) return;
+  const toggleTrainer = (id: number, checked: boolean) => {
+    if (assignedIds.has(id)) return;
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  };
+
+  const assignTrainers = async () => {
+    if (newlySelected.length === 0) return;
     setSaving(true);
     try {
-      await cohortsApi.assignCohortTrainer(cohortId, selectedTrainer.id);
-      onAssigned(selectedTrainer);
-      showSuccess('Trainer assigned successfully.', `${selectedTrainer.fullName || selectedTrainer.email} is now assigned to ${cohort.name}.`);
+      await Promise.all(
+        newlySelected.map((t) =>
+          cohortsApi.assignCohortTrainer(cohortId, t.id),
+        ),
+      );
+      const allAssigned = [...currentTrainers, ...newlySelected];
+      onAssigned(allAssigned);
+      showSuccess(
+        newlySelected.length === 1
+          ? 'Trainer assigned successfully.'
+          : 'Trainers assigned successfully.',
+        `${newlySelected.map((t) => t.fullName || t.email).join(', ')} ${
+          newlySelected.length === 1 ? 'is' : 'are'
+        } now assigned to ${cohort.name}.`,
+      );
       onBack();
     } catch (error) {
       showError(
@@ -109,13 +131,15 @@ export default function ChangeTrainerPage({
         className="flex w-fit items-center gap-2 b2-b text-primary"
       >
         <ArrowLeft size={16} />
-        Back to cohorts details
+        Back to cohort details
       </button>
 
       <AppCard padding="none">
         <div className="border-b border-disabled px-6 py-5">
-          <h1 className="h5-b text-text">Change trainer</h1>
-          <p className="b2-r mt-1 text-muted">Select a new trainer to assign to this cohort.</p>
+          <h1 className="h5-b text-text">Assign trainer</h1>
+          <p className="b2-r mt-1 text-muted">
+            Select one or more trainers to assign to this cohort.
+          </p>
         </div>
         <div className="px-6 py-5">
           <div className="rounded-card border border-disabled p-5">
@@ -126,40 +150,81 @@ export default function ChangeTrainerPage({
               </span>
             </div>
             <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-3">
-              <div><p className="f1-r text-muted">Start date</p><p className="b1-b mt-1 text-text">{cohort.startDate}</p></div>
-              <div><p className="f1-r text-muted">End date</p><p className="b1-b mt-1 text-text">{cohort.endDate}</p></div>
-              <div><p className="f1-r text-muted">Total learners</p><p className="b1-b mt-1 text-text">{cohort.totalLearners}</p></div>
+              <div>
+                <p className="f1-r text-muted">Start date</p>
+                <p className="b1-b mt-1 text-text">{cohort.startDate}</p>
+              </div>
+              <div>
+                <p className="f1-r text-muted">End date</p>
+                <p className="b1-b mt-1 text-text">{cohort.endDate}</p>
+              </div>
+              <div>
+                <p className="f1-r text-muted">Total learners</p>
+                <p className="b1-b mt-1 text-text">{cohort.totalLearners}</p>
+              </div>
             </div>
           </div>
         </div>
       </AppCard>
 
       <div>
-        <h2 className="h6-b text-text">Current assigned trainer</h2>
-        {currentTrainer ? (
-          <div className="mt-3 flex items-center gap-3 px-3">
-            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-light h5-b text-primary">{(currentTrainer.fullName || currentTrainer.email).charAt(0).toUpperCase()}</span>
-            <div><p className="b2-b text-text">{currentTrainer.fullName || '—'}</p><p className="f1-r text-muted">{currentTrainer.email}</p></div>
-          </div>
-        ) : <p className="b2-r mt-3 text-muted">No trainer assigned yet.</p>}
+        <h2 className="h6-b text-text">Currently assigned trainers</h2>
+        {currentTrainers.length > 0 ? (
+          <ul className="mt-3 flex flex-col gap-3 px-3">
+            {currentTrainers.map((trainer) => (
+              <li key={trainer.id} className="flex items-center gap-3">
+                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-light h5-b text-primary">
+                  {(trainer.fullName || trainer.email).charAt(0).toUpperCase()}
+                </span>
+                <div>
+                  <p className="b2-b text-text">{trainer.fullName || '—'}</p>
+                  <p className="f1-r text-muted">{trainer.email}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="b2-r mt-3 text-muted">No trainer assigned yet.</p>
+        )}
       </div>
 
       <div className="flex justify-end gap-3">
-        <AppButton variant="outlined" color="neutral" radius="full" onClick={onBack}>Cancel</AppButton>
-        <AppButton radius="full" disabled={!canAssign || saving} loading={saving} onClick={() => setConfirmOpen(true)}>Assign trainer?</AppButton>
+        <AppButton
+          variant="outlined"
+          color="neutral"
+          radius="full"
+          onClick={onBack}
+        >
+          Cancel
+        </AppButton>
+        <AppButton
+          radius="full"
+          disabled={!canAssign || saving}
+          loading={saving}
+          onClick={() => setConfirmOpen(true)}
+        >
+          Assign trainer{newlySelected.length !== 1 ? 's' : ''}
+        </AppButton>
       </div>
 
       <AppCard padding="none">
-        <div className="border-b border-disabled px-6 py-5"><h2 className="h6-b text-text">Select new trainer</h2></div>
-        <div className="flex flex-col gap-2 px-3 py-3">
+        <div className="border-b border-disabled px-6 py-5">
+          <h2 className="h6-b text-text">Select trainers</h2>
+          <p className="f1-r mt-1 text-muted">
+            Already-assigned trainers are checked and can&apos;t be removed
+            here.
+          </p>
+        </div>
+        <div className="flex flex-col gap-2.5 px-3 py-3">
           {trainers.map((trainer) => (
-            <AppRadioCard
+            <AppCheckboxCard
               key={trainer.id}
-              name="cohort-trainer"
               value={String(trainer.id)}
-              label={`${trainer.fullName || '—'} (${trainer.email})`}
-              checked={selectedId === String(trainer.id)}
-              onChange={setSelectedId}
+              label={trainer.fullName || '—'}
+              description={trainer.email}
+              checked={selectedIds.has(trainer.id)}
+              disabled={assignedIds.has(trainer.id)}
+              onChange={(_, checked) => toggleTrainer(trainer.id, checked)}
             />
           ))}
         </div>
@@ -168,11 +233,24 @@ export default function ChangeTrainerPage({
       <AppConfirmModal
         open={confirmOpen}
         onClose={() => setConfirmOpen(false)}
-        icon={<span className="flex h-16 w-16 items-center justify-center rounded-full bg-warning/15"><AlertTriangle size={30} className="text-warning" /></span>}
-        title={`Assign ${selectedTrainer?.fullName || selectedTrainer?.email} as trainer?`}
-        description={`This will replace ${currentTrainer?.fullName || 'the current trainer'} for ${cohort.name}.`}
-        secondaryButton={{ label: 'Cancel', onClick: () => setConfirmOpen(false) }}
-        primaryButton={{ label: 'Assign trainer?', loading: saving, onClick: assignTrainer }}
+        icon={
+          <span className="flex h-16 w-16 items-center justify-center rounded-full bg-warning/15">
+            <AlertTriangle size={30} className="text-warning" />
+          </span>
+        }
+        title={`Assign ${newlySelected.length} trainer${newlySelected.length !== 1 ? 's' : ''}?`}
+        description={`${newlySelected
+          .map((t) => t.fullName || t.email)
+          .join(', ')} will be added to ${cohort.name}.`}
+        secondaryButton={{
+          label: 'Cancel',
+          onClick: () => setConfirmOpen(false),
+        }}
+        primaryButton={{
+          label: 'Assign',
+          loading: saving,
+          onClick: assignTrainers,
+        }}
       />
     </div>
   );
