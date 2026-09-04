@@ -1,14 +1,21 @@
 // Wire types for the KodeBuddy AI chat panel.
 //
-// PROPOSED CONTRACT — not yet implemented on the backend. The `/chat` feature
-// module does not exist in kodebuddy-ai-be yet; see docs/chat-api-contract.md
-// for the matching FastAPI schema and the open questions both teams need to
-// close before this is frozen.
+// LIVE — POST /agent/chat, POST /agent/escalate, GET /agent/history, all
+// confirmed real and richly documented in the live /openapi.json (as of
+// Sept 2026). Field shapes below are mapped from AgentTurnResponse
+// directly (see mapAnswer in lib/api/chat.api.ts), not invented.
 //
-// Field shapes are derived from the agent's own AgentState (app/agent/graph/
-// state.py) so the service layer is a straight mapping with no invention:
-//   request  -> AgentState input fields
-//   response -> AgentState route-node output fields
+// Two real mismatches from the shape this file originally guessed at,
+// worth knowing if this ever needs revisiting:
+//  - There's no streaming endpoint. POST /agent/chat is a plain
+//    request/response, not SSE. streamKodeBuddy (chat.api.ts) calls the
+//    real endpoint and then simulates token-by-token delivery from the
+//    complete answer, so the panel's existing streaming UI keeps working
+//    without the backend actually streaming anything.
+//  - AgentTurnResponse has no message_id, no resources, and no
+//    created_at. Those are synthesized client-side in mapAnswer
+//    (resources always empty, id/timestamp generated) rather than read
+//    from the response.
 
 // ---------------------------------------------------------------------------
 // Shared enums
@@ -87,6 +94,13 @@ export interface ChatAnswerDto {
   escalated: boolean;
   escalation_id: number | null;
   created_at: string;
+  /** Structured category for the low-confidence handoff, e.g. "low_retrieval_confidence" — pass straight through as `reason` on POST /agent/escalate. */
+  escalation_reason?: string | null;
+  /** The graph's own human-readable note on why it wasn't confident. Pass through as `detail`. */
+  escalation_detail?: string | null;
+  /** The agent's best-effort answer, distinct from `answer` — safe to forward as `draft_response`. */
+  draft_response?: string | null;
+  confidence_score?: number | null;
 }
 
 export interface ChatAnswer {
@@ -97,6 +111,10 @@ export interface ChatAnswer {
   escalated: boolean;
   escalationId: number | null;
   createdAt: string;
+  escalationReason?: string | null;
+  escalationDetail?: string | null;
+  draftResponse?: string | null;
+  confidenceScore?: number | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -298,44 +316,64 @@ export interface ChatContext {
 }
 
 // ---------------------------------------------------------------------------
-// Trainer-facing escalation inbox — GET /chat/escalations, POST .../respond
+// Trainer-facing escalation inbox — GET /escalations/trainer, GET/PATCH
+// /escalations/{id}
 // ---------------------------------------------------------------------------
 //
-// CONFIRMED ABSENT from the live /openapi.json (checked directly, not
-// inferred): the only chat-related routes that exist are POST /agent/chat
-// and GET /agent/history, both scoped to the requesting learner via
-// get_current_learner. There is no /escalations path, no way to list
-// escalations, and no way for a trainer to respond to one — the agent
-// writes an escalation row internally (AgentTurnResponse.escalation_id)
-// but nothing exposes it afterwards. The paths below are this frontend's
-// own placeholder for when that trainer-side surface gets built, not
-// something either team has agreed on. Mocked the same way as the rest of
-// `/chat`/`/agent`, gated by the same `isLiveChat()` switch in
-// lib/api/chat.api.ts — flipping that switch will not make this part live
-// on its own; it needs the backend route to exist first.
+// LIVE — confirmed real against the live /openapi.json. Both endpoints are
+// unconditionally live in lib/api/chat.api.ts now (no mock fallback,
+// no env-var gate); the trainer Escalations page (lib/trainer/useEscalations.ts)
+// consumes them directly.
 
 export interface EscalationDto {
   id: number;
   learner_id: number;
-  learner_name: string;
-  question: string;
-  course_id: number | null;
+  course_id: number;
   module_id: number | null;
+  assignment_id: number | null;
+  trainer_id: number | null;
+  question: string;
+  reason: string;
+  detail: string | null;
+  draft_response: string | null;
+  confidence_score: number | null;
+  /** Free-form on the server (no fixed enum) — see mapStage. */
   status: string;
   created_at: string;
-  response: string | null;
-  responded_at: string | null;
+  updated_at: string;
 }
 
 export interface Escalation {
   id: number;
   learnerId: number;
-  learnerName: string;
+  /**
+   * Not on EscalationResponse — the real schema only has learner_id, no
+   * name/email. Resolved client-side by joining against
+   * profileApi.listUsers() (lib/trainer/useEscalations.ts,
+   * useEscalationDetail.ts), same pattern used for submissions/cohort
+   * rosters elsewhere. Null while that join hasn't resolved yet.
+   */
+  learnerName: string | null;
   question: string;
-  courseId: number | null;
+  reason: string;
+  detail: string | null;
+  draftResponse: string | null;
+  confidenceScore: number | null;
+  courseId: number;
   moduleId: number | null;
+  assignmentId: number | null;
+  trainerId: number | null;
   status: 'open' | 'resolved';
   createdAt: string;
+  /**
+   * The trainer's written reply. EscalationUpdate accepts one on write
+   * (PATCH body), but EscalationResponse — the read shape — has no field
+   * to read it back. Set optimistically client-side right after a
+   * successful send (useEscalationDetail.sendResponse) so the trainer sees
+   * their own reply immediately; will read back null after a fresh
+   * page load/re-fetch, since the server doesn't echo it. A real gap in
+   * the backend's response schema, not something fixable from here.
+   */
   response: string | null;
   respondedAt: string | null;
 }

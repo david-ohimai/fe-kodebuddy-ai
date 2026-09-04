@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ArrowLeft, Pencil } from 'lucide-react';
+import { ArrowLeft, Pencil, Trash2 } from 'lucide-react';
 import { AppCard } from '@/components/ui/AppCard';
 import AppButton from '@/components/ui/AppButton';
 import AppPill from '@/components/ui/AppPill';
@@ -19,6 +19,7 @@ export interface AssignmentDetailViewProps {
   assignment: CourseAssignment;
   onBack: () => void;
   onEdit: () => void;
+  onDelete: () => void;
 }
 
 function formatDate(iso: string) {
@@ -36,6 +37,7 @@ export default function AssignmentDetailView({
   assignment,
   onBack,
   onEdit,
+  onDelete,
 }: AssignmentDetailViewProps) {
   const { showError } = useToast();
   const { submissions, loading, grading, gradeSubmission } =
@@ -78,15 +80,27 @@ export default function AssignmentDetailView({
             Review the assignment&apos;s details, or edit them below.
           </p>
         </div>
-        <AppButton
-          variant="outlined"
-          size="small"
-          radius="full"
-          startIcon={<Pencil size={14} />}
-          onClick={onEdit}
-        >
-          Edit assignment
-        </AppButton>
+        <div className="flex items-center gap-3">
+          <AppButton
+            variant="outlined"
+            color="error"
+            size="small"
+            radius="full"
+            startIcon={<Trash2 size={14} />}
+            onClick={onDelete}
+          >
+            Delete
+          </AppButton>
+          <AppButton
+            variant="outlined"
+            size="small"
+            radius="full"
+            startIcon={<Pencil size={14} />}
+            onClick={onEdit}
+          >
+            Edit assignment
+          </AppButton>
+        </div>
       </div>
 
       <AppCard padding="lg">

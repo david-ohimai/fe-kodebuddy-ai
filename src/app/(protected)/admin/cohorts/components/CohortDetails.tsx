@@ -4,6 +4,7 @@ import React from 'react';
 import {
   ArrowLeft,
   Pencil,
+  Trash2,
   User,
   Users,
   BookOpen,
@@ -30,6 +31,7 @@ interface CohortDetailsViewProps {
   cohort: CohortDetails;
   onBack: () => void;
   onEditCohort?: () => void;
+  onDeleteCohort?: () => void;
   onViewLearners?: () => void;
   onAddLearners?: () => void;
   onViewTrainers?: () => void;
@@ -143,6 +145,7 @@ const CohortDetailsView: React.FC<CohortDetailsViewProps> = ({
   cohort,
   onBack,
   onEditCohort,
+  onDeleteCohort,
   onViewLearners,
   onAddLearners,
   onViewTrainers,
@@ -169,17 +172,30 @@ const CohortDetailsView: React.FC<CohortDetailsViewProps> = ({
               View and manage the details of this cohort.
             </p>
           </div>
-          <AppButton
-            variant="outlined"
-            color="primary"
-            radius="full"
-            size="small"
-            startIcon={<Pencil size={14} />}
-            className={actionButtonClass}
-            onClick={onEditCohort}
-          >
-            Edit cohort
-          </AppButton>
+          <div className="flex items-center gap-3">
+            <AppButton
+              variant="outlined"
+              color="error"
+              radius="full"
+              size="small"
+              startIcon={<Trash2 size={14} />}
+              className={actionButtonClass}
+              onClick={onDeleteCohort}
+            >
+              Delete cohort
+            </AppButton>
+            <AppButton
+              variant="outlined"
+              color="primary"
+              radius="full"
+              size="small"
+              startIcon={<Pencil size={14} />}
+              className={actionButtonClass}
+              onClick={onEditCohort}
+            >
+              Edit cohort
+            </AppButton>
+          </div>
         </div>
 
         <div className="px-6 py-5">

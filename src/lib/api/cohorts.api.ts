@@ -78,6 +78,21 @@ export async function getCohortById(cohortId: number): Promise<Cohort> {
   return mapCohort(dto);
 }
 
+/**
+ * DELETE /cohorts/{cohort_id}. No response body — the endpoint returns an
+ * empty 200. Irreversible: unlike "Change status" (a soft, reversible
+ * open/closed toggle already on the cohort details page), this removes
+ * the cohort row itself. What happens to its courses/enrollments server-side
+ * on delete isn't documented in the response schema; the confirm dialog
+ * calling this should be explicit that it's permanent.
+ */
+export async function deleteCohort(cohortId: number): Promise<void> {
+  await apiFetch<unknown>(`/cohorts/${cohortId}`, {
+    method: 'DELETE',
+    auth: true,
+  });
+}
+
 export async function updateCohort(
   cohortId: number,
   payload: UpdateCohortPayload,

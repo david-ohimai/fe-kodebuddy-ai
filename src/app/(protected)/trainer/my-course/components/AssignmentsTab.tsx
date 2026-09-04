@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { ArrowLeft, ChevronRight, Plus } from 'lucide-react';
 import { AppCard } from '@/components/ui/AppCard';
 import AppButton from '@/components/ui/AppButton';
+import AppConfirmModal from '@/components/ui/AppConfirmModal';
 import AppEmptyState from '@/components/ui/AppEmptyState';
 import AppSpinner from '@/components/ui/AppSpinner';
 import { useToast } from '@/components/ui/ToastProvider';
@@ -26,6 +27,7 @@ export interface AssignmentsTabProps {
     assignment: CourseAssignment,
     data: AssignmentFormInput,
   ) => Promise<CourseAssignment>;
+  deleteAssignment: (assignment: CourseAssignment) => Promise<void>;
   onBack: () => void;
 }
 
@@ -51,6 +53,7 @@ export default function AssignmentsTab({
   hasModules,
   addAssignment,
   editAssignment,
+  deleteAssignment,
   onBack,
 }: AssignmentsTabProps) {
   const { showError } = useToast();
@@ -58,6 +61,8 @@ export default function AssignmentsTab({
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingAssignment, setEditingAssignment] =
+    useState<CourseAssignment | null>(null);
+  const [deletingAssignment, setDeletingAssignment] =
     useState<CourseAssignment | null>(null);
 
   const selected = assignments.find((a) => a.id === selectedId) ?? null;
@@ -92,6 +97,20 @@ export default function AssignmentsTab({
     }
   };
 
+  const handleDelete = async () => {
+    if (!deletingAssignment) return;
+    try {
+      await deleteAssignment(deletingAssignment);
+      setDeletingAssignment(null);
+      setSelectedId(null);
+    } catch (err) {
+      showError(
+        'Could not delete assignment',
+        getErrorMessage(err, 'Please try again.'),
+      );
+    }
+  };
+
   if (selected) {
     return (
       <>
@@ -100,6 +119,7 @@ export default function AssignmentsTab({
           assignment={selected}
           onBack={() => setSelectedId(null)}
           onEdit={() => setEditingAssignment(selected)}
+          onDelete={() => setDeletingAssignment(selected)}
         />
 
         <AssignmentModal
@@ -122,6 +142,23 @@ export default function AssignmentsTab({
           }
           onClose={() => setEditingAssignment(null)}
           onSubmit={handleEdit}
+        />
+
+        <AppConfirmModal
+          open={!!deletingAssignment}
+          onClose={() => setDeletingAssignment(null)}
+          title="Delete assignment?"
+          description={`Are you sure you want to delete "${deletingAssignment?.title}"? This action cannot be undone.`}
+          secondaryButton={{
+            label: 'Cancel',
+            onClick: () => setDeletingAssignment(null),
+          }}
+          primaryButton={{
+            label: 'Yes, delete',
+            color: 'error',
+            loading: saving,
+            onClick: handleDelete,
+          }}
         />
       </>
     );

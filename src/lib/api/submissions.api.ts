@@ -60,6 +60,29 @@ export async function createSubmission(
   return mapSubmission(dto);
 }
 
+/**
+ * PATCH /submissions/{id} — a learner editing their own, still-ungraded
+ * submission. Content only; there's nothing else on SubmissionUpdate.
+ */
+export async function updateSubmission(
+  submissionId: number,
+  content: string,
+): Promise<Submission> {
+  const dto = await apiFetch<SubmissionResponseDto>(
+    `/submissions/${submissionId}`,
+    { method: 'PATCH', auth: true, body: { content } },
+  );
+  return mapSubmission(dto);
+}
+
+/** DELETE /submissions/{id} — withdraws a submission entirely, back to "not submitted". */
+export async function deleteSubmission(submissionId: number): Promise<void> {
+  await apiFetch<unknown>(`/submissions/${submissionId}`, {
+    method: 'DELETE',
+    auth: true,
+  });
+}
+
 export async function listAssignmentSubmissions(
   assignmentId: number,
 ): Promise<Submission[]> {

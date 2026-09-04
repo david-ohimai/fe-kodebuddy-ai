@@ -10,7 +10,7 @@ import { useEscalations } from '@/lib/trainer/useEscalations';
 import getUnstucked from '@/assets/images/get-unstucked.webp';
 
 export default function EscalationsPage() {
-  const { escalations, loading, isMocked } = useEscalations();
+  const { escalations, loading } = useEscalations();
 
   return (
     <div className="flex flex-col gap-6">
@@ -39,10 +39,12 @@ export default function EscalationsPage() {
                 className="flex items-center gap-4 p-5 sm:p-6"
               >
                 <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary-light b1-b text-primary">
-                  {escalation.learnerName.charAt(0).toUpperCase()}
+                  {(escalation.learnerName || '?').charAt(0).toUpperCase()}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="b2-b text-text">{escalation.learnerName}</p>
+                  <p className="b2-b text-text">
+                    {escalation.learnerName || 'Unknown learner'}
+                  </p>
                   <p className="f1-r truncate text-muted">
                     {escalation.question}
                   </p>
@@ -60,13 +62,6 @@ export default function EscalationsPage() {
           </ul>
         )}
       </AppCard>
-
-      {isMocked && (
-        <p className="f2-r -mt-2 text-muted">
-          Demo mode — escalations are canned. The backend chat endpoint is not
-          live yet.
-        </p>
-      )}
     </div>
   );
 }

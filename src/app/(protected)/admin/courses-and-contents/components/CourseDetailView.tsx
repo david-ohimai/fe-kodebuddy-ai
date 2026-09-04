@@ -55,6 +55,9 @@ const CourseDetailsView: React.FC<CourseDetailsViewProps> = ({
   } | null>(null);
 
   const [isPublishConfirmOpen, setIsPublishConfirmOpen] = useState(false);
+  const [isDeleteCourseConfirmOpen, setIsDeleteCourseConfirmOpen] =
+    useState(false);
+  const [deletingCourse, setDeletingCourse] = useState(false);
   const [isDescriptionModalOpen, setIsDescriptionModalOpen] = useState(false);
   const [descriptionDraft, setDescriptionDraft] = useState(
     course.description ?? '',
@@ -76,6 +79,7 @@ const CourseDetailsView: React.FC<CourseDetailsViewProps> = ({
         canPublish={content.modules.length > 0}
         onEditCourse={onEditCourse}
         onPublishClick={() => setIsPublishConfirmOpen(true)}
+        onDeleteClick={() => setIsDeleteCourseConfirmOpen(true)}
       />
 
       <CourseOverviewCard
@@ -233,6 +237,47 @@ const CourseDetailsView: React.FC<CourseDetailsViewProps> = ({
                 'Could not publish course',
                 getErrorMessage(err, 'Please try again.'),
               );
+            }
+          },
+        }}
+      />
+
+      <AppConfirmModal
+        open={isDeleteCourseConfirmOpen}
+        onClose={() => setIsDeleteCourseConfirmOpen(false)}
+        icon={
+          <ReportProblemIcon sx={{ fontSize: 40 }} className="text-error" />
+        }
+        title="Delete course?"
+        description={
+          <>
+            Are you sure you want to delete{' '}
+            <span className="text-error">{course.title}</span>? Its modules,
+            lessons, resources, and assignments will all be removed. This action
+            cannot be undone.
+          </>
+        }
+        secondaryButton={{
+          label: 'Cancel',
+          onClick: () => setIsDeleteCourseConfirmOpen(false),
+        }}
+        primaryButton={{
+          label: 'Yes, delete',
+          color: 'error',
+          loading: deletingCourse,
+          onClick: async () => {
+            setDeletingCourse(true);
+            try {
+              await courseActions.deleteCourse();
+              setIsDeleteCourseConfirmOpen(false);
+              onBack();
+            } catch (err) {
+              showError(
+                'Could not delete course',
+                getErrorMessage(err, 'Please try again.'),
+              );
+            } finally {
+              setDeletingCourse(false);
             }
           },
         }}

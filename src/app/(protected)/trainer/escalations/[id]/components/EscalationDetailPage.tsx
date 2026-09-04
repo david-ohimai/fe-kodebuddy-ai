@@ -25,15 +25,8 @@ export default function EscalationDetailPage({
   escalationId,
 }: EscalationDetailPageProps) {
   const { showSuccess } = useToast();
-  const {
-    escalation,
-    loading,
-    notFound,
-    sending,
-    sendError,
-    sendResponse,
-    isMocked,
-  } = useEscalationDetail(escalationId);
+  const { escalation, loading, notFound, sending, sendError, sendResponse } =
+    useEscalationDetail(escalationId);
   const [response, setResponse] = useState('');
 
   const handleSend = async () => {
@@ -95,10 +88,12 @@ export default function EscalationDetailPage({
         <div className="mt-5 rounded-card border border-disabled p-5">
           <div className="flex items-center gap-3">
             <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary-light b1-b text-primary">
-              {escalation.learnerName.charAt(0).toUpperCase()}
+              {(escalation.learnerName || '?').charAt(0).toUpperCase()}
             </span>
             <div>
-              <p className="b1-b text-text">{escalation.learnerName}</p>
+              <p className="b1-b text-text">
+                {escalation.learnerName || 'Unknown learner'}
+              </p>
               <p className="f1-r text-muted">Learner</p>
             </div>
           </div>
@@ -166,13 +161,6 @@ export default function EscalationDetailPage({
           </div>
         )}
       </AppCard>
-
-      {isMocked && (
-        <p className="f2-r text-muted">
-          Demo mode — escalations are canned. The backend chat endpoint is not
-          live yet.
-        </p>
-      )}
     </div>
   );
 }

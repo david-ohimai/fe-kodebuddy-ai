@@ -25,6 +25,8 @@ import { cx } from '@/lib/utils/cx';
 import { getLearnerAssignment } from '@/lib/api/assignments.api';
 import {
   createSubmission,
+  updateSubmission,
+  deleteSubmission,
   SUBMISSION_CONTENT_MAX_LENGTH,
 } from '@/lib/api/submissions.api';
 import { getErrorMessage } from '@/lib/api/client';
@@ -132,6 +134,10 @@ export default function AssignmentDetails({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [successOpen, setSuccessOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [editingSubmission, setEditingSubmission] = useState(false);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [withdrawConfirmOpen, setWithdrawConfirmOpen] = useState(false);
+  const [withdrawing, setWithdrawing] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -163,7 +169,9 @@ export default function AssignmentDetails({
   }, [assignmentId]);
 
   const toggleRequirement = useCallback((index: number) => {
-    setChecked((prev) => prev.map((value, i) => (i === index ? !value : value)));
+    setChecked((prev) =>
+      prev.map((value, i) => (i === index ? !value : value)),
+    );
   }, []);
 
   // Persisted here rather than inside the updater above: a state updater must
@@ -183,9 +191,7 @@ export default function AssignmentDetails({
 
   const completion = useMemo(() => {
     if (checked.length === 0) return 0;
-    return Math.round(
-      (checked.filter(Boolean).length / checked.length) * 100,
-    );
+    return Math.round((checked.filter(Boolean).length / checked.length) * 100);
   }, [checked]);
 
   const alreadySubmitted = Boolean(assignment?.submitted);
@@ -221,6 +227,72 @@ export default function AssignmentDetails({
       setSubmitting(false);
     }
   }, [assignment, trimmedLink, showError]);
+
+  const startEditingSubmission = useCallback(() => {
+    if (!assignment) return;
+    setSubmissionLink(assignment.submissionContent ?? '');
+    setLinkError(null);
+    setEditingSubmission(true);
+  }, [assignment]);
+
+  const handleSaveEdit = useCallback(async () => {
+    if (!assignment?.submissionId) return;
+    if (trimmedLink.length > SUBMISSION_CONTENT_MAX_LENGTH) {
+      setLinkError(
+        `Keep this under ${SUBMISSION_CONTENT_MAX_LENGTH} characters.`,
+      );
+      return;
+    }
+    setSavingEdit(true);
+    try {
+      const updated = await updateSubmission(
+        assignment.submissionId,
+        trimmedLink,
+      );
+      setAssignment((prev) =>
+        prev ? { ...prev, submissionContent: updated.content } : prev,
+      );
+      setEditingSubmission(false);
+      showSuccess('Submission updated.', 'Your changes have been saved.');
+    } catch (err) {
+      showError(
+        'Could not update submission',
+        getErrorMessage(err, 'Please try again.'),
+      );
+    } finally {
+      setSavingEdit(false);
+    }
+  }, [assignment, trimmedLink, showError, showSuccess]);
+
+  const handleWithdraw = useCallback(async () => {
+    if (!assignment?.submissionId) return;
+    setWithdrawing(true);
+    try {
+      await deleteSubmission(assignment.submissionId);
+      setAssignment((prev) =>
+        prev
+          ? {
+              ...prev,
+              status: 'pending',
+              submitted: false,
+              submissionId: null,
+              submittedAt: null,
+              submissionContent: null,
+            }
+          : prev,
+      );
+      setSubmissionLink('');
+      setWithdrawConfirmOpen(false);
+      showSuccess('Submission withdrawn.', 'You can submit again any time.');
+    } catch (err) {
+      showError(
+        'Could not withdraw submission',
+        getErrorMessage(err, 'Please try again.'),
+      );
+    } finally {
+      setWithdrawing(false);
+    }
+  }, [assignment, showError, showSuccess]);
 
   const openConfirm = useCallback(() => {
     if (trimmedLink.length > SUBMISSION_CONTENT_MAX_LENGTH) {
@@ -519,13 +591,13 @@ export default function AssignmentDetails({
 
           {/* Submission */}
           <DetailSection title="Submission">
-            {alreadySubmitted ? (
+            {alreadySubmitted && !editingSubmission ? (
               <div className="flex items-start gap-3 rounded-btn bg-secondary-light px-4 py-3.5">
                 <CheckCircle2
                   size={18}
                   className="mt-0.5 shrink-0 text-secondary-dark"
                 />
-                <div>
+                <div className="flex-1">
                   <p className="b2-m text-text">
                     Submitted
                     {assignment.submittedAt
@@ -543,6 +615,24 @@ export default function AssignmentDetails({
                       <span className="b2-m text-text">Feedback: </span>
                       {assignment.feedback}
                     </p>
+                  )}
+                  {!assignment.graded && assignment.submissionId && (
+                    <div className="mt-3 flex gap-4">
+                      <button
+                        type="button"
+                        onClick={startEditingSubmission}
+                        className="b2-b text-primary hover:underline"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setWithdrawConfirmOpen(true)}
+                        className="b2-b text-error hover:underline"
+                      >
+                        Withdraw
+                      </button>
+                    </div>
                   )}
                 </div>
               </div>
@@ -563,15 +653,38 @@ export default function AssignmentDetails({
                   }}
                 />
 
-                <AppButton
-                  className="mt-6 w-full sm:max-w-sm"
-                  radius="full"
-                  size="large"
-                  disabled={!canSubmit}
-                  onClick={openConfirm}
-                >
-                  Submit assignment
-                </AppButton>
+                <div className="mt-6 flex flex-wrap gap-3">
+                  <AppButton
+                    className="w-full sm:w-auto sm:min-w-60"
+                    radius="full"
+                    size="large"
+                    disabled={
+                      editingSubmission
+                        ? trimmedLink.length === 0 || savingEdit
+                        : !canSubmit
+                    }
+                    loading={editingSubmission ? savingEdit : undefined}
+                    onClick={editingSubmission ? handleSaveEdit : openConfirm}
+                  >
+                    {editingSubmission ? 'Save changes' : 'Submit assignment'}
+                  </AppButton>
+                  {editingSubmission && (
+                    <AppButton
+                      variant="outlined"
+                      color="neutral"
+                      radius="full"
+                      size="large"
+                      disabled={savingEdit}
+                      onClick={() => {
+                        setEditingSubmission(false);
+                        setSubmissionLink('');
+                        setLinkError(null);
+                      }}
+                    >
+                      Cancel
+                    </AppButton>
+                  )}
+                </div>
               </>
             )}
           </DetailSection>
@@ -633,6 +746,26 @@ export default function AssignmentDetails({
           label: 'Yes, Submit',
           onClick: handleSubmit,
           loading: submitting,
+        }}
+      />
+
+      <AppConfirmModal
+        open={withdrawConfirmOpen}
+        onClose={() => setWithdrawConfirmOpen(false)}
+        hideCloseOnBackdrop={withdrawing}
+        icon={<span className="text-5xl">⚠️</span>}
+        title="Withdraw submission?"
+        description="This removes your submitted link entirely. You can submit again any time before the due date."
+        secondaryButton={{
+          label: 'Cancel',
+          onClick: () => setWithdrawConfirmOpen(false),
+          disabled: withdrawing,
+        }}
+        primaryButton={{
+          label: 'Yes, withdraw',
+          color: 'error',
+          onClick: handleWithdraw,
+          loading: withdrawing,
         }}
       />
 

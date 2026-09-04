@@ -167,6 +167,7 @@ export default function MyCoursePage() {
             hasModules={assignmentsState.hasModules}
             addAssignment={assignmentsState.addAssignment}
             editAssignment={assignmentsState.editAssignment}
+            deleteAssignment={assignmentsState.deleteAssignment}
             onBack={() => setActiveTab('overview')}
           />
         )}

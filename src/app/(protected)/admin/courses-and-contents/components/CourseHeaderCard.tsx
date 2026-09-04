@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pencil, Send, Info } from 'lucide-react';
+import { Pencil, Send, Info, Trash2 } from 'lucide-react';
 import { AppCard } from '@/components/ui/AppCard';
 import AppButton from '@/components/ui/AppButton';
 import AppPill from '@/components/ui/AppPill';
@@ -10,6 +10,7 @@ export interface CourseHeaderCardProps {
   canPublish: boolean;
   onEditCourse: () => void;
   onPublishClick: () => void;
+  onDeleteClick: () => void;
 }
 
 export default function CourseHeaderCard({
@@ -17,6 +18,7 @@ export default function CourseHeaderCard({
   canPublish,
   onEditCourse,
   onPublishClick,
+  onDeleteClick,
 }: CourseHeaderCardProps) {
   return (
     <AppCard>
@@ -30,6 +32,16 @@ export default function CourseHeaderCard({
             />
           </div>
           <div className="flex items-center gap-3">
+            <AppButton
+              variant="outlined"
+              color="error"
+              size="small"
+              radius="full"
+              startIcon={<Trash2 size={14} />}
+              onClick={onDeleteClick}
+            >
+              Delete course
+            </AppButton>
             <AppButton
               variant="outlined"
               size="small"

@@ -99,8 +99,7 @@ function mapLearnerAssignment(
 
   // Past the due date and nothing handed in. The dashboard used to compute
   // this server-side; there is no other source for it now.
-  const isOverdue =
-    !submitted && new Date(dto.due_date).getTime() < Date.now();
+  const isOverdue = !submitted && new Date(dto.due_date).getTime() < Date.now();
 
   const startDate = dto.start_date ?? null;
 
@@ -134,6 +133,7 @@ function mapLearnerAssignment(
     score: submission?.score ?? null,
     isOverdue,
 
+    submissionId: submission?.id ?? null,
     submittedAt: submission?.submittedAt ?? null,
     submissionContent: submission?.content ?? null,
     feedback: submission?.feedback ?? null,

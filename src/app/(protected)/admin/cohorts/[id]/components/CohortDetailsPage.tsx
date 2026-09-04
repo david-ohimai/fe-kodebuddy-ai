@@ -12,7 +12,7 @@ import type { AuthUser } from '@/types/auth.types';
 import { AppCard } from '@/components/ui/AppCard';
 import AppSpinner from '@/components/ui/AppSpinner';
 import AppConfirmModal from '@/components/ui/AppConfirmModal';
-import { RefreshCw } from 'lucide-react';
+import { AlertTriangle, RefreshCw } from 'lucide-react';
 import { useToast } from '@/components/ui/ToastProvider';
 import { getErrorMessage } from '@/lib/api/client';
 import * as cohortsApi from '@/lib/api/cohorts.api';
@@ -37,6 +37,8 @@ export default function CohortDetailsPage({
   const [courseSubview, setCourseSubview] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isStatusConfirmOpen, setIsStatusConfirmOpen] = useState(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [deletingCohort, setDeletingCohort] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -238,6 +240,7 @@ export default function CohortDetailsPage({
         onAssignTrainerToCourse={() => setAssigningTrainer(true)}
         onEditCourse={() => setCourseSubview(true)}
         onEditCohort={() => setIsEditOpen(true)}
+        onDeleteCohort={() => setIsDeleteConfirmOpen(true)}
         onChangeStatus={() => setIsStatusConfirmOpen(true)}
       />
 
@@ -275,6 +278,50 @@ export default function CohortDetailsPage({
           label: 'Confirm',
           loading: saving,
           onClick: handleConfirmStatusChange,
+        }}
+      />
+
+      <AppConfirmModal
+        open={isDeleteConfirmOpen}
+        onClose={() => setIsDeleteConfirmOpen(false)}
+        icon={
+          <span className="flex h-16 w-16 items-center justify-center rounded-full bg-error/15">
+            <AlertTriangle size={28} className="text-error" />
+          </span>
+        }
+        title={`Delete ${cohort.name}?`}
+        description={`This permanently removes the cohort. Its ${cohort.totalLearners} learner${
+          cohort.totalLearners === 1 ? '' : 's'
+        } and ${cohort.courses.length} course${
+          cohort.courses.length === 1 ? '' : 's'
+        } will lose this cohort association. This action cannot be undone.`}
+        secondaryButton={{
+          label: 'Cancel',
+          onClick: () => setIsDeleteConfirmOpen(false),
+        }}
+        primaryButton={{
+          label: 'Yes, delete',
+          color: 'error',
+          loading: deletingCohort,
+          onClick: async () => {
+            setDeletingCohort(true);
+            try {
+              await cohortsApi.deleteCohort(cohortId);
+              showSuccess(
+                'Cohort deleted.',
+                `"${cohort.name}" has been removed.`,
+              );
+              router.push('/admin/cohorts');
+            } catch (error) {
+              showError(
+                'Could not delete cohort',
+                getErrorMessage(error, 'Please try again.'),
+              );
+            } finally {
+              setDeletingCohort(false);
+              setIsDeleteConfirmOpen(false);
+            }
+          },
         }}
       />
     </>

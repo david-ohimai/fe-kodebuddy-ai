@@ -21,11 +21,7 @@ export interface AssignmentItem {
  * does, the Pending tab is correctly empty rather than guessing.
  */
 export type AssignmentStatus =
-  | 'pending'
-  | 'in-progress'
-  | 'submitted'
-  | 'graded'
-  | 'overdue';
+  'pending' | 'in-progress' | 'submitted' | 'graded' | 'overdue';
 
 export interface Assignment {
   id: number;
@@ -64,6 +60,7 @@ export interface LearnerAssignment extends Assignment {
   isOverdue: boolean;
 
   /** From the learner's own submission, when one exists. */
+  submissionId: number | null;
   submittedAt: string | null;
   submissionContent: string | null;
   feedback: string | null;

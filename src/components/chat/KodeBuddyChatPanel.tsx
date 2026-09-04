@@ -207,6 +207,9 @@ export default function KodeBuddyChatPanel({
             offersEscalation: answer.offersEscalation,
             escalated: answer.escalated,
             escalationId: answer.escalationId,
+            escalationReason: answer.escalationReason,
+            escalationDetail: answer.escalationDetail,
+            confidenceScore: answer.confidenceScore,
           },
         ]);
         setStreamingText('');
