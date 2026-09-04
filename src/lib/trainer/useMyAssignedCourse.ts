@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import * as coursesApi from '@/lib/api/courses.api';
 import * as cohortsApi from '@/lib/api/cohorts.api';
+import { getTrainerDashboard } from '@/lib/api/dashboard.api';
+import { ApiError } from '@/lib/api/client';
 import type { Course } from '@/lib/api/courses.api';
 import type { Cohort, CohortLearner } from '@/lib/api/cohorts.api';
 
@@ -21,6 +23,54 @@ interface UseMyAssignedCourseResult {
   error: string | null;
 }
 
+function firstNumber(...candidates: unknown[]): number | null {
+  for (const c of candidates) {
+    if (typeof c === 'number' && Number.isFinite(c)) return c;
+  }
+  return null;
+}
+
+function extractAssignment(
+  raw: unknown,
+): { cohortId: number; courseId: number | null } | null {
+  console.log('[useMyAssignedCourse] Raw /dashboard/trainer response:', raw);
+
+  if (!raw || typeof raw !== 'object') return null;
+  const obj = raw as Record<string, unknown>;
+
+  const cohort = obj.cohort as Record<string, unknown> | undefined;
+  const course = obj.course as Record<string, unknown> | undefined;
+  const cohorts = obj.cohorts as unknown[] | undefined;
+  const courses = obj.courses as unknown[] | undefined;
+  const firstOfArray = (arr: unknown[] | undefined) =>
+    arr && arr.length > 0 && typeof arr[0] === 'object'
+      ? (arr[0] as Record<string, unknown>)
+      : undefined;
+  const firstCohortFromArray = firstOfArray(cohorts);
+  const firstCourseFromArray = firstOfArray(courses);
+
+  const cohortId = firstNumber(
+    obj.cohort_id,
+    obj.cohortId,
+    cohort?.id,
+    cohort?.cohort_id,
+    firstCohortFromArray?.id,
+    firstCohortFromArray?.cohort_id,
+  );
+
+  const courseId = firstNumber(
+    obj.course_id,
+    obj.courseId,
+    course?.id,
+    course?.course_id,
+    firstCourseFromArray?.id,
+    firstCourseFromArray?.course_id,
+  );
+
+  if (cohortId === null) return null;
+  return { cohortId, courseId };
+}
+
 export function useMyAssignedCourse(
   trainerId: number | undefined,
 ): UseMyAssignedCourseResult {
@@ -37,25 +87,10 @@ export function useMyAssignedCourse(
 
     (async () => {
       try {
-        const [cohorts, courses] = await Promise.all([
-          cohortsApi.listCohorts(),
-          coursesApi.listCourses(),
-        ]);
+        const dashboard = await getTrainerDashboard();
+        const assignment = extractAssignment(dashboard);
 
-        const assignments = await Promise.all(
-          cohorts.map((cohort) =>
-            cohortsApi
-              .getCohortTrainers(cohort.id)
-              .then((trainers) => ({ cohort, trainers }))
-              .catch(() => ({ cohort, trainers: [] })),
-          ),
-        );
-
-        const myAssignment = assignments.find(({ trainers }) =>
-          trainers.some((t) => t.trainerId === trainerId && !t.removedAt),
-        );
-
-        if (!myAssignment) {
+        if (!assignment) {
           if (!cancelled) {
             setData(null);
             setCohortWithoutCourse(null);
@@ -63,20 +98,42 @@ export function useMyAssignedCourse(
           return;
         }
 
-        const course =
-          courses.find((c) => c.cohortId === myAssignment.cohort.id) ?? null;
+        const cohort = await cohortsApi.getCohortById(assignment.cohortId);
+
+        let course: Course | null = assignment.courseId
+          ? await coursesApi.getCourse(assignment.courseId).catch(() => null)
+          : null;
+
+        if (!course) {
+          const allCourses = await coursesApi.listCourses();
+          const cohortCourses = allCourses
+            .filter((c) => c.cohortId === cohort.id)
+            .sort(
+              (a, b) => Number(b.isActive) - Number(a.isActive) || b.id - a.id,
+            );
+          course = cohortCourses[0] ?? null;
+        }
 
         if (!course) {
           if (!cancelled) {
             setData(null);
-            setCohortWithoutCourse(myAssignment.cohort);
+            setCohortWithoutCourse(cohort);
           }
           return;
         }
 
-        const learners = await cohortsApi.getCohortLearners(
-          myAssignment.cohort.id,
-        );
+        const learners = await cohortsApi
+          .getCohortLearners(cohort.id)
+          .catch((err) => {
+            const detail =
+              err instanceof ApiError
+                ? `${err.status} ${err.message}`
+                : String(err);
+            console.error(
+              `[useMyAssignedCourse] GET /assign-cohorts/${cohort.id}/learners failed: ${detail}`,
+            );
+            return [];
+          });
         const activeLearners = learners.filter((l) => l.isActive);
         const completionPercent =
           activeLearners.length === 0
@@ -88,16 +145,24 @@ export function useMyAssignedCourse(
               );
 
         if (!cancelled) {
+          setError(null);
           setCohortWithoutCourse(null);
           setData({
             course,
-            cohort: myAssignment.cohort,
+            cohort,
             learners: activeLearners,
             learnerCount: activeLearners.length,
             completionPercent,
           });
         }
-      } catch {
+      } catch (err) {
+        const detail =
+          err instanceof ApiError
+            ? `${err.status} ${err.message}`
+            : String(err);
+        console.error(
+          `[useMyAssignedCourse] GET /dashboard/trainer failed: ${detail}`,
+        );
         if (!cancelled) {
           setError('Could not load your assigned course. Please try again.');
         }

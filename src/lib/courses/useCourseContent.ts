@@ -13,7 +13,7 @@ interface ToastOverride {
   message: string;
 }
 
-export function useCourseContent(courseId: number) {
+export function useCourseContent(courseId: number | null | undefined) {
   const { showSuccess, showError } = useToast();
 
   const [modules, setModules] = useState<CourseModule[]>([]);
@@ -24,6 +24,12 @@ export function useCourseContent(courseId: number) {
   const [saving, setSaving] = useState(false);
 
   const loadContent = () => {
+    if (!courseId) {
+      setModules([]);
+      setLessonsByModule({});
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     modulesApi
       .listCourseModules(courseId)
@@ -62,6 +68,7 @@ export function useCourseContent(courseId: number) {
     data: { title: string; description?: string },
     toastOverride?: ToastOverride,
   ) => {
+    if (!courseId) throw new Error('No course selected.');
     const created = await modulesApi.createModule({
       courseId,
       title: data.title,

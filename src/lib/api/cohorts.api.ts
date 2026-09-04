@@ -130,20 +130,25 @@ export async function listCohortLearners(
 
   const usersById = new Map(users.map((user) => [user.id, mapUser(user)]));
 
-  return enrollments.map((enrollment) => {
-    const user = usersById.get(enrollment.learner_id);
-    return {
-      id: enrollment.id,
-      cohortId: enrollment.cohort_id,
-      learnerId: enrollment.learner_id,
-      fullName: user?.fullName ?? null,
-      email: user?.email ?? '—',
-      joinedAt: enrollment.joined_at,
-      completedAt: enrollment.completed_at,
-      isActive: enrollment.is_active && (user?.isActive ?? true),
-      currentCourseId: user?.courseId ?? null,
-    };
-  });
+  return enrollments
+    .filter((enrollment) => {
+      const user = usersById.get(enrollment.learner_id);
+      return !user || user.role === 'learner';
+    })
+    .map((enrollment) => {
+      const user = usersById.get(enrollment.learner_id);
+      return {
+        id: enrollment.id,
+        cohortId: enrollment.cohort_id,
+        learnerId: enrollment.learner_id,
+        fullName: user?.fullName ?? null,
+        email: user?.email ?? '—',
+        joinedAt: enrollment.joined_at,
+        completedAt: enrollment.completed_at,
+        isActive: enrollment.is_active && (user?.isActive ?? true),
+        currentCourseId: user?.courseId ?? null,
+      };
+    });
 }
 
 export const getCohortLearners = listCohortLearners;

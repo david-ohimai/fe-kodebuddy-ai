@@ -5,14 +5,16 @@ import { Bell, ChevronRight } from 'lucide-react';
 import { cx } from '@/lib/utils/cx';
 import {
   listMyNotifications,
+  listTrainerNotifications,
+  listGenericNotifications,
   markNotificationRead,
 } from '@/lib/api/notifications.api';
+import { useCurrentUserContext } from '@/lib/auth/CurrentUserContext';
 import {
   formatRelativeTime,
   type AppNotification,
 } from '@/types/notification.types';
 
-/** How many the menu previews before deferring to "View all notification". */
 const PREVIEW_LIMIT = 5;
 
 export interface NotificationsMenuProps {
@@ -22,32 +24,29 @@ export interface NotificationsMenuProps {
 export default function NotificationsMenu({
   className,
 }: NotificationsMenuProps) {
+  const { user } = useCurrentUserContext();
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
 
-  /**
-   * Loaded on mount for the unread badge, then again whenever the menu is
-   * opened so a notification raised while the page sat idle still shows.
-   *
-   * A failure leaves the list empty and the badge hidden: an assistant panel
-   * that cannot reach its notifications is not worth an error toast on every
-   * page load.
-   */
   useEffect(() => {
     let cancelled = false;
+    const fetchNotifications =
+      user?.role === 'trainer'
+        ? listTrainerNotifications
+        : user?.role === 'learner'
+          ? listMyNotifications
+          : listGenericNotifications;
 
-    listMyNotifications()
+    fetchNotifications()
       .then((list) => {
         if (!cancelled) setNotifications(list);
       })
-      .catch(() => {
-        /* badge stays hidden */
-      });
+      .catch(() => {});
 
     return () => {
       cancelled = true;
     };
-  }, [open]);
+  }, [open, user?.role]);
 
   const unreadCount = useMemo(
     () => notifications.filter((n) => !n.read).length,
@@ -56,20 +55,13 @@ export default function NotificationsMenu({
 
   const preview = notifications.slice(0, PREVIEW_LIMIT);
 
-  /**
-   * Marked one at a time — the backend exposes no bulk endpoint. The list is
-   * updated first so the badge clears immediately, and any request that fails
-   * is rolled back by the next load.
-   */
   const markAllRead = useCallback(async () => {
     const unread = notifications.filter((n) => !n.read);
     if (unread.length === 0) return;
 
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
 
-    await Promise.allSettled(
-      unread.map((n) => markNotificationRead(n.id)),
-    );
+    await Promise.allSettled(unread.map((n) => markNotificationRead(n.id)));
   }, [notifications]);
 
   const markRead = useCallback(async (id: string) => {
@@ -79,9 +71,7 @@ export default function NotificationsMenu({
 
     try {
       await markNotificationRead(id);
-    } catch {
-      // Left as read locally; the next load restores the true state.
-    }
+    } catch {}
   }, []);
 
   return (
@@ -188,8 +178,6 @@ export default function NotificationsMenu({
               </ul>
             )}
 
-            {/* No notifications page exists yet, so this closes the menu. Point
-                it at the route once one is built. */}
             <div className="border-t border-disabled px-5 py-3.5">
               <button
                 type="button"

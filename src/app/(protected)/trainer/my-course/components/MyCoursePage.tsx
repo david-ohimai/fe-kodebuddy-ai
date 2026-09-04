@@ -58,7 +58,7 @@ export default function MyCoursePage() {
     cohortWithoutCourse,
     loading: loadingCourse,
   } = useMyAssignedCourse(user?.id);
-  const content = useCourseContent(data?.course.id ?? 0);
+  const content = useCourseContent(data?.course.id);
   const assignmentsState = useCourseAssignments(
     content.modules,
     data?.cohort.endDate,

@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { TrendingUp, AlertCircle, UserCircle2 } from 'lucide-react';
+import { AlertCircle, TrendingUp, UserCircle2 } from 'lucide-react';
 import { AppCard } from '@/components/ui/AppCard';
 import AppEmptyState from '@/components/ui/AppEmptyState';
 import AppSpinner from '@/components/ui/AppSpinner';

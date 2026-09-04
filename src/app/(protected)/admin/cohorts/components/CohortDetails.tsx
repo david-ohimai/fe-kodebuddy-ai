@@ -33,6 +33,7 @@ interface CohortDetailsViewProps {
   onViewLearners?: () => void;
   onAddLearners?: () => void;
   onAssignTrainer?: () => void;
+  onAssignTrainerToCourse?: () => void;
   onEditCourse?: () => void;
   onChangeStatus?: () => void;
 }
@@ -145,6 +146,7 @@ const CohortDetailsView: React.FC<CohortDetailsViewProps> = ({
   onViewLearners,
   onAddLearners,
   onAssignTrainer,
+  onAssignTrainerToCourse,
   onEditCourse,
   onChangeStatus,
 }) => {
@@ -240,6 +242,13 @@ const CohortDetailsView: React.FC<CohortDetailsViewProps> = ({
             }
             actionLabel="Assign trainer"
             onAction={onAssignTrainer}
+            menu={[
+              { label: 'Assign trainer', onSelect: onAssignTrainer },
+              {
+                label: 'Assign trainer to course',
+                onSelect: onAssignTrainerToCourse,
+              },
+            ]}
           />
 
           <DetailListItem

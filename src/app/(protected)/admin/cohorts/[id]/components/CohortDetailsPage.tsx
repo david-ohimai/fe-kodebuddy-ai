@@ -33,7 +33,9 @@ export default function CohortDetailsPage({
   const [cohort, setCohort] = useState<CohortDetails | null>(null);
   const [rawCohort, setRawCohort] = useState<Cohort | null>(null);
   const [loading, setLoading] = useState(true);
-  const [changingTrainer, setChangingTrainer] = useState(false);
+  const [trainerMode, setTrainerMode] = useState<'cohort' | 'course' | null>(
+    null,
+  );
   const [courseSubview, setCourseSubview] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isStatusConfirmOpen, setIsStatusConfirmOpen] = useState(false);
@@ -116,12 +118,13 @@ export default function CohortDetailsPage({
     );
   }
 
-  if (changingTrainer) {
+  if (trainerMode) {
     return (
       <ChangeTrainerPage
         cohortId={cohortId}
         cohort={cohort}
-        onBack={() => setChangingTrainer(false)}
+        mode={trainerMode}
+        onBack={() => setTrainerMode(null)}
         onAssigned={(trainers: AuthUser[]) => {
           setCohort((current) =>
             current
@@ -231,7 +234,8 @@ export default function CohortDetailsPage({
         onAddLearners={() =>
           router.push(`/admin/cohorts/${cohortId}/learners/assign`)
         }
-        onAssignTrainer={() => setChangingTrainer(true)}
+        onAssignTrainer={() => setTrainerMode('cohort')}
+        onAssignTrainerToCourse={() => setTrainerMode('course')}
         onEditCourse={() => setCourseSubview(true)}
         onEditCohort={() => setIsEditOpen(true)}
         onChangeStatus={() => setIsStatusConfirmOpen(true)}
