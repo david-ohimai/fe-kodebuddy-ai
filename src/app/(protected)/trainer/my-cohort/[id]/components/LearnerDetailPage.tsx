@@ -53,7 +53,7 @@ export default function LearnerDetailPage({
   const { data: courseData, loading: loadingCourse } = useMyAssignedCourse(
     user?.id,
   );
-  const content = useCourseContent(courseData?.course.id ?? 0);
+  const content = useCourseContent(courseData?.course.id);
   const { identity, detail, loading, sending, sendCheckIn, recommendResource } =
     useLearnerDetail(
       courseData?.cohort.id,

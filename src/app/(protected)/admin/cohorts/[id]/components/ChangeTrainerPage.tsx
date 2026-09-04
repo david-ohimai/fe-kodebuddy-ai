@@ -6,17 +6,21 @@ import AppButton from '@/components/ui/AppButton';
 import { AppCard } from '@/components/ui/AppCard';
 import AppConfirmModal from '@/components/ui/AppConfirmModal';
 import AppCheckboxCard from '@/components/ui/AppCheckboxCard';
+import AppSearchSelect from '@/components/ui/AppSearchSelect';
 import AppSpinner from '@/components/ui/AppSpinner';
 import { useToast } from '@/components/ui/ToastProvider';
 import { getErrorMessage } from '@/lib/api/client';
 import * as cohortsApi from '@/lib/api/cohorts.api';
+import * as coursesApi from '@/lib/api/courses.api';
 import * as profileApi from '@/lib/api/profile.api';
 import type { AuthUser } from '@/types/auth.types';
+import type { Course } from '@/lib/api/courses.api';
 import type { CohortDetails } from '@/app/(protected)/admin/cohorts/components/CohortDetails';
 
 interface ChangeTrainerPageProps {
   cohortId: number;
   cohort: CohortDetails;
+  mode: 'cohort' | 'course';
   onBack: () => void;
   onAssigned: (trainers: AuthUser[]) => void;
 }
@@ -24,6 +28,7 @@ interface ChangeTrainerPageProps {
 export default function ChangeTrainerPage({
   cohortId,
   cohort,
+  mode,
   onBack,
   onAssigned,
 }: ChangeTrainerPageProps) {
@@ -31,6 +36,8 @@ export default function ChangeTrainerPage({
   const [trainers, setTrainers] = useState<AuthUser[]>([]);
   const [assignedIds, setAssignedIds] = useState<Set<number>>(new Set());
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [selectedCourseId, setSelectedCourseId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -40,8 +47,9 @@ export default function ChangeTrainerPage({
     Promise.all([
       profileApi.listUsers(),
       cohortsApi.listCohortTrainers(cohortId),
+      coursesApi.listCourses(),
     ])
-      .then(([users, assignments]) => {
+      .then(([users, assignments, allCourses]) => {
         if (cancelled) return;
         const available = users.filter((user) => user.role === 'trainer');
         const active = new Set(
@@ -49,7 +57,7 @@ export default function ChangeTrainerPage({
         );
         setTrainers(available);
         setAssignedIds(active);
-        setSelectedIds(new Set(active));
+        setCourses(allCourses.filter((c) => c.cohortId === cohortId));
       })
       .catch((error) => {
         if (!cancelled) {
@@ -69,13 +77,14 @@ export default function ChangeTrainerPage({
   }, [cohortId, showError]);
 
   const currentTrainers = trainers.filter((t) => assignedIds.has(t.id));
-  const newlySelected = trainers.filter(
-    (t) => selectedIds.has(t.id) && !assignedIds.has(t.id),
-  );
-  const canAssign = newlySelected.length > 0;
+  const selectableTrainers = trainers.filter((t) => !assignedIds.has(t.id));
+  const newlySelected = selectableTrainers.filter((t) => selectedIds.has(t.id));
+  const selectedCourse = courses.find((c) => c.id === selectedCourseId);
+  const courseRequired = mode === 'course';
+  const canAssign =
+    newlySelected.length > 0 && (!courseRequired || !!selectedCourseId);
 
   const toggleTrainer = (id: number, checked: boolean) => {
-    if (assignedIds.has(id)) return;
     setSelectedIds((prev) => {
       const next = new Set(prev);
       if (checked) next.add(id);
@@ -86,6 +95,7 @@ export default function ChangeTrainerPage({
 
   const assignTrainers = async () => {
     if (newlySelected.length === 0) return;
+    if (courseRequired && !selectedCourseId) return;
     setSaving(true);
     try {
       await Promise.all(
@@ -93,15 +103,26 @@ export default function ChangeTrainerPage({
           cohortsApi.assignCohortTrainer(cohortId, t.id),
         ),
       );
+      if (selectedCourseId) {
+        await Promise.all(
+          newlySelected.map((t) =>
+            coursesApi.assignCourseTrainer(selectedCourseId, t.id),
+          ),
+        );
+      }
       const allAssigned = [...currentTrainers, ...newlySelected];
       onAssigned(allAssigned);
       showSuccess(
         newlySelected.length === 1
           ? 'Trainer assigned successfully.'
           : 'Trainers assigned successfully.',
-        `${newlySelected.map((t) => t.fullName || t.email).join(', ')} ${
-          newlySelected.length === 1 ? 'is' : 'are'
-        } now assigned to ${cohort.name}.`,
+        selectedCourse
+          ? `${newlySelected.map((t) => t.fullName || t.email).join(', ')} ${
+              newlySelected.length === 1 ? 'is' : 'are'
+            } now assigned to ${cohort.name} and ${selectedCourse.title}.`
+          : `${newlySelected.map((t) => t.fullName || t.email).join(', ')} ${
+              newlySelected.length === 1 ? 'is' : 'are'
+            } now assigned to ${cohort.name}.`,
       );
       onBack();
     } catch (error) {
@@ -136,9 +157,13 @@ export default function ChangeTrainerPage({
 
       <AppCard padding="none">
         <div className="border-b border-disabled px-6 py-5">
-          <h1 className="h5-b text-text">Assign trainer</h1>
+          <h1 className="h5-b text-text">
+            {courseRequired ? 'Assign trainer to course' : 'Assign trainer'}
+          </h1>
           <p className="b2-r mt-1 text-muted">
-            Select one or more trainers to assign to this cohort.
+            {courseRequired
+              ? 'Choose a course, then select trainers to assign to it.'
+              : 'Select one or more trainers to assign to this cohort.'}
           </p>
         </div>
         <div className="px-6 py-5">
@@ -167,6 +192,42 @@ export default function ChangeTrainerPage({
         </div>
       </AppCard>
 
+      {courseRequired && (
+        <div className="flex flex-col gap-3">
+          <span className="b2-b text-text">
+            Course
+            <span className="text-error"> *</span>
+          </span>
+          {courses.length === 0 ? (
+            <div className="flex items-start gap-3 rounded-input bg-warning/10 p-4">
+              <AlertTriangle
+                size={18}
+                className="mt-0.5 shrink-0 text-warning"
+              />
+              <p className="b2-r text-text-secondary">
+                This cohort has no course yet. Add one first (via the Courses
+                action on cohort details) before assigning a trainer to a
+                course.
+              </p>
+            </div>
+          ) : (
+            <AppSearchSelect
+              hideSearch
+              value={selectedCourseId ? String(selectedCourseId) : ''}
+              options={courses.map((c) => ({
+                value: String(c.id),
+                label: c.title,
+                description: c.level ?? undefined,
+              }))}
+              onChange={(value) => setSelectedCourseId(Number(value))}
+              placeholder="Select a course"
+              ariaLabel="Select a course"
+              className="w-full max-w-md"
+            />
+          )}
+        </div>
+      )}
+
       <div>
         <h2 className="h6-b text-text">Currently assigned trainers</h2>
         {currentTrainers.length > 0 ? (
@@ -188,47 +249,58 @@ export default function ChangeTrainerPage({
         )}
       </div>
 
-      <div className="flex justify-end gap-3">
-        <AppButton
-          variant="outlined"
-          color="neutral"
-          radius="full"
-          onClick={onBack}
-        >
-          Cancel
-        </AppButton>
-        <AppButton
-          radius="full"
-          disabled={!canAssign || saving}
-          loading={saving}
-          onClick={() => setConfirmOpen(true)}
-        >
-          Assign trainer{newlySelected.length !== 1 ? 's' : ''}
-        </AppButton>
-      </div>
+      {(!courseRequired || selectedCourseId) && (
+        <>
+          <div className="flex justify-end gap-3">
+            <AppButton
+              variant="outlined"
+              color="neutral"
+              radius="full"
+              onClick={onBack}
+            >
+              Cancel
+            </AppButton>
+            <AppButton
+              radius="full"
+              disabled={!canAssign || saving}
+              loading={saving}
+              onClick={() => setConfirmOpen(true)}
+            >
+              Assign trainer{newlySelected.length !== 1 ? 's' : ''}
+            </AppButton>
+          </div>
 
-      <AppCard padding="none">
-        <div className="border-b border-disabled px-6 py-5">
-          <h2 className="h6-b text-text">Select trainers</h2>
-          <p className="f1-r mt-1 text-muted">
-            Already-assigned trainers are checked and can&apos;t be removed
-            here.
-          </p>
-        </div>
-        <div className="flex flex-col gap-2.5 px-3 py-3">
-          {trainers.map((trainer) => (
-            <AppCheckboxCard
-              key={trainer.id}
-              value={String(trainer.id)}
-              label={trainer.fullName || '—'}
-              description={trainer.email}
-              checked={selectedIds.has(trainer.id)}
-              disabled={assignedIds.has(trainer.id)}
-              onChange={(_, checked) => toggleTrainer(trainer.id, checked)}
-            />
-          ))}
-        </div>
-      </AppCard>
+          <AppCard padding="none">
+            <div className="border-b border-disabled px-6 py-5">
+              <h2 className="h6-b text-text">Select trainers</h2>
+              <p className="f1-r mt-1 text-muted">
+                Already-assigned trainers are shown above and don&apos;t appear
+                here.
+              </p>
+            </div>
+            {selectableTrainers.length === 0 ? (
+              <p className="b2-r px-6 py-8 text-center text-muted">
+                Every trainer is already assigned to this cohort.
+              </p>
+            ) : (
+              <div className="flex flex-col gap-2.5 px-3 py-3">
+                {selectableTrainers.map((trainer) => (
+                  <AppCheckboxCard
+                    key={trainer.id}
+                    value={String(trainer.id)}
+                    label={trainer.fullName || '—'}
+                    description={trainer.email}
+                    checked={selectedIds.has(trainer.id)}
+                    onChange={(_, checked) =>
+                      toggleTrainer(trainer.id, checked)
+                    }
+                  />
+                ))}
+              </div>
+            )}
+          </AppCard>
+        </>
+      )}
 
       <AppConfirmModal
         open={confirmOpen}
@@ -239,9 +311,17 @@ export default function ChangeTrainerPage({
           </span>
         }
         title={`Assign ${newlySelected.length} trainer${newlySelected.length !== 1 ? 's' : ''}?`}
-        description={`${newlySelected
-          .map((t) => t.fullName || t.email)
-          .join(', ')} will be added to ${cohort.name}.`}
+        description={
+          selectedCourse
+            ? `${newlySelected
+                .map((t) => t.fullName || t.email)
+                .join(
+                  ', ',
+                )} will be added to ${cohort.name} and ${selectedCourse.title}.`
+            : `${newlySelected
+                .map((t) => t.fullName || t.email)
+                .join(', ')} will be added to ${cohort.name}.`
+        }
         secondaryButton={{
           label: 'Cancel',
           onClick: () => setConfirmOpen(false),
