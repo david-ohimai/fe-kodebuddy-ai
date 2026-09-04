@@ -1,6 +1,9 @@
 import { apiFetch } from './client';
 import { mapUser } from './auth.api';
-import type { CreateCohortPayload, UpdateCohortPayload } from '@/types/cohort.types';
+import type {
+  CreateCohortPayload,
+  UpdateCohortPayload,
+} from '@/types/cohort.types';
 import type { UserDto } from '@/types/auth.types';
 
 export interface Cohort {
@@ -93,11 +96,6 @@ export async function updateCohort(
   return mapCohort(dto);
 }
 
-// ── Learners ────────────────────────────────────────────────────────
-// One canonical shape covering both consumers: the admin Cohorts UI
-// needs the learner's name/email for display, and the trainer dashboard
-// needs cohortId/completedAt to compute real completion percentages.
-
 export interface CohortLearner {
   id: number;
   cohortId: number;
@@ -132,11 +130,6 @@ interface CohortLearnerResponseDto {
   current_course_title?: string | null;
 }
 
-/**
- * GET /assign-cohorts/{cohort_id}/learners, enriched with each
- * learner's name/email via GET /profile/users — the enrollment endpoint
- * only returns learner_id, not the learner's profile.
- */
 export async function listCohortLearners(
   cohortId: number,
 ): Promise<CohortLearner[]> {
@@ -172,10 +165,7 @@ export async function listCohortLearners(
   });
 }
 
-/** Alias — lib/trainer/useMyAssignedCourse.ts was written against this name. Same data. */
 export const getCohortLearners = listCohortLearners;
-
-// ── Trainers ────────────────────────────────────────────────────────
 
 export interface CohortTrainer {
   id: number;
@@ -203,7 +193,6 @@ function mapCohortTrainer(dto: CohortTrainerResponseDto): CohortTrainer {
   };
 }
 
-/** GET /assign-cohorts/{cohort_id}/trainers */
 export async function listCohortTrainers(
   cohortId: number,
 ): Promise<CohortTrainer[]> {
@@ -214,7 +203,6 @@ export async function listCohortTrainers(
   return dtos.map(mapCohortTrainer);
 }
 
-/** Alias — lib/trainer/useMyAssignedCourse.ts was written against this name. Same data. */
 export const getCohortTrainers = listCohortTrainers;
 
 export async function assignCohortTrainer(
@@ -230,4 +218,41 @@ export async function assignCohortTrainer(
     },
   );
   return mapCohortTrainer(dto);
+}
+
+export interface CohortEnrollment {
+  id: number;
+  cohortId: number;
+  learnerId: number;
+  joinedAt: string;
+  isActive: boolean;
+}
+
+function mapCohortEnrollment(dto: CohortLearnerResponseDto): CohortEnrollment {
+  return {
+    id: dto.id,
+    cohortId: dto.cohort_id,
+    learnerId: dto.learner_id,
+    joinedAt: dto.joined_at,
+    isActive: dto.is_active,
+  };
+}
+
+export async function joinCohort(cohortId: number): Promise<CohortEnrollment> {
+  const dto = await apiFetch<CohortLearnerResponseDto>(
+    `/assign-cohorts/${cohortId}/join`,
+    { method: 'POST', auth: true },
+  );
+  return mapCohortEnrollment(dto);
+}
+
+export async function assignCohortLearner(
+  cohortId: number,
+  learnerId: number,
+): Promise<CohortEnrollment> {
+  const dto = await apiFetch<CohortLearnerResponseDto>(
+    `/assign-cohorts/${cohortId}/learner`,
+    { method: 'POST', auth: true, body: { learner_id: learnerId } },
+  );
+  return mapCohortEnrollment(dto);
 }

@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
   ArrowLeft,
+  BookOpen,
   Calendar,
   Clock,
   Mail,
@@ -19,11 +20,15 @@ import AppInfoCard from '@/components/ui/AppInfoCard';
 import AppActionsCard from '@/components/ui/AppActionsCard';
 import AppDropdown from '@/components/ui/AppDropdown';
 import AppPill from '@/components/ui/AppPill';
+import AppButton from '@/components/ui/AppButton';
 import AppSpinner from '@/components/ui/AppSpinner';
 import AppConfirmModal from '@/components/ui/AppConfirmModal';
 import { useToast } from '@/components/ui/ToastProvider';
 import { useCurrentUserContext } from '@/lib/auth/CurrentUserContext';
+import { useAvailableCourses } from '@/lib/onboarding/useAvailableCourses';
 import * as profileApi from '@/lib/api/profile.api';
+import { assignLearnerToCourse } from '@/lib/api/courses.api';
+import { assignCohortLearner } from '@/lib/api/cohorts.api';
 import { getErrorMessage } from '@/lib/api/client';
 import type { AuthUser, UserRole } from '@/types/auth.types';
 
@@ -84,6 +89,12 @@ export default function UserDetails({ userId }: UserDetailsProps) {
   const [modal, setModal] = useState<ModalKind>(null);
   const [saving, setSaving] = useState(false);
 
+  const [selectedCourseId, setSelectedCourseId] = useState<number | null>(null);
+  const [courseSaving, setCourseSaving] = useState(false);
+  const [courseModalOpen, setCourseModalOpen] = useState(false);
+  const { courses: availableCourses, loading: coursesLoading } =
+    useAvailableCourses();
+
   useEffect(() => {
     let cancelled = false;
     profileApi
@@ -93,6 +104,7 @@ export default function UserDetails({ userId }: UserDetailsProps) {
         setUser(u);
         setSelectedRole(u.role);
         setSelectedStatus(u.isActive ? 'active' : 'suspended');
+        setSelectedCourseId(u.courseId);
       })
       .catch(() => {
         if (!cancelled) setNotFound(true);
@@ -140,7 +152,40 @@ export default function UserDetails({ userId }: UserDetailsProps) {
     selectedStatus !== (user.isActive ? 'active' : 'suspended');
   const isDirty = roleDirty || statusDirty;
 
+  const courseDirty = selectedCourseId !== user.courseId;
+  const currentCourseTitle = availableCourses.find(
+    (c) => c.id === user.courseId,
+  )?.title;
+
   const displayName = user.fullName || user.email;
+
+  const handleSaveCourse = async () => {
+    if (!selectedCourseId || !courseDirty) return;
+    setCourseSaving(true);
+    try {
+      const targetCourse = availableCourses.find(
+        (c) => c.id === selectedCourseId,
+      );
+
+      if (targetCourse) {
+        await assignCohortLearner(targetCourse.cohortId, user.id);
+      }
+      await assignLearnerToCourse(selectedCourseId, user.id);
+      setUser({ ...user, courseId: selectedCourseId });
+      showSuccess(
+        'Course updated successfully.',
+        `${displayName} is now enrolled in ${targetCourse?.title ?? 'the selected course'}.`,
+      );
+    } catch (err) {
+      showError(
+        'Could not change course',
+        getErrorMessage(err, 'Please try again.'),
+      );
+    } finally {
+      setCourseSaving(false);
+      setCourseModalOpen(false);
+    }
+  };
 
   const handleCancel = () => {
     setSelectedRole(user.role);
@@ -275,6 +320,15 @@ export default function UserDetails({ userId }: UserDetailsProps) {
               value: formatDate(user.createdAt),
             },
             { icon: Clock, label: 'Last active', value: '—' },
+            ...(user.role === 'learner'
+              ? [
+                  {
+                    icon: BookOpen,
+                    label: 'Enrolled course',
+                    value: currentCourseTitle ?? 'Not selected yet',
+                  },
+                ]
+              : []),
           ]}
         />
 
@@ -334,6 +388,57 @@ export default function UserDetails({ userId }: UserDetailsProps) {
                 </>
               ),
             },
+            ...(user.role === 'learner'
+              ? [
+                  {
+                    icon: BookOpen,
+                    iconVariant: 'primary' as const,
+                    title: 'Change course',
+                    description:
+                      'Move the learner onto a different admin-created course.',
+                    control: coursesLoading ? (
+                      <div className="flex items-center py-1">
+                        <AppSpinner size={20} />
+                      </div>
+                    ) : availableCourses.length === 0 ? (
+                      <p className="f1-r text-muted">
+                        No active courses exist yet.
+                      </p>
+                    ) : (
+                      <>
+                        <label className="f1-m mb-1.5 block text-text-secondary">
+                          Select course
+                        </label>
+                        <div className="flex flex-col gap-2 sm:flex-row">
+                          <AppDropdown
+                            value={
+                              selectedCourseId ? String(selectedCourseId) : ''
+                            }
+                            options={availableCourses.map((c) => ({
+                              label: c.title,
+                              value: String(c.id),
+                            }))}
+                            onChange={(value) =>
+                              setSelectedCourseId(Number(value))
+                            }
+                            ariaLabel="Select course"
+                            placeholder="Choose a course"
+                            className="w-full flex-1"
+                          />
+                          <AppButton
+                            size="small"
+                            radius="full"
+                            disabled={!courseDirty || courseSaving}
+                            onClick={() => setCourseModalOpen(true)}
+                          >
+                            Save
+                          </AppButton>
+                        </div>
+                      </>
+                    ),
+                  },
+                ]
+              : []),
           ]}
           hint="You can review your changes before confirming. Suspended users cannot log in or access the platform until reactivated."
           showFooterActions={!isSelf && isDirty}
@@ -341,6 +446,30 @@ export default function UserDetails({ userId }: UserDetailsProps) {
           onConfirm={handleConfirmClick}
         />
       </div>
+
+      <AppConfirmModal
+        open={courseModalOpen}
+        onClose={() => setCourseModalOpen(false)}
+        icon={
+          <span className="flex h-16 w-16 items-center justify-center rounded-full bg-primary-light">
+            <BookOpen size={28} className="text-primary" />
+          </span>
+        }
+        title="Change course?"
+        description={`This will move ${displayName} onto ${
+          availableCourses.find((c) => c.id === selectedCourseId)?.title ??
+          'the selected course'
+        }.`}
+        secondaryButton={{
+          label: 'Cancel',
+          onClick: () => setCourseModalOpen(false),
+        }}
+        primaryButton={{
+          label: 'Change course',
+          loading: courseSaving,
+          onClick: handleSaveCourse,
+        }}
+      />
 
       <AppConfirmModal
         open={modal === 'role'}

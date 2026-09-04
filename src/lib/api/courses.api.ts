@@ -4,6 +4,7 @@ export interface Course {
   id: number;
   title: string;
   description: string | null;
+  level: string | null;
   cohortId: number;
   createdBy: number;
   isActive: boolean;
@@ -15,6 +16,7 @@ interface CourseResponseDto {
   id: number;
   title: string;
   description: string | null;
+  level: string | null;
   cohort_id: number;
   created_by: number;
   is_active: boolean;
@@ -27,6 +29,7 @@ function mapCourse(dto: CourseResponseDto): Course {
     id: dto.id,
     title: dto.title,
     description: dto.description,
+    level: dto.level ?? null,
     cohortId: dto.cohort_id,
     createdBy: dto.created_by,
     isActive: dto.is_active,
@@ -101,6 +104,40 @@ export async function deleteCourse(courseId: number): Promise<void> {
  * pair with a 409 but otherwise appends, so a course can carry several
  * trainers.
  */
+export async function assignCourseTrainer(
+  courseId: number,
+  trainerId: number,
+): Promise<void> {
+  await apiFetch<{ message: string }>(`/courses/${courseId}/assign-trainer`, {
+    method: 'POST',
+    auth: true,
+    body: { trainer_id: trainerId },
+  });
+}
+
+export interface CourseAssignmentResult {
+  message: string;
+  course: Course | null;
+}
+
+interface CourseAssignmentResponseDto {
+  message: string;
+  course: CourseResponseDto | null;
+}
+
+export async function selectCourse(
+  courseId: number,
+): Promise<CourseAssignmentResult> {
+  const dto = await apiFetch<CourseAssignmentResponseDto>(
+    `/courses/${courseId}/select`,
+    { method: 'POST', auth: true },
+  );
+  return {
+    message: dto.message,
+    course: dto.course ? mapCourse(dto.course) : null,
+  };
+}
+
 /**
  * Puts a learner on a course. Admin only.
  *
@@ -112,21 +149,13 @@ export async function deleteCourse(courseId: number): Promise<void> {
 export async function assignLearnerToCourse(
   courseId: number,
   learnerId: number,
-): Promise<void> {
-  await apiFetch<{ message: string }>(`/courses/${courseId}/assign-learner`, {
-    method: 'POST',
-    auth: true,
-    body: { learner_id: learnerId },
-  });
-}
-
-export async function assignCourseTrainer(
-  courseId: number,
-  trainerId: number,
-): Promise<void> {
-  await apiFetch<{ message: string }>(`/courses/${courseId}/assign-trainer`, {
-    method: 'POST',
-    auth: true,
-    body: { trainer_id: trainerId },
-  });
+): Promise<CourseAssignmentResult> {
+  const dto = await apiFetch<CourseAssignmentResponseDto>(
+    `/courses/${courseId}/assign-learner`,
+    { method: 'POST', auth: true, body: { learner_id: learnerId } },
+  );
+  return {
+    message: dto.message,
+    course: dto.course ? mapCourse(dto.course) : null,
+  };
 }

@@ -18,6 +18,7 @@ export function mapUser(dto: UserDto): AuthUser {
     role: dto.role,
     isActive: dto.is_active,
     createdAt: dto.created_at,
+    courseId: dto.course_id ?? null,
   };
 }
 
