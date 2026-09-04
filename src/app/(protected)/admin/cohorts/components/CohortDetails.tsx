@@ -32,7 +32,7 @@ interface CohortDetailsViewProps {
   onEditCohort?: () => void;
   onViewLearners?: () => void;
   onAddLearners?: () => void;
-  onAssignTrainer?: () => void;
+  onViewTrainers?: () => void;
   onAssignTrainerToCourse?: () => void;
   onEditCourse?: () => void;
   onChangeStatus?: () => void;
@@ -145,7 +145,7 @@ const CohortDetailsView: React.FC<CohortDetailsViewProps> = ({
   onEditCohort,
   onViewLearners,
   onAddLearners,
-  onAssignTrainer,
+  onViewTrainers,
   onAssignTrainerToCourse,
   onEditCourse,
   onChangeStatus,
@@ -219,7 +219,7 @@ const CohortDetailsView: React.FC<CohortDetailsViewProps> = ({
             title="Learners"
             description={`${cohort.totalLearners} learners enrolled in this cohort`}
             value={cohort.totalLearners}
-            actionLabel="View learners"
+            actionLabel="Learners"
             onAction={onViewLearners}
             menu={[
               { label: 'View learners', onSelect: onViewLearners },
@@ -229,23 +229,19 @@ const CohortDetailsView: React.FC<CohortDetailsViewProps> = ({
 
           <DetailListItem
             icon={<Users size={16} />}
-            title="Assigned trainer"
+            title="Trainers"
             description={
               cohort.trainers.length === 0
-                ? 'No trainer assigned yet'
-                : cohort.trainers.map((t) => t.email).join(', ')
+                ? 'No trainers assigned yet'
+                : `${cohort.trainers.length} trainer${cohort.trainers.length === 1 ? '' : 's'} assigned to this cohort`
             }
-            value={
-              cohort.trainers.length === 0
-                ? 'Not assigned'
-                : cohort.trainers.map((t) => t.name).join(', ')
-            }
-            actionLabel="Assign trainer"
-            onAction={onAssignTrainer}
+            value={cohort.trainers.length}
+            actionLabel="Trainers"
+            onAction={onViewTrainers}
             menu={[
-              { label: 'Assign trainer', onSelect: onAssignTrainer },
+              { label: 'View trainers', onSelect: onViewTrainers },
               {
-                label: 'Assign trainer to course',
+                label: 'Assign trainers to course',
                 onSelect: onAssignTrainerToCourse,
               },
             ]}

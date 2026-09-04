@@ -20,7 +20,6 @@ import type { CohortDetails } from '@/app/(protected)/admin/cohorts/components/C
 interface ChangeTrainerPageProps {
   cohortId: number;
   cohort: CohortDetails;
-  mode: 'cohort' | 'course';
   onBack: () => void;
   onAssigned: (trainers: AuthUser[]) => void;
 }
@@ -28,7 +27,6 @@ interface ChangeTrainerPageProps {
 export default function ChangeTrainerPage({
   cohortId,
   cohort,
-  mode,
   onBack,
   onAssigned,
 }: ChangeTrainerPageProps) {
@@ -80,9 +78,7 @@ export default function ChangeTrainerPage({
   const selectableTrainers = trainers.filter((t) => !assignedIds.has(t.id));
   const newlySelected = selectableTrainers.filter((t) => selectedIds.has(t.id));
   const selectedCourse = courses.find((c) => c.id === selectedCourseId);
-  const courseRequired = mode === 'course';
-  const canAssign =
-    newlySelected.length > 0 && (!courseRequired || !!selectedCourseId);
+  const canAssign = newlySelected.length > 0 && !!selectedCourseId;
 
   const toggleTrainer = (id: number, checked: boolean) => {
     setSelectedIds((prev) => {
@@ -94,8 +90,7 @@ export default function ChangeTrainerPage({
   };
 
   const assignTrainers = async () => {
-    if (newlySelected.length === 0) return;
-    if (courseRequired && !selectedCourseId) return;
+    if (newlySelected.length === 0 || !selectedCourseId) return;
     setSaving(true);
     try {
       await Promise.all(
@@ -103,26 +98,20 @@ export default function ChangeTrainerPage({
           cohortsApi.assignCohortTrainer(cohortId, t.id),
         ),
       );
-      if (selectedCourseId) {
-        await Promise.all(
-          newlySelected.map((t) =>
-            coursesApi.assignCourseTrainer(selectedCourseId, t.id),
-          ),
-        );
-      }
+      await Promise.all(
+        newlySelected.map((t) =>
+          coursesApi.assignCourseTrainer(selectedCourseId, t.id),
+        ),
+      );
       const allAssigned = [...currentTrainers, ...newlySelected];
       onAssigned(allAssigned);
       showSuccess(
         newlySelected.length === 1
           ? 'Trainer assigned successfully.'
           : 'Trainers assigned successfully.',
-        selectedCourse
-          ? `${newlySelected.map((t) => t.fullName || t.email).join(', ')} ${
-              newlySelected.length === 1 ? 'is' : 'are'
-            } now assigned to ${cohort.name} and ${selectedCourse.title}.`
-          : `${newlySelected.map((t) => t.fullName || t.email).join(', ')} ${
-              newlySelected.length === 1 ? 'is' : 'are'
-            } now assigned to ${cohort.name}.`,
+        `${newlySelected.map((t) => t.fullName || t.email).join(', ')} ${
+          newlySelected.length === 1 ? 'is' : 'are'
+        } now assigned to ${cohort.name} and ${selectedCourse?.title}.`,
       );
       onBack();
     } catch (error) {
@@ -157,13 +146,9 @@ export default function ChangeTrainerPage({
 
       <AppCard padding="none">
         <div className="border-b border-disabled px-6 py-5">
-          <h1 className="h5-b text-text">
-            {courseRequired ? 'Assign trainer to course' : 'Assign trainer'}
-          </h1>
+          <h1 className="h5-b text-text">Assign trainers to course</h1>
           <p className="b2-r mt-1 text-muted">
-            {courseRequired
-              ? 'Choose a course, then select trainers to assign to it.'
-              : 'Select one or more trainers to assign to this cohort.'}
+            Choose a course, then select trainers to assign to it.
           </p>
         </div>
         <div className="px-6 py-5">
@@ -192,41 +177,35 @@ export default function ChangeTrainerPage({
         </div>
       </AppCard>
 
-      {courseRequired && (
-        <div className="flex flex-col gap-3">
-          <span className="b2-b text-text">
-            Course
-            <span className="text-error"> *</span>
-          </span>
-          {courses.length === 0 ? (
-            <div className="flex items-start gap-3 rounded-input bg-warning/10 p-4">
-              <AlertTriangle
-                size={18}
-                className="mt-0.5 shrink-0 text-warning"
-              />
-              <p className="b2-r text-text-secondary">
-                This cohort has no course yet. Add one first (via the Courses
-                action on cohort details) before assigning a trainer to a
-                course.
-              </p>
-            </div>
-          ) : (
-            <AppSearchSelect
-              hideSearch
-              value={selectedCourseId ? String(selectedCourseId) : ''}
-              options={courses.map((c) => ({
-                value: String(c.id),
-                label: c.title,
-                description: c.level ?? undefined,
-              }))}
-              onChange={(value) => setSelectedCourseId(Number(value))}
-              placeholder="Select a course"
-              ariaLabel="Select a course"
-              className="w-full max-w-md"
-            />
-          )}
-        </div>
-      )}
+      <div className="flex flex-col gap-3">
+        <span className="b2-b text-text">
+          Course
+          <span className="text-error"> *</span>
+        </span>
+        {courses.length === 0 ? (
+          <div className="flex items-start gap-3 rounded-input bg-warning/10 p-4">
+            <AlertTriangle size={18} className="mt-0.5 shrink-0 text-warning" />
+            <p className="b2-r text-text-secondary">
+              This cohort has no course yet. Add one first (via the Courses
+              action on cohort details) before assigning a trainer to a course.
+            </p>
+          </div>
+        ) : (
+          <AppSearchSelect
+            hideSearch
+            value={selectedCourseId ? String(selectedCourseId) : ''}
+            options={courses.map((c) => ({
+              value: String(c.id),
+              label: c.title,
+              description: c.level ?? undefined,
+            }))}
+            onChange={(value) => setSelectedCourseId(Number(value))}
+            placeholder="Select a course"
+            ariaLabel="Select a course"
+            className="w-full max-w-md"
+          />
+        )}
+      </div>
 
       <div>
         <h2 className="h6-b text-text">Currently assigned trainers</h2>
@@ -249,7 +228,7 @@ export default function ChangeTrainerPage({
         )}
       </div>
 
-      {(!courseRequired || selectedCourseId) && (
+      {selectedCourseId && (
         <>
           <div className="flex justify-end gap-3">
             <AppButton
@@ -311,17 +290,11 @@ export default function ChangeTrainerPage({
           </span>
         }
         title={`Assign ${newlySelected.length} trainer${newlySelected.length !== 1 ? 's' : ''}?`}
-        description={
-          selectedCourse
-            ? `${newlySelected
-                .map((t) => t.fullName || t.email)
-                .join(
-                  ', ',
-                )} will be added to ${cohort.name} and ${selectedCourse.title}.`
-            : `${newlySelected
-                .map((t) => t.fullName || t.email)
-                .join(', ')} will be added to ${cohort.name}.`
-        }
+        description={`${newlySelected
+          .map((t) => t.fullName || t.email)
+          .join(
+            ', ',
+          )} will be added to ${cohort.name} and ${selectedCourse?.title}.`}
         secondaryButton={{
           label: 'Cancel',
           onClick: () => setConfirmOpen(false),

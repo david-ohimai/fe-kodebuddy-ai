@@ -33,9 +33,7 @@ export default function CohortDetailsPage({
   const [cohort, setCohort] = useState<CohortDetails | null>(null);
   const [rawCohort, setRawCohort] = useState<Cohort | null>(null);
   const [loading, setLoading] = useState(true);
-  const [trainerMode, setTrainerMode] = useState<'cohort' | 'course' | null>(
-    null,
-  );
+  const [assigningTrainer, setAssigningTrainer] = useState(false);
   const [courseSubview, setCourseSubview] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isStatusConfirmOpen, setIsStatusConfirmOpen] = useState(false);
@@ -55,8 +53,9 @@ export default function CohortDetailsPage({
         const activeTrainerIds = new Set(
           assignments.filter((a) => !a.removedAt).map((a) => a.trainerId),
         );
+
         const trainers = users
-          .filter((u) => activeTrainerIds.has(u.id))
+          .filter((u) => activeTrainerIds.has(u.id) && u.role === 'trainer')
           .map((u) => ({
             id: u.id,
             name: u.fullName || u.email,
@@ -118,13 +117,12 @@ export default function CohortDetailsPage({
     );
   }
 
-  if (trainerMode) {
+  if (assigningTrainer) {
     return (
       <ChangeTrainerPage
         cohortId={cohortId}
         cohort={cohort}
-        mode={trainerMode}
-        onBack={() => setTrainerMode(null)}
+        onBack={() => setAssigningTrainer(false)}
         onAssigned={(trainers: AuthUser[]) => {
           setCohort((current) =>
             current
@@ -234,8 +232,10 @@ export default function CohortDetailsPage({
         onAddLearners={() =>
           router.push(`/admin/cohorts/${cohortId}/learners/assign`)
         }
-        onAssignTrainer={() => setTrainerMode('cohort')}
-        onAssignTrainerToCourse={() => setTrainerMode('course')}
+        onViewTrainers={() =>
+          router.push(`/admin/cohorts/${cohortId}/trainers`)
+        }
+        onAssignTrainerToCourse={() => setAssigningTrainer(true)}
         onEditCourse={() => setCourseSubview(true)}
         onEditCohort={() => setIsEditOpen(true)}
         onChangeStatus={() => setIsStatusConfirmOpen(true)}
