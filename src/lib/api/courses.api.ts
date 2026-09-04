@@ -4,6 +4,7 @@ export interface Course {
   id: number;
   title: string;
   description: string | null;
+  level: string | null;
   cohortId: number;
   createdBy: number;
   isActive: boolean;
@@ -15,6 +16,7 @@ interface CourseResponseDto {
   id: number;
   title: string;
   description: string | null;
+  level: string | null;
   cohort_id: number;
   created_by: number;
   is_active: boolean;
@@ -27,6 +29,7 @@ function mapCourse(dto: CourseResponseDto): Course {
     id: dto.id,
     title: dto.title,
     description: dto.description,
+    level: dto.level ?? null,
     cohortId: dto.cohort_id,
     createdBy: dto.created_by,
     isActive: dto.is_active,
@@ -43,18 +46,6 @@ export async function listCourses(): Promise<Course[]> {
   return dtos.map(mapCourse);
 }
 
-export async function assignCourseToCohort(
-  courseId: number,
-  cohortId: number,
-): Promise<Course> {
-  const dto = await apiFetch<CourseResponseDto>(`/courses/${courseId}`, {
-    method: 'PATCH',
-    auth: true,
-    body: { cohort_id: cohortId },
-  });
-  return mapCourse(dto);
-}
-
 export async function getCourse(courseId: number): Promise<Course> {
   const dto = await apiFetch<CourseResponseDto>(`/courses/${courseId}`, {
     method: 'GET',
@@ -67,6 +58,7 @@ export async function createCourse(input: {
   title: string;
   cohortId: number;
   description?: string;
+  level?: string;
 }): Promise<Course> {
   const dto = await apiFetch<CourseResponseDto>('/courses', {
     method: 'POST',
@@ -74,6 +66,7 @@ export async function createCourse(input: {
       title: input.title,
       cohort_id: input.cohortId,
       description: input.description,
+      level: input.level,
     },
     auth: true,
   });
@@ -82,7 +75,12 @@ export async function createCourse(input: {
 
 export async function updateCourse(
   courseId: number,
-  input: { title?: string; description?: string; isActive?: boolean },
+  input: {
+    title?: string;
+    description?: string;
+    isActive?: boolean;
+    level?: string;
+  },
 ): Promise<Course> {
   const dto = await apiFetch<CourseResponseDto>(`/courses/${courseId}`, {
     method: 'PATCH',
@@ -90,6 +88,7 @@ export async function updateCourse(
       title: input.title,
       description: input.description,
       is_active: input.isActive,
+      level: input.level,
     },
     auth: true,
   });
@@ -101,4 +100,52 @@ export async function deleteCourse(courseId: number): Promise<void> {
     method: 'DELETE',
     auth: true,
   });
+}
+
+export async function assignCourseTrainer(
+  courseId: number,
+  trainerId: number,
+): Promise<void> {
+  await apiFetch<{ message: string }>(`/courses/${courseId}/assign-trainer`, {
+    method: 'POST',
+    auth: true,
+    body: { trainer_id: trainerId },
+  });
+}
+
+export interface CourseAssignmentResult {
+  message: string;
+  course: Course | null;
+}
+
+interface CourseAssignmentResponseDto {
+  message: string;
+  course: CourseResponseDto | null;
+}
+
+export async function selectCourse(
+  courseId: number,
+): Promise<CourseAssignmentResult> {
+  const dto = await apiFetch<CourseAssignmentResponseDto>(
+    `/courses/${courseId}/select`,
+    { method: 'POST', auth: true },
+  );
+  return {
+    message: dto.message,
+    course: dto.course ? mapCourse(dto.course) : null,
+  };
+}
+
+export async function assignLearnerToCourse(
+  courseId: number,
+  learnerId: number,
+): Promise<CourseAssignmentResult> {
+  const dto = await apiFetch<CourseAssignmentResponseDto>(
+    `/courses/${courseId}/assign-learner`,
+    { method: 'POST', auth: true, body: { learner_id: learnerId } },
+  );
+  return {
+    message: dto.message,
+    course: dto.course ? mapCourse(dto.course) : null,
+  };
 }

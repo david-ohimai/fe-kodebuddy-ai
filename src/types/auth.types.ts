@@ -47,6 +47,8 @@ export type LearningInterest = (typeof LEARNING_INTERESTS)[number];
 export type OnboardingFormValues = {
   learningGoal: LearningGoal | null;
   interests: string[];
+  cohortId: number | null;
+  courseId: number | null;
 };
 
 export type UserRole = 'learner' | 'trainer' | 'mentor' | 'admin';
@@ -58,6 +60,7 @@ export interface AuthUser {
   role: UserRole;
   isActive: boolean;
   createdAt: string;
+  courseId: number | null;
 }
 
 export interface SignUpResult {
@@ -79,6 +82,7 @@ export interface UserDto {
   role: UserRole;
   is_active: boolean;
   created_at: string;
+  course_id?: number | null;
 }
 
 export interface UserResponseDto {

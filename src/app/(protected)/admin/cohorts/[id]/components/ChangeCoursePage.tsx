@@ -1,13 +1,13 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { AlertTriangle, ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Info, Pencil, Plus } from 'lucide-react';
 import AppButton from '@/components/ui/AppButton';
 import { AppCard } from '@/components/ui/AppCard';
-import AppConfirmModal from '@/components/ui/AppConfirmModal';
-import AppDropdown from '@/components/ui/AppDropdown';
-import AppPill from '@/components/ui/AppPill';
+import AppInput from '@/components/ui/AppInput';
+import AppTextarea from '@/components/ui/AppTextarea';
 import AppSpinner from '@/components/ui/AppSpinner';
+import AppEmptyState from '@/components/ui/AppEmptyState';
 import { useToast } from '@/components/ui/ToastProvider';
 import { getErrorMessage } from '@/lib/api/client';
 import * as coursesApi from '@/lib/api/courses.api';
@@ -18,10 +18,8 @@ interface ChangeCoursePageProps {
   cohortId: number;
   cohort: CohortDetails;
   onBack: () => void;
-  onAssigned: (course: Course) => void;
+  onCoursesChange: (courses: Course[]) => void;
 }
-
-const actionButtonClass = 'w-36';
 
 function formatDate(value: string) {
   if (!value) return '—';
@@ -34,19 +32,93 @@ function formatDate(value: string) {
   });
 }
 
+interface CourseFormState {
+  title: string;
+  description: string;
+  level: string;
+}
+
+const EMPTY_FORM: CourseFormState = { title: '', description: '', level: '' };
+
+function CourseForm({
+  form,
+  onChange,
+  onCancel,
+  onSave,
+  saving,
+  saveLabel,
+}: {
+  form: CourseFormState;
+  onChange: (form: CourseFormState) => void;
+  onCancel?: () => void;
+  onSave: () => void;
+  saving: boolean;
+  saveLabel: string;
+}) {
+  const isTitleEmpty = form.title.trim().length === 0;
+  return (
+    <div className="flex flex-col gap-5">
+      <AppInput
+        label="Course title *"
+        placeholder="Enter course title"
+        value={form.title}
+        onChange={(e) => onChange({ ...form, title: e.target.value })}
+      />
+      <AppInput
+        label="Level (optional)"
+        placeholder="e.g. Beginner, Intermediate, Advanced"
+        value={form.level}
+        onChange={(e) => onChange({ ...form, level: e.target.value })}
+      />
+      <AppTextarea
+        label="Description (optional)"
+        placeholder="What will learners cover in this course?"
+        value={form.description}
+        onChange={(e) => onChange({ ...form, description: e.target.value })}
+        rows={3}
+      />
+      <div className="flex justify-end gap-3">
+        {onCancel && (
+          <AppButton
+            variant="outlined"
+            color="neutral"
+            radius="full"
+            size="small"
+            onClick={onCancel}
+          >
+            Cancel
+          </AppButton>
+        )}
+        <AppButton
+          radius="full"
+          size="small"
+          disabled={isTitleEmpty || saving}
+          loading={saving}
+          onClick={onSave}
+        >
+          {saveLabel}
+        </AppButton>
+      </div>
+    </div>
+  );
+}
+
 export default function ChangeCoursePage({
   cohortId,
   cohort,
   onBack,
-  onAssigned,
+  onCoursesChange,
 }: ChangeCoursePageProps) {
   const { showError, showSuccess } = useToast();
   const [courses, setCourses] = useState<Course[]>([]);
-  const [currentCourse, setCurrentCourse] = useState<Course | null>(null);
-  const [selectedId, setSelectedId] = useState('');
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [savingId, setSavingId] = useState<number | 'new' | null>(null);
+
+  const [editingCourseId, setEditingCourseId] = useState<number | null>(null);
+  const [editForm, setEditForm] = useState<CourseFormState>(EMPTY_FORM);
+
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [addForm, setAddForm] = useState<CourseFormState>(EMPTY_FORM);
 
   useEffect(() => {
     let cancelled = false;
@@ -54,14 +126,13 @@ export default function ChangeCoursePage({
       .listCourses()
       .then((list) => {
         if (cancelled) return;
-        const assigned =
-          list.find((course) => course.cohortId === cohortId) ?? null;
-        const availableCourses = assigned
-          ? list.filter((course) => course.id !== assigned.id)
-          : list;
-        setCourses(availableCourses);
-        setCurrentCourse(assigned);
-        setSelectedId('');
+        const cohortCourses = list.filter(
+          (course) => course.cohortId === cohortId,
+        );
+        setCourses(cohortCourses);
+        // Nothing to list yet — go straight to the add form instead of
+        // showing an empty list plus a collapsed "Add course" button.
+        if (cohortCourses.length === 0) setShowAddForm(true);
       })
       .catch((error) => {
         if (!cancelled) {
@@ -80,32 +151,65 @@ export default function ChangeCoursePage({
     };
   }, [cohortId, showError]);
 
-  const selectedCourse = courses.find(
-    (course) => String(course.id) === selectedId,
-  );
+  const startEdit = (course: Course) => {
+    setEditingCourseId(course.id);
+    setEditForm({
+      title: course.title,
+      description: course.description ?? '',
+      level: course.level ?? '',
+    });
+  };
 
-  const assignCourse = async () => {
-    if (!selectedCourse) return;
-    setSaving(true);
+  const handleSaveEdit = async () => {
+    if (!editingCourseId || !editForm.title.trim()) return;
+    setSavingId(editingCourseId);
     try {
-      const updated = await coursesApi.assignCourseToCohort(
-        selectedCourse.id,
-        cohortId,
-      );
-      onAssigned(updated);
-      showSuccess(
-        'Course assigned successfully.',
-        `${updated.title} is now assigned to ${cohort.name}.`,
-      );
-      onBack();
+      const updated = await coursesApi.updateCourse(editingCourseId, {
+        title: editForm.title.trim(),
+        description: editForm.description.trim() || undefined,
+        level: editForm.level.trim() || undefined,
+      });
+      const next = courses.map((c) => (c.id === updated.id ? updated : c));
+      setCourses(next);
+      onCoursesChange(next);
+      showSuccess('Course updated.', `"${updated.title}" has been saved.`);
+      setEditingCourseId(null);
     } catch (error) {
       showError(
-        'Could not assign course',
+        'Could not update course',
         getErrorMessage(error, 'Please try again.'),
       );
     } finally {
-      setSaving(false);
-      setConfirmOpen(false);
+      setSavingId(null);
+    }
+  };
+
+  const handleAddCourse = async () => {
+    if (!addForm.title.trim()) return;
+    setSavingId('new');
+    try {
+      const created = await coursesApi.createCourse({
+        title: addForm.title.trim(),
+        description: addForm.description.trim() || undefined,
+        level: addForm.level.trim() || undefined,
+        cohortId,
+      });
+      const next = [...courses, created];
+      setCourses(next);
+      onCoursesChange(next);
+      showSuccess(
+        'Course added successfully.',
+        `"${created.title}" is now assigned to ${cohort.name}.`,
+      );
+      setAddForm(EMPTY_FORM);
+      setShowAddForm(false);
+    } catch (error) {
+      showError(
+        'Could not add course',
+        getErrorMessage(error, 'Please try again.'),
+      );
+    } finally {
+      setSavingId(null);
     }
   };
 
@@ -117,6 +221,122 @@ export default function ChangeCoursePage({
     );
   }
 
+  const addSection = (
+    <AppCard padding="lg">
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="h6-b text-text">Add a course</h2>
+        {!showAddForm && (
+          <AppButton
+            variant="outlined"
+            size="small"
+            radius="full"
+            startIcon={<Plus size={14} />}
+            onClick={() => setShowAddForm(true)}
+          >
+            Add course
+          </AppButton>
+        )}
+      </div>
+
+      {showAddForm && (
+        <div className="mt-4 flex flex-col gap-5">
+          <CourseForm
+            form={addForm}
+            onChange={setAddForm}
+            onCancel={
+              courses.length > 0 ? () => setShowAddForm(false) : undefined
+            }
+            onSave={handleAddCourse}
+            saving={savingId === 'new'}
+            saveLabel="Add course"
+          />
+          <div className="flex gap-3 rounded-input bg-primary-light p-4">
+            <Info size={18} className="mt-0.5 shrink-0 text-primary" />
+            <p className="b2-r text-text-secondary">
+              Once created, a course is permanently tied to {cohort.name} —
+              courses can&apos;t be moved to a different cohort afterward.
+            </p>
+          </div>
+        </div>
+      )}
+    </AppCard>
+  );
+
+  const listSection = (
+    <AppCard padding="none">
+      <div className="border-b border-disabled px-6 py-5">
+        <h2 className="h6-b text-text">
+          Courses in {cohort.name} ({courses.length})
+        </h2>
+        <p className="b2-r mt-1 text-muted">
+          Edit a course&apos;s title, level, or description. To manage its
+          modules and lessons, use{' '}
+          <span className="b2-b text-text">Courses &amp; Contents</span>.
+        </p>
+      </div>
+
+      {courses.length === 0 ? (
+        <AppEmptyState
+          title="No courses yet"
+          description="Add this cohort's first course below."
+          className="!min-h-0 py-14"
+        />
+      ) : (
+        <ul className="divide-y divide-disabled">
+          {courses.map((course) => (
+            <li key={course.id} className="px-6 py-5">
+              {editingCourseId === course.id ? (
+                <CourseForm
+                  form={editForm}
+                  onChange={setEditForm}
+                  onCancel={() => setEditingCourseId(null)}
+                  onSave={handleSaveEdit}
+                  saving={savingId === course.id}
+                  saveLabel="Save changes"
+                />
+              ) : (
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <p className="b1-b text-text">{course.title}</p>
+                      {course.level && (
+                        <span className="f1-b rounded-full bg-primary-light px-2.5 py-1 text-primary">
+                          {course.level}
+                        </span>
+                      )}
+                      {!course.isActive && (
+                        <span className="f1-b rounded-full bg-disabled px-2.5 py-1 text-muted">
+                          Draft
+                        </span>
+                      )}
+                    </div>
+                    {course.description && (
+                      <p className="b2-r mt-1 text-muted">
+                        {course.description}
+                      </p>
+                    )}
+                    <p className="f1-r mt-1.5 text-muted">
+                      Added {formatDate(course.createdAt)}
+                    </p>
+                  </div>
+                  <AppButton
+                    variant="outlined"
+                    size="small"
+                    radius="full"
+                    startIcon={<Pencil size={14} />}
+                    onClick={() => startEdit(course)}
+                  >
+                    Edit
+                  </AppButton>
+                </div>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </AppCard>
+  );
+
   return (
     <div className="flex flex-col gap-6">
       <button
@@ -125,17 +345,15 @@ export default function ChangeCoursePage({
         className="flex w-fit items-center gap-2 b2-b text-primary"
       >
         <ArrowLeft size={16} />
-        Back to cohorts details
+        Back to cohort details
       </button>
 
       <AppCard padding="none">
-        <div className="flex items-start justify-between border-b border-disabled px-6 py-5">
-          <div>
-            <h1 className="h5-b text-text">Change course</h1>
-            <p className="b2-r mt-1 text-muted">
-              Update the course assigned to this cohort.
-            </p>
-          </div>
+        <div className="border-b border-disabled px-6 py-5">
+          <h1 className="h5-b text-text">Manage courses</h1>
+          <p className="b2-r mt-1 text-muted">
+            View, edit, or add courses for this cohort.
+          </p>
         </div>
         <div className="px-6 py-5">
           <div className="rounded-card border border-disabled p-5">
@@ -146,84 +364,29 @@ export default function ChangeCoursePage({
               </span>
             </div>
             <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-3">
-              <div><p className="f1-r text-muted">Start date</p><p className="b1-b mt-1 text-text">{formatDate(cohort.startDate)}</p></div>
-              <div><p className="f1-r text-muted">End date</p><p className="b1-b mt-1 text-text">{formatDate(cohort.endDate)}</p></div>
-              <div><p className="f1-r text-muted">Total learners</p><p className="b1-b mt-1 text-text">{cohort.totalLearners}</p></div>
+              <div>
+                <p className="f1-r text-muted">Start date</p>
+                <p className="b1-b mt-1 text-text">
+                  {formatDate(cohort.startDate)}
+                </p>
+              </div>
+              <div>
+                <p className="f1-r text-muted">End date</p>
+                <p className="b1-b mt-1 text-text">
+                  {formatDate(cohort.endDate)}
+                </p>
+              </div>
+              <div>
+                <p className="f1-r text-muted">Total learners</p>
+                <p className="b1-b mt-1 text-text">{cohort.totalLearners}</p>
+              </div>
             </div>
           </div>
         </div>
       </AppCard>
 
-      <div>
-        <h2 className="h6-b text-text">Current assigned course</h2>
-        <div className="mt-3 rounded-card border border-disabled bg-background px-4 py-4">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <p className="b1-b text-text">{currentCourse?.title ?? 'No course assigned yet'}</p>
-              <p className="f1-r mt-1 text-muted">
-                {currentCourse?.description ?? 'Assign a course to this cohort.'}
-              </p>
-            </div>
-            {currentCourse && (
-              <AppPill label="Published" color="success" />
-            )}
-          </div>
-        </div>
-      </div>
-
-      <div>
-        <label className="f1-m mb-2 block text-text">Select new course</label>
-        <AppDropdown
-          value={selectedId}
-          options={courses.map((course) => ({
-            value: String(course.id),
-            label: course.title,
-          }))}
-          onChange={setSelectedId}
-          placeholder="Select a course"
-          ariaLabel="Select new course"
-          className="w-full [&>button]:min-h-12 [&>button]:w-full"
-        />
-      </div>
-
-      <div className="flex justify-end gap-3">
-        <AppButton
-          variant="outlined"
-          color="neutral"
-          radius="full"
-          className={actionButtonClass}
-          onClick={onBack}
-        >
-          Cancel
-        </AppButton>
-        <AppButton
-          radius="full"
-          className={actionButtonClass}
-          disabled={!selectedCourse || saving}
-          loading={saving}
-          onClick={() => setConfirmOpen(true)}
-        >
-          Change course
-        </AppButton>
-      </div>
-
-      <AppConfirmModal
-        open={confirmOpen}
-        onClose={() => setConfirmOpen(false)}
-        icon={
-          <span className="flex h-16 w-16 items-center justify-center rounded-full bg-warning/15">
-            <AlertTriangle size={30} className="text-warning" />
-          </span>
-        }
-        title={`Assign ${selectedCourse?.title} to this cohort?`}
-        description={`This will replace ${currentCourse?.title ?? 'the current course'} for ${cohort.name}.`}
-        secondaryButton={{ label: 'Cancel', onClick: () => setConfirmOpen(false) }}
-        primaryButton={{
-          label: 'Change course',
-          loading: saving,
-          onClick: assignCourse,
-        }}
-      />
+      {listSection}
+      {addSection}
     </div>
   );
 }

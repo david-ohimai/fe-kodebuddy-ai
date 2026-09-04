@@ -8,7 +8,12 @@ import { getErrorMessage } from '@/lib/api/client';
 import type { CourseModule } from '@/lib/api/modules.api';
 import type { Lesson } from '@/lib/api/lessons.api';
 
-export function useCourseContent(courseId: number) {
+interface ToastOverride {
+  title: string;
+  message: string;
+}
+
+export function useCourseContent(courseId: number | null | undefined) {
   const { showSuccess, showError } = useToast();
 
   const [modules, setModules] = useState<CourseModule[]>([]);
@@ -19,6 +24,12 @@ export function useCourseContent(courseId: number) {
   const [saving, setSaving] = useState(false);
 
   const loadContent = () => {
+    if (!courseId) {
+      setModules([]);
+      setLessonsByModule({});
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     modulesApi
       .listCourseModules(courseId)
@@ -53,7 +64,11 @@ export function useCourseContent(courseId: number) {
     0,
   );
 
-  const addModule = async (data: { title: string; description?: string }) => {
+  const addModule = async (
+    data: { title: string; description?: string },
+    toastOverride?: ToastOverride,
+  ) => {
+    if (!courseId) throw new Error('No course selected.');
     const created = await modulesApi.createModule({
       courseId,
       title: data.title,
@@ -62,20 +77,29 @@ export function useCourseContent(courseId: number) {
     });
     setModules((prev) => [...prev, created]);
     setLessonsByModule((prev) => ({ ...prev, [created.id]: [] }));
-    showSuccess('Module added.', `"${data.title}" was added to this course.`);
+    const toast = toastOverride ?? {
+      title: 'Module added.',
+      message: `"${data.title}" was added to this course.`,
+    };
+    showSuccess(toast.title, toast.message);
     return created;
   };
 
   const editModule = async (
     moduleId: number,
     data: { title: string; description?: string },
+    toastOverride?: ToastOverride,
   ) => {
     const updated = await modulesApi.updateModule(moduleId, {
       title: data.title,
       description: data.description,
     });
     setModules((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
-    showSuccess('Module updated.', `"${data.title}" has been saved.`);
+    const toast = toastOverride ?? {
+      title: 'Module updated.',
+      message: `"${data.title}" has been saved.`,
+    };
+    showSuccess(toast.title, toast.message);
     return updated;
   };
 
@@ -98,6 +122,7 @@ export function useCourseContent(courseId: number) {
   const addLesson = async (
     moduleId: number,
     data: { title: string; description?: string },
+    toastOverride?: ToastOverride,
   ) => {
     const created = await lessonsApi.createLesson({
       moduleId,
@@ -109,7 +134,11 @@ export function useCourseContent(courseId: number) {
       ...prev,
       [moduleId]: [...(prev[moduleId] ?? []), created],
     }));
-    showSuccess('Lesson added.', `"${data.title}" was added to this module.`);
+    const toast = toastOverride ?? {
+      title: 'Lesson added.',
+      message: `"${data.title}" was added to this module.`,
+    };
+    showSuccess(toast.title, toast.message);
     return created;
   };
 
@@ -117,6 +146,7 @@ export function useCourseContent(courseId: number) {
     moduleId: number,
     lessonId: number,
     data: { title: string; description?: string },
+    toastOverride?: ToastOverride,
   ) => {
     const updated = await lessonsApi.updateLesson(lessonId, {
       title: data.title,
@@ -128,7 +158,11 @@ export function useCourseContent(courseId: number) {
         l.id === updated.id ? updated : l,
       ),
     }));
-    showSuccess('Lesson updated.', `"${data.title}" has been saved.`);
+    const toast = toastOverride ?? {
+      title: 'Lesson updated.',
+      message: `"${data.title}" has been saved.`,
+    };
+    showSuccess(toast.title, toast.message);
     return updated;
   };
 

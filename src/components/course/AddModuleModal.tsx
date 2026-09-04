@@ -140,7 +140,7 @@ const AddModuleModal: React.FC<AddModuleModalProps> = ({
             }
             placeholder="Enter module description"
             value={description}
-            maxLength={100}
+            maxLength={300}
             showCharCount
             rows={3}
             onChange={(e) => setDescription(e.target.value)}

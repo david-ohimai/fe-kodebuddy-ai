@@ -19,6 +19,7 @@ export interface AppSearchSelectProps {
   emptyMessage?: string;
   loading?: boolean;
   disabled?: boolean;
+  hideSearch?: boolean;
   ariaLabel?: string;
   className?: string;
 }
@@ -36,6 +37,7 @@ export default function AppSearchSelect({
   emptyMessage = 'No matches found.',
   loading = false,
   disabled = false,
+  hideSearch = false,
   ariaLabel,
   className,
 }: AppSearchSelectProps) {
@@ -97,18 +99,20 @@ export default function AppSearchSelect({
             className="fixed inset-0 z-40"
           />
           <div className="absolute left-0 top-full z-50 mt-1.5 w-full min-w-[260px] overflow-hidden rounded-card border border-disabled bg-background shadow-lg">
-            <div className="flex items-center gap-2 border-b border-disabled px-3 py-2.5">
-              <Search size={16} className="shrink-0 text-muted" />
-              <input
-                autoFocus
-                type="text"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder={searchPlaceholder}
-                aria-label={searchPlaceholder}
-                className="b2-r w-full bg-transparent text-text placeholder:text-muted focus:outline-none"
-              />
-            </div>
+            {!hideSearch && (
+              <div className="flex items-center gap-2 border-b border-disabled px-3 py-2.5">
+                <Search size={16} className="shrink-0 text-muted" />
+                <input
+                  autoFocus
+                  type="text"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder={searchPlaceholder}
+                  aria-label={searchPlaceholder}
+                  className="b2-r w-full bg-transparent text-text placeholder:text-muted focus:outline-none"
+                />
+              </div>
+            )}
 
             <ul
               role="listbox"

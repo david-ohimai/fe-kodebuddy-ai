@@ -6,13 +6,13 @@ import Link from 'next/link';
 import {
   Search,
   Calendar,
-  Bell,
   ChevronDown,
   Menu,
   Settings,
   LogOut,
 } from 'lucide-react';
 import AppButton from '@/components/ui/AppButton';
+import NotificationsMenu from '@/components/notifications/NotificationsMenu';
 
 export interface AppTopbarProps {
   userName: string;
@@ -23,7 +23,6 @@ export interface AppTopbarProps {
   date?: Date;
   searchPlaceholder?: string;
   onSearch?: (value: string) => void;
-  onNotificationsClick?: () => void;
   onMenuClick?: () => void;
   onLogoutClick?: () => void;
   className?: string;
@@ -55,7 +54,6 @@ const AppTopbar: React.FC<AppTopbarProps> = ({
   date = new Date(),
   searchPlaceholder = 'Search KodeBuddy...',
   onSearch,
-  onNotificationsClick,
   onMenuClick,
   onLogoutClick,
   className,
@@ -116,16 +114,7 @@ const AppTopbar: React.FC<AppTopbarProps> = ({
           </span>
         </div>
 
-        <AppButton
-          variant="outlined"
-          color="neutral"
-          size="icon"
-          onClick={onNotificationsClick}
-          ariaLabel="Notifications"
-          className="!h-9 !w-9 !rounded-input !border-disabled !text-text-secondary hover:!bg-primary-light hover:!text-primary"
-        >
-          <Bell size={18} />
-        </AppButton>
+        <NotificationsMenu />
 
         <div className="relative">
           <button

@@ -1,6 +1,9 @@
 import { apiFetch } from './client';
 import { mapUser } from './auth.api';
-import type { CreateCohortPayload, UpdateCohortPayload } from '@/types/cohort.types';
+import type {
+  CreateCohortPayload,
+  UpdateCohortPayload,
+} from '@/types/cohort.types';
 import type { UserDto } from '@/types/auth.types';
 
 export interface Cohort {
@@ -75,6 +78,21 @@ export async function getCohortById(cohortId: number): Promise<Cohort> {
   return mapCohort(dto);
 }
 
+/**
+ * DELETE /cohorts/{cohort_id}. No response body — the endpoint returns an
+ * empty 200. Irreversible: unlike "Change status" (a soft, reversible
+ * open/closed toggle already on the cohort details page), this removes
+ * the cohort row itself. What happens to its courses/enrollments server-side
+ * on delete isn't documented in the response schema; the confirm dialog
+ * calling this should be explicit that it's permanent.
+ */
+export async function deleteCohort(cohortId: number): Promise<void> {
+  await apiFetch<unknown>(`/cohorts/${cohortId}`, {
+    method: 'DELETE',
+    auth: true,
+  });
+}
+
 export async function updateCohort(
   cohortId: number,
   payload: UpdateCohortPayload,
@@ -93,11 +111,6 @@ export async function updateCohort(
   return mapCohort(dto);
 }
 
-// ── Learners ────────────────────────────────────────────────────────
-// One canonical shape covering both consumers: the admin Cohorts UI
-// needs the learner's name/email for display, and the trainer dashboard
-// needs cohortId/completedAt to compute real completion percentages.
-
 export interface CohortLearner {
   id: number;
   cohortId: number;
@@ -107,6 +120,7 @@ export interface CohortLearner {
   joinedAt: string;
   completedAt: string | null;
   isActive: boolean;
+  currentCourseId: number | null;
 }
 
 interface CohortLearnerResponseDto {
@@ -118,11 +132,6 @@ interface CohortLearnerResponseDto {
   is_active: boolean;
 }
 
-/**
- * GET /assign-cohorts/{cohort_id}/learners, enriched with each
- * learner's name/email via GET /profile/users — the enrollment endpoint
- * only returns learner_id, not the learner's profile.
- */
 export async function listCohortLearners(
   cohortId: number,
 ): Promise<CohortLearner[]> {
@@ -136,27 +145,28 @@ export async function listCohortLearners(
 
   const usersById = new Map(users.map((user) => [user.id, mapUser(user)]));
 
-  return enrollments.map((enrollment) => {
-    const user = usersById.get(enrollment.learner_id);
-    return {
-      id: enrollment.id,
-      cohortId: enrollment.cohort_id,
-      learnerId: enrollment.learner_id,
-      fullName: user?.fullName ?? null,
-      email: user?.email ?? '—',
-      joinedAt: enrollment.joined_at,
-      completedAt: enrollment.completed_at,
-      // A learner enrolled (is_active on the enrollment) whose account
-      // has since been suspended shouldn't read as "active".
-      isActive: enrollment.is_active && (user?.isActive ?? true),
-    };
-  });
+  return enrollments
+    .filter((enrollment) => {
+      const user = usersById.get(enrollment.learner_id);
+      return !user || user.role === 'learner';
+    })
+    .map((enrollment) => {
+      const user = usersById.get(enrollment.learner_id);
+      return {
+        id: enrollment.id,
+        cohortId: enrollment.cohort_id,
+        learnerId: enrollment.learner_id,
+        fullName: user?.fullName ?? null,
+        email: user?.email ?? '—',
+        joinedAt: enrollment.joined_at,
+        completedAt: enrollment.completed_at,
+        isActive: enrollment.is_active && (user?.isActive ?? true),
+        currentCourseId: user?.courseId ?? null,
+      };
+    });
 }
 
-/** Alias — lib/trainer/useMyAssignedCourse.ts was written against this name. Same data. */
 export const getCohortLearners = listCohortLearners;
-
-// ── Trainers ────────────────────────────────────────────────────────
 
 export interface CohortTrainer {
   id: number;
@@ -184,7 +194,6 @@ function mapCohortTrainer(dto: CohortTrainerResponseDto): CohortTrainer {
   };
 }
 
-/** GET /assign-cohorts/{cohort_id}/trainers */
 export async function listCohortTrainers(
   cohortId: number,
 ): Promise<CohortTrainer[]> {
@@ -195,7 +204,6 @@ export async function listCohortTrainers(
   return dtos.map(mapCohortTrainer);
 }
 
-/** Alias — lib/trainer/useMyAssignedCourse.ts was written against this name. Same data. */
 export const getCohortTrainers = listCohortTrainers;
 
 export async function assignCohortTrainer(
@@ -211,4 +219,41 @@ export async function assignCohortTrainer(
     },
   );
   return mapCohortTrainer(dto);
+}
+
+export interface CohortEnrollment {
+  id: number;
+  cohortId: number;
+  learnerId: number;
+  joinedAt: string;
+  isActive: boolean;
+}
+
+function mapCohortEnrollment(dto: CohortLearnerResponseDto): CohortEnrollment {
+  return {
+    id: dto.id,
+    cohortId: dto.cohort_id,
+    learnerId: dto.learner_id,
+    joinedAt: dto.joined_at,
+    isActive: dto.is_active,
+  };
+}
+
+export async function joinCohort(cohortId: number): Promise<CohortEnrollment> {
+  const dto = await apiFetch<CohortLearnerResponseDto>(
+    `/assign-cohorts/${cohortId}/join`,
+    { method: 'POST', auth: true },
+  );
+  return mapCohortEnrollment(dto);
+}
+
+export async function assignCohortLearner(
+  cohortId: number,
+  learnerId: number,
+): Promise<CohortEnrollment> {
+  const dto = await apiFetch<CohortLearnerResponseDto>(
+    `/assign-cohorts/${cohortId}/learner`,
+    { method: 'POST', auth: true, body: { learner_id: learnerId } },
+  );
+  return mapCohortEnrollment(dto);
 }

@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
   ArrowLeft,
+  BookOpen,
   Calendar,
   Clock,
   Mail,
@@ -24,6 +25,7 @@ import AppConfirmModal from '@/components/ui/AppConfirmModal';
 import { useToast } from '@/components/ui/ToastProvider';
 import { useCurrentUserContext } from '@/lib/auth/CurrentUserContext';
 import * as profileApi from '@/lib/api/profile.api';
+import { getCourse } from '@/lib/api/courses.api';
 import { getErrorMessage } from '@/lib/api/client';
 import type { AuthUser, UserRole } from '@/types/auth.types';
 
@@ -84,6 +86,10 @@ export default function UserDetails({ userId }: UserDetailsProps) {
   const [modal, setModal] = useState<ModalKind>(null);
   const [saving, setSaving] = useState(false);
 
+  const [enrolledCourseTitle, setEnrolledCourseTitle] = useState<string | null>(
+    null,
+  );
+
   useEffect(() => {
     let cancelled = false;
     profileApi
@@ -93,6 +99,13 @@ export default function UserDetails({ userId }: UserDetailsProps) {
         setUser(u);
         setSelectedRole(u.role);
         setSelectedStatus(u.isActive ? 'active' : 'suspended');
+        if (u.courseId) {
+          getCourse(u.courseId)
+            .then((course) => {
+              if (!cancelled) setEnrolledCourseTitle(course.title);
+            })
+            .catch(() => {});
+        }
       })
       .catch(() => {
         if (!cancelled) setNotFound(true);
@@ -275,6 +288,15 @@ export default function UserDetails({ userId }: UserDetailsProps) {
               value: formatDate(user.createdAt),
             },
             { icon: Clock, label: 'Last active', value: '—' },
+            ...(user.role === 'learner'
+              ? [
+                  {
+                    icon: BookOpen,
+                    label: 'Enrolled course',
+                    value: enrolledCourseTitle ?? 'Not selected yet',
+                  },
+                ]
+              : []),
           ]}
         />
 

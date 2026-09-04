@@ -5,12 +5,15 @@ import React from 'react';
 export interface AppTabItem {
   id: string;
   label: string;
+  icon?: React.ReactNode;
 }
 
 export interface AppTabProps {
-  tabs: AppTabItem[];
+  tabs: readonly AppTabItem[];
   activeTab: string;
   onChange: (id: string) => void;
+  variant?: 'pill' | 'underline';
+  ariaLabel?: string;
   className?: string;
 }
 
@@ -22,13 +25,50 @@ const AppTab: React.FC<AppTabProps> = ({
   tabs,
   activeTab,
   onChange,
+  variant = 'pill',
+  ariaLabel,
   className,
 }) => {
+  if (variant === 'underline') {
+    return (
+      <div
+        role="tablist"
+        aria-label={ariaLabel}
+        className={cx(
+          'flex flex-wrap gap-6 border-b border-disabled',
+          className,
+        )}
+      >
+        {tabs.map((tab) => {
+          const isActive = tab.id === activeTab;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              role="tab"
+              aria-selected={isActive}
+              onClick={() => onChange(tab.id)}
+              className={cx(
+                'b2-m -mb-px shrink-0 border-b-2 pb-3 transition-colors',
+                isActive
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted hover:text-text-secondary',
+              )}
+            >
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
+
   return (
     <div
       role="tablist"
+      aria-label={ariaLabel}
       className={cx(
-        'flex gap-1 border-b border-disabled',
+        'flex gap-1 overflow-x-auto border-b border-disabled',
         'md:rounded-btn md:border-b-0 md:bg-primary-light md:p-1',
         className,
       )}
@@ -43,13 +83,16 @@ const AppTab: React.FC<AppTabProps> = ({
             aria-selected={isActive}
             onClick={() => onChange(tab.id)}
             className={cx(
-              'b2-m -mb-px border-b-2 px-3 py-2.5 transition-colors',
+              'b2-m -mb-px shrink-0 whitespace-nowrap border-b-2 px-3 py-2.5 transition-colors',
               'md:mb-0 md:rounded-btn md:border-b-0 md:px-3.5 md:py-2',
+              Boolean(tab.icon) &&
+                'inline-flex items-center gap-1.5 [&_svg]:h-4 [&_svg]:w-4',
               isActive
                 ? 'border-primary text-primary md:bg-primary md:text-background'
                 : 'border-transparent text-muted hover:text-text-secondary md:hover:bg-background',
             )}
           >
+            {tab.icon}
             {tab.label}
           </button>
         );

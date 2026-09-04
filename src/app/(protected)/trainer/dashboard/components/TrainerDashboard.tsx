@@ -2,26 +2,19 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { TrendingUp, AlertCircle, UserCircle2 } from 'lucide-react';
+import { AlertCircle, TrendingUp, UserCircle2 } from 'lucide-react';
 import { AppCard } from '@/components/ui/AppCard';
 import AppEmptyState from '@/components/ui/AppEmptyState';
 import AppSpinner from '@/components/ui/AppSpinner';
+import AppPill from '@/components/ui/AppPill';
 import AssignedCourseCard from '../../components/AssignedCourseCard';
 import CircularProgress from '@/components/course/CircularProgress';
 import { useCurrentUserContext } from '@/lib/auth/CurrentUserContext';
 import { useMyAssignedCourse } from '@/lib/trainer/useMyAssignedCourse';
+import { useCohortRoster } from '@/lib/trainer/useCohortRoster';
 import noCourses from '@/assets/images/no-courses.webp';
 import activity from '@/assets/images/activity.webp';
 
-// NOTE: "Cohort progress" is real — computed from the cohort's actual
-// learner roster (% with a completedAt timestamp set). There's still no
-// per-learner content-progress aggregate, and no escalations endpoint
-// anywhere in the API, so "Learners needing attention" and the
-// Escalations count remain honestly unavailable. GET /dashboard/trainer
-// does exist and is very likely meant to supply exactly this, but its
-// response shape isn't documented (see lib/api/dashboard.api.ts) —
-// rather than guess field names and risk showing wrong numbers, these
-// sections stay honest until the real shape is confirmed.
 export default function TrainerDashboard() {
   const { user } = useCurrentUserContext();
   const firstName =
@@ -29,7 +22,14 @@ export default function TrainerDashboard() {
     user?.email.split('@')[0] ||
     'there';
 
-  const { data, loading } = useMyAssignedCourse(user?.id);
+  const { data, cohortWithoutCourse, loading } = useMyAssignedCourse(user?.id);
+  const { roster, loading: loadingRoster } = useCohortRoster(
+    data?.cohort.id,
+    data?.course.id,
+  );
+  const needsAttention = roster
+    .filter((r) => r.status === 'needs_attention')
+    .slice(0, 5);
 
   return (
     <div>
@@ -48,8 +48,16 @@ export default function TrainerDashboard() {
         <AppCard padding="lg">
           <AppEmptyState
             image={noCourses}
-            title="No courses assigned yet"
-            description="Courses assigned to you will appear here."
+            title={
+              cohortWithoutCourse
+                ? `${cohortWithoutCourse.name} doesn't have a course yet`
+                : 'No courses assigned yet'
+            }
+            description={
+              cohortWithoutCourse
+                ? "You're assigned to this cohort, but an admin hasn't added its course yet. Check back soon."
+                : 'Courses assigned to you will appear here.'
+            }
           />
         </AppCard>
       ) : (
@@ -132,12 +140,52 @@ export default function TrainerDashboard() {
                   </div>
                 </div>
               </div>
-              <AppEmptyState
-                image={activity}
-                title="Not available yet"
-                description="Per-learner progress data isn't available from the backend yet."
-                className="!min-h-0 py-14"
-              />
+              {loadingRoster ? (
+                <div className="flex min-h-[160px] items-center justify-center">
+                  <AppSpinner size={32} />
+                </div>
+              ) : needsAttention.length === 0 ? (
+                <AppEmptyState
+                  image={activity}
+                  title="Everyone's on track"
+                  description="No learners in your cohort are below 50% course progress right now."
+                  className="!min-h-0 py-14"
+                />
+              ) : (
+                <ul className="divide-y divide-muted/20">
+                  {needsAttention.map((learner) => (
+                    <li
+                      key={learner.learnerId}
+                      className="flex items-center justify-between gap-3 px-6 py-4"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-light b2-b text-primary">
+                          {(learner.fullName || learner.email)
+                            .charAt(0)
+                            .toUpperCase()}
+                        </span>
+                        <div className="min-w-0">
+                          <p className="b2-m truncate text-text">
+                            {learner.fullName || learner.email}
+                          </p>
+                          <p className="f1-r text-muted">
+                            {learner.progressPercentage ?? 0}% complete
+                          </p>
+                        </div>
+                      </div>
+                      <AppPill label="Needs attention" color="warning" />
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <div className="border-t border-muted/20 px-6 py-4">
+                <Link
+                  href="/trainer/my-cohort"
+                  className="b2-b text-primary hover:underline"
+                >
+                  View full cohort
+                </Link>
+              </div>
             </AppCard>
           </div>
         </div>

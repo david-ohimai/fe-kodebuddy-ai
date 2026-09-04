@@ -12,13 +12,14 @@ import type { AuthUser } from '@/types/auth.types';
 import { AppCard } from '@/components/ui/AppCard';
 import AppSpinner from '@/components/ui/AppSpinner';
 import AppConfirmModal from '@/components/ui/AppConfirmModal';
-import { RefreshCw } from 'lucide-react';
+import { AlertTriangle, RefreshCw } from 'lucide-react';
 import { useToast } from '@/components/ui/ToastProvider';
 import { getErrorMessage } from '@/lib/api/client';
 import * as cohortsApi from '@/lib/api/cohorts.api';
 import type { Cohort } from '@/lib/api/cohorts.api';
 import * as profileApi from '@/lib/api/profile.api';
 import * as coursesApi from '@/lib/api/courses.api';
+import type { Course } from '@/lib/api/courses.api';
 
 interface CohortDetailsPageProps {
   cohortId: number;
@@ -32,10 +33,12 @@ export default function CohortDetailsPage({
   const [cohort, setCohort] = useState<CohortDetails | null>(null);
   const [rawCohort, setRawCohort] = useState<Cohort | null>(null);
   const [loading, setLoading] = useState(true);
-  const [changingTrainer, setChangingTrainer] = useState(false);
-  const [changingCourse, setChangingCourse] = useState(false);
+  const [assigningTrainer, setAssigningTrainer] = useState(false);
+  const [courseSubview, setCourseSubview] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isStatusConfirmOpen, setIsStatusConfirmOpen] = useState(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [deletingCohort, setDeletingCohort] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -48,24 +51,33 @@ export default function CohortDetailsPage({
       coursesApi.listCourses(),
     ])
       .then(([value, learners, assignments, users, courses]) => {
-        if (!cancelled) {
-          const activeAssignment = assignments.find((item) => !item.removedAt);
-          const trainer = users.find(
-            (user) => user.id === activeAssignment?.trainerId,
-          );
-          setRawCohort(value);
-          setCohort({
-            id: String(value.id),
-            name: value.name,
-            status: value.isOpen ? 'active' : 'inactive',
-            startDate: value.startDate,
-            endDate: value.endDate,
-            totalLearners: learners.length,
-            trainer: trainer?.fullName || trainer?.email,
-            trainerEmail: trainer?.email,
-            course: courses.find((course) => course.cohortId === cohortId)?.title,
-          });
-        }
+        if (cancelled) return;
+        const activeTrainerIds = new Set(
+          assignments.filter((a) => !a.removedAt).map((a) => a.trainerId),
+        );
+
+        const trainers = users
+          .filter((u) => activeTrainerIds.has(u.id) && u.role === 'trainer')
+          .map((u) => ({
+            id: u.id,
+            name: u.fullName || u.email,
+            email: u.email,
+          }));
+        const cohortCourses = courses
+          .filter((c) => c.cohortId === cohortId)
+          .map((c) => ({ id: c.id, title: c.title }));
+
+        setRawCohort(value);
+        setCohort({
+          id: String(value.id),
+          name: value.name,
+          status: value.isOpen ? 'active' : 'inactive',
+          startDate: value.startDate,
+          endDate: value.endDate,
+          totalLearners: learners.length,
+          trainers,
+          courses: cohortCourses,
+        });
       })
       .catch((error) => {
         if (!cancelled) {
@@ -107,19 +119,22 @@ export default function CohortDetailsPage({
     );
   }
 
-  if (changingTrainer) {
+  if (assigningTrainer) {
     return (
       <ChangeTrainerPage
         cohortId={cohortId}
         cohort={cohort}
-        onBack={() => setChangingTrainer(false)}
-        onAssigned={(trainer: AuthUser) => {
+        onBack={() => setAssigningTrainer(false)}
+        onAssigned={(trainers: AuthUser[]) => {
           setCohort((current) =>
             current
               ? {
                   ...current,
-                  trainer: trainer.fullName || trainer.email,
-                  trainerEmail: trainer.email,
+                  trainers: trainers.map((t) => ({
+                    id: t.id,
+                    name: t.fullName || t.email,
+                    email: t.email,
+                  })),
                 }
               : current,
           );
@@ -128,15 +143,20 @@ export default function CohortDetailsPage({
     );
   }
 
-  if (changingCourse) {
+  if (courseSubview) {
     return (
       <ChangeCoursePage
         cohortId={cohortId}
         cohort={cohort}
-        onBack={() => setChangingCourse(false)}
-        onAssigned={(course) => {
+        onBack={() => setCourseSubview(false)}
+        onCoursesChange={(courses: Course[]) => {
           setCohort((current) =>
-            current ? { ...current, course: course.title } : current,
+            current
+              ? {
+                  ...current,
+                  courses: courses.map((c) => ({ id: c.id, title: c.title })),
+                }
+              : current,
           );
         }}
       />
@@ -211,9 +231,16 @@ export default function CohortDetailsPage({
         onViewLearners={() =>
           router.push(`/admin/cohorts/${cohortId}/learners`)
         }
-        onChangeTrainer={() => setChangingTrainer(true)}
-        onChangeCourse={() => setChangingCourse(true)}
+        onAddLearners={() =>
+          router.push(`/admin/cohorts/${cohortId}/learners/assign`)
+        }
+        onViewTrainers={() =>
+          router.push(`/admin/cohorts/${cohortId}/trainers`)
+        }
+        onAssignTrainerToCourse={() => setAssigningTrainer(true)}
+        onEditCourse={() => setCourseSubview(true)}
         onEditCohort={() => setIsEditOpen(true)}
+        onDeleteCohort={() => setIsDeleteConfirmOpen(true)}
         onChangeStatus={() => setIsStatusConfirmOpen(true)}
       />
 
@@ -251,6 +278,50 @@ export default function CohortDetailsPage({
           label: 'Confirm',
           loading: saving,
           onClick: handleConfirmStatusChange,
+        }}
+      />
+
+      <AppConfirmModal
+        open={isDeleteConfirmOpen}
+        onClose={() => setIsDeleteConfirmOpen(false)}
+        icon={
+          <span className="flex h-16 w-16 items-center justify-center rounded-full bg-error/15">
+            <AlertTriangle size={28} className="text-error" />
+          </span>
+        }
+        title={`Delete ${cohort.name}?`}
+        description={`This permanently removes the cohort. Its ${cohort.totalLearners} learner${
+          cohort.totalLearners === 1 ? '' : 's'
+        } and ${cohort.courses.length} course${
+          cohort.courses.length === 1 ? '' : 's'
+        } will lose this cohort association. This action cannot be undone.`}
+        secondaryButton={{
+          label: 'Cancel',
+          onClick: () => setIsDeleteConfirmOpen(false),
+        }}
+        primaryButton={{
+          label: 'Yes, delete',
+          color: 'error',
+          loading: deletingCohort,
+          onClick: async () => {
+            setDeletingCohort(true);
+            try {
+              await cohortsApi.deleteCohort(cohortId);
+              showSuccess(
+                'Cohort deleted.',
+                `"${cohort.name}" has been removed.`,
+              );
+              router.push('/admin/cohorts');
+            } catch (error) {
+              showError(
+                'Could not delete cohort',
+                getErrorMessage(error, 'Please try again.'),
+              );
+            } finally {
+              setDeletingCohort(false);
+              setIsDeleteConfirmOpen(false);
+            }
+          },
         }}
       />
     </>

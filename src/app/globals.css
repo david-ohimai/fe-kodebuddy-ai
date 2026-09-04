@@ -13,15 +13,15 @@
   --warning-dark: #f59e0b;
   --error: #fe3e11;
   --error-light: #fef2f2;
-  --error-dark: #EF4444;
+  --error-dark: #ef4444;
   --success: #2ad926;
-  --success-light: #F0FDF4;
-  --success-dark: #40B869;
+  --success-light: #f0fdf4;
+  --success-dark: #40b869;
   --text: #111827;
   --text-secondary: #6b7280;
   --muted: #9ca3af;
   --disabled: #e6f2fb;
-  --border:#E5E7EB;
+  --border: #e5e7eb;
   --button-hover: #002c4e;
 
   --font-app-font: 'Lato', sans-serif;
@@ -108,7 +108,6 @@
   --radius-btn: var(--radius-button-radius);
   --radius-input: var(--radius-input-radius);
   --radius-card: var(--radius-card);
-
 }
 
 body {

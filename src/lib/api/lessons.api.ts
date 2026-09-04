@@ -49,6 +49,14 @@ export async function listModuleLessons(moduleId: number): Promise<Lesson[]> {
   return dtos.map(mapLesson).sort((a, b) => a.order - b.order);
 }
 
+export async function getLesson(lessonId: number): Promise<Lesson> {
+  const dto = await apiFetch<LessonResponseDto>(`/lessons/${lessonId}`, {
+    method: 'GET',
+    auth: true,
+  });
+  return mapLesson(dto);
+}
+
 export async function createLesson(input: {
   moduleId: number;
   title: string;

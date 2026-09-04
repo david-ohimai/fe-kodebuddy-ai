@@ -1,9 +1,11 @@
-// This file is the small, self-contained replacement: a single `apiFetch` helper that
-// `lib/api/auth.api.ts` builds its requests on top of.
-
-const API_BASE_URL =
+const DIRECT_API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') ??
   'https://kodebuddy-ai-be.onrender.com';
+
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL || typeof window === 'undefined'
+    ? DIRECT_API_BASE_URL
+    : '/api/backend';
 
 const ACCESS_TOKEN_KEY = 'kodebuddy_access_token';
 const REFRESH_TOKEN_KEY = 'kodebuddy_refresh_token';
@@ -28,6 +30,10 @@ export class NetworkError extends Error {
     this.name = 'NetworkError';
     this.cause = cause;
   }
+}
+
+export function getApiBaseUrl(): string {
+  return API_BASE_URL;
 }
 
 export function getAccessToken(): string | null {

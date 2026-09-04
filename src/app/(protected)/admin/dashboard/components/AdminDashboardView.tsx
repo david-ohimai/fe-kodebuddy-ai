@@ -19,6 +19,8 @@ import { useCurrentUserContext } from '@/lib/auth/CurrentUserContext';
 import * as profileApi from '@/lib/api/profile.api';
 import * as coursesApi from '@/lib/api/courses.api';
 import * as cohortsApi from '@/lib/api/cohorts.api';
+import * as activityApi from '@/lib/api/activity.api';
+import { ACTIVITY_TYPE_LABEL } from '@/lib/api/activity.api';
 
 interface ActivityItem {
   id: string;
@@ -52,7 +54,7 @@ const AdminDashboardView: React.FC = () => {
     activeCohorts: 0,
   });
   const [loading, setLoading] = useState(true);
-  const activities: ActivityItem[] = [];
+  const [activities, setActivities] = useState<ActivityItem[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -61,12 +63,15 @@ const AdminDashboardView: React.FC = () => {
       profileApi.listUsers(),
       coursesApi.listCourses(),
       cohortsApi.listCohorts(),
-    ]).then(([usersResult, coursesResult, cohortsResult]) => {
+      activityApi.listAdminActivity(20),
+    ]).then(([usersResult, coursesResult, cohortsResult, activityResult]) => {
       if (cancelled) return;
 
+      const users = usersResult.status === 'fulfilled' ? usersResult.value : [];
+      const usersById = new Map(users.map((u) => [u.id, u]));
+
       setStats({
-        totalUsers:
-          usersResult.status === 'fulfilled' ? usersResult.value.length : 0,
+        totalUsers: users.length,
         activeCourses:
           coursesResult.status === 'fulfilled'
             ? coursesResult.value.filter((c) => c.isActive).length
@@ -76,6 +81,27 @@ const AdminDashboardView: React.FC = () => {
             ? cohortsResult.value.filter((c) => c.isOpen).length
             : 0,
       });
+
+      if (activityResult.status === 'fulfilled') {
+        setActivities(
+          activityResult.value.map((entry) => {
+            const actorUser = usersById.get(entry.userId);
+            return {
+              id: String(entry.id),
+              actor: actorUser?.fullName || actorUser?.email || 'Someone',
+              action: entry.title || ACTIVITY_TYPE_LABEL[entry.activityType],
+              meta: entry.description ?? '',
+              timestamp: new Date(entry.createdAt).toLocaleString('en-US', {
+                day: 'numeric',
+                month: 'short',
+                hour: 'numeric',
+                minute: '2-digit',
+              }),
+            };
+          }),
+        );
+      }
+
       setLoading(false);
 
       const failed = [usersResult, coursesResult, cohortsResult].some(
@@ -222,7 +248,8 @@ const AdminDashboardView: React.FC = () => {
               >
                 <p className="b2-r text-text-secondary">
                   <span className="b2-b text-text">{item.actor}</span>{' '}
-                  {item.action} · {item.meta}
+                  {item.action}
+                  {item.meta ? ` · ${item.meta}` : ''}
                 </p>
                 <span className="f1-r shrink-0 text-muted">
                   {item.timestamp}

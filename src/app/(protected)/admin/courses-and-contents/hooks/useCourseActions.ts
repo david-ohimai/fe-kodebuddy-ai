@@ -36,5 +36,14 @@ export function useCourseActions(
     }
   };
 
-  return { saving, publish, saveDescription };
+  const deleteCourse = async () => {
+    setSaving(true);
+    try {
+      await coursesApi.deleteCourse(course.id);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return { saving, publish, saveDescription, deleteCourse };
 }
