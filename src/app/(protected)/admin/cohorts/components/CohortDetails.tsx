@@ -9,6 +9,7 @@ import {
   BookOpen,
   GraduationCap,
   ChevronRight,
+  ChevronDown,
 } from 'lucide-react';
 import AppButton from '@/components/ui/AppButton';
 import AppPill from '@/components/ui/AppPill';
@@ -31,6 +32,7 @@ interface CohortDetailsViewProps {
   onBack: () => void;
   onEditCohort?: () => void;
   onViewLearners?: () => void;
+  onAddLearners?: () => void;
   onChangeTrainer?: () => void;
   onChangeCourse?: () => void;
   onChangeStatus?: () => void;
@@ -57,40 +59,96 @@ const DetailListItem: React.FC<{
   value: React.ReactNode;
   actionLabel: string;
   onAction?: () => void;
-}> = ({ icon, title, description, value, actionLabel, onAction }) => (
-  <div className="flex items-center justify-between gap-4 border-b border-disabled px-6 py-5 last:border-b-0">
-    <div className="flex items-start gap-3">
-      <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-light text-primary">
-        {icon}
-      </span>
-      <div>
-        <p className="b1-b text-text">{title}</p>
-        <p className="b2-r mt-0.5 text-muted">{description}</p>
+  /**
+   * When present the action becomes a menu instead of a single button. Rows
+   * with one thing to do keep the plain button.
+   */
+  menu?: Array<{ label: string; onSelect?: () => void }>;
+}> = ({ icon, title, description, value, actionLabel, onAction, menu }) => {
+  const [open, setOpen] = React.useState(false);
+
+  return (
+    <div className="flex items-center justify-between gap-4 border-b border-disabled px-6 py-5 last:border-b-0">
+      <div className="flex items-start gap-3">
+        <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-light text-primary">
+          {icon}
+        </span>
+        <div>
+          <p className="b1-b text-text">{title}</p>
+          <p className="b2-r mt-0.5 text-muted">{description}</p>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-6">
+        <span className="b1-b hidden text-text sm:block">{value}</span>
+
+        {menu ? (
+          <div className="relative">
+            <AppButton
+              size="small"
+              radius="full"
+              variant="outlined"
+              color="primary"
+              endIcon={<ChevronDown size={14} />}
+              className={actionButtonClass}
+              onClick={() => setOpen((v) => !v)}
+            >
+              {actionLabel}
+            </AppButton>
+
+            {open && (
+              <>
+                <div
+                  role="presentation"
+                  onClick={() => setOpen(false)}
+                  className="fixed inset-0 z-40"
+                />
+                <div
+                  role="menu"
+                  className="absolute right-0 top-full z-50 mt-2 w-56 overflow-hidden rounded-card border border-disabled bg-background py-1.5 shadow-lg"
+                >
+                  {menu.map((item) => (
+                    <button
+                      key={item.label}
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setOpen(false);
+                        item.onSelect?.();
+                      }}
+                      className="flex w-full items-center px-4 py-2.5 text-left b2-m text-text-secondary transition-colors hover:bg-primary-light hover:text-primary"
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        ) : (
+          <AppButton
+            size="small"
+            radius="full"
+            variant="outlined"
+            color="primary"
+            endIcon={<ChevronRight size={14} />}
+            className={actionButtonClass}
+            onClick={onAction}
+          >
+            {actionLabel}
+          </AppButton>
+        )}
       </div>
     </div>
-
-    <div className="flex items-center gap-6">
-      <span className="b1-b hidden text-text sm:block">{value}</span>
-      <AppButton
-        size="small"
-        radius="full"
-        variant="outlined"
-        color="primary"
-        endIcon={<ChevronRight size={14} />}
-        className={actionButtonClass}
-        onClick={onAction}
-      >
-        {actionLabel}
-      </AppButton>
-    </div>
-  </div>
-);
+  );
+};
 
 const CohortDetailsView: React.FC<CohortDetailsViewProps> = ({
   cohort,
   onBack,
   onEditCohort,
   onViewLearners,
+  onAddLearners,
   onChangeTrainer,
   onChangeCourse,
   onChangeStatus,
@@ -166,6 +224,10 @@ const CohortDetailsView: React.FC<CohortDetailsViewProps> = ({
             value={cohort.totalLearners}
             actionLabel="View learners"
             onAction={onViewLearners}
+            menu={[
+              { label: 'View learners', onSelect: onViewLearners },
+              { label: 'Add learners to course', onSelect: onAddLearners },
+            ]}
           />
 
           <DetailListItem

@@ -211,6 +211,9 @@ export default function CohortDetailsPage({
         onViewLearners={() =>
           router.push(`/admin/cohorts/${cohortId}/learners`)
         }
+        onAddLearners={() =>
+          router.push(`/admin/cohorts/${cohortId}/learners/assign`)
+        }
         onChangeTrainer={() => setChangingTrainer(true)}
         onChangeCourse={() => setChangingCourse(true)}
         onEditCohort={() => setIsEditOpen(true)}

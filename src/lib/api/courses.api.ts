@@ -101,6 +101,25 @@ export async function deleteCourse(courseId: number): Promise<void> {
  * pair with a 409 but otherwise appends, so a course can carry several
  * trainers.
  */
+/**
+ * Puts a learner on a course. Admin only.
+ *
+ * Not additive: a learner can be on one course at a time, so the backend
+ * REPLACES any existing assignment silently. Callers should tell the admin
+ * what is being moved before invoking this. Re-assigning the same course 409s,
+ * and the course's cohort must match the learner's.
+ */
+export async function assignLearnerToCourse(
+  courseId: number,
+  learnerId: number,
+): Promise<void> {
+  await apiFetch<{ message: string }>(`/courses/${courseId}/assign-learner`, {
+    method: 'POST',
+    auth: true,
+    body: { learner_id: learnerId },
+  });
+}
+
 export async function assignCourseTrainer(
   courseId: number,
   trainerId: number,
