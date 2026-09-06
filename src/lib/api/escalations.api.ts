@@ -14,6 +14,9 @@ interface EscalationResponseDto {
   detail: string | null;
   draft_response: string | null;
   confidence_score: number | null;
+  /** The trainer's written reply, and when it was written. */
+  response: string | null;
+  responded_at: string | null;
   /** Free-form on the server; see mapEscalationStatus. */
   status: string;
   created_at: string;
@@ -31,33 +34,42 @@ function mapEscalation(dto: EscalationResponseDto): Escalation {
     message: dto.question,
     status: mapEscalationStatus(dto.status),
     rawStatus: dto.status,
-    // EscalationResponse has no field for the trainer's reply — it can be
-    // written via PATCH (EscalationUpdate.response) but isn't echoed back
-    // on read. Always null here; a real gap in the backend's response
-    // schema, not something this mapping can work around.
-    response: null,
-    respondedAt: null,
+    response: dto.response,
+    respondedAt: dto.responded_at,
     createdAt: dto.created_at,
   };
 }
 
-/**
- * There is no GET /escalations/learner (or any other way to list a
- * learner's own escalations) anywhere in the live API — confirmed
- * directly against /openapi.json, not inferred. The only learner-facing
- * escalation read is GET /escalations/{id} (getMyEscalation below), for
- * one specific id already known to the caller (e.g. just returned from
- * POST /agent/escalate). This used to call a guessed `/escalations/learner`
- * endpoint that doesn't exist and would 404 in production; resolving to
- * empty immediately instead of attempting that call.
- */
-export async function listMyEscalations(): Promise<Escalation[]> {
-  return [];
+export interface ListEscalationsOptions {
+  /** Server-side filter on the raw status string. */
+  status?: string;
+  courseId?: number;
 }
 
-/** True while there's no way to list a learner's own escalations — see listMyEscalations. */
-export function isEscalationListUnavailable(): boolean {
-  return true;
+/**
+ * The signed-in learner's own escalations.
+ *
+ * Scoped server-side: the route rejects non-learners and the service filters
+ * by learner_id, so there is no way to read another learner's.
+ *
+ * This previously resolved to an empty array — GET /escalations/learner did
+ * not exist when that was written. It does now.
+ */
+export async function listMyEscalations(
+  options: ListEscalationsOptions = {},
+): Promise<Escalation[]> {
+  const params = new URLSearchParams();
+  if (options.status) params.set('status', options.status);
+  if (options.courseId !== undefined) {
+    params.set('course_id', String(options.courseId));
+  }
+  const query = params.toString();
+
+  const dtos = await apiFetch<EscalationResponseDto[]>(
+    `/escalations/learner${query ? `?${query}` : ''}`,
+    { method: 'GET', auth: true },
+  );
+  return (dtos ?? []).map(mapEscalation);
 }
 
 /**

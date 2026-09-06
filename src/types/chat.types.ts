@@ -337,6 +337,9 @@ export interface EscalationDto {
   detail: string | null;
   draft_response: string | null;
   confidence_score: number | null;
+  /** The trainer's written reply, and when it was written. */
+  response: string | null;
+  responded_at: string | null;
   /** Free-form on the server (no fixed enum) — see mapStage. */
   status: string;
   created_at: string;

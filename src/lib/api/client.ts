@@ -2,8 +2,28 @@ const DIRECT_API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') ??
   'https://kodebuddy-ai-be.onrender.com';
 
+/**
+ * Where requests actually go.
+ *
+ * In the browser they take the same-origin `/api/backend` path, which
+ * next.config.ts rewrites to the API. Being same-origin means no CORS
+ * preflight and no dependency on the backend's FRONTEND_URL matching
+ * whatever host the frontend is deployed to.
+ *
+ * Server-side code has no origin to be same as, so it calls the API directly.
+ *
+ * Set NEXT_PUBLIC_USE_DIRECT_API=true to bypass the rewrite in the browser —
+ * useful when pointing a local frontend at a local backend.
+ *
+ * (This previously read `NEXT_PUBLIC_API_URL || typeof window === 'undefined'
+ * ? direct : proxy`. `||` binds tighter than `?:`, so setting
+ * NEXT_PUBLIC_API_URL turned the proxy *off* — the opposite of the intent —
+ * and with it unset every browser call hit a `/api/backend` route that did
+ * not exist yet.)
+ */
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || typeof window === 'undefined'
+  typeof window === 'undefined' ||
+  process.env.NEXT_PUBLIC_USE_DIRECT_API === 'true'
     ? DIRECT_API_BASE_URL
     : '/api/backend';
 

@@ -33,8 +33,6 @@ function firstNumber(...candidates: unknown[]): number | null {
 function extractAssignment(
   raw: unknown,
 ): { cohortId: number; courseId: number | null } | null {
-  console.log('[useMyAssignedCourse] Raw /dashboard/trainer response:', raw);
-
   if (!raw || typeof raw !== 'object') return null;
   const obj = raw as Record<string, unknown>;
 
@@ -56,6 +54,12 @@ function extractAssignment(
     cohort?.cohort_id,
     firstCohortFromArray?.id,
     firstCohortFromArray?.cohort_id,
+    // Where it actually is: TrainerDashboardResponse has no top-level cohort
+    // and no `cohorts` array — each TrainerCourseSummary carries its own
+    // cohort_id. Without this the id resolved to null and the whole
+    // assignment was discarded, so a trainer with a real course and learners
+    // saw the "no course" empty state.
+    firstCourseFromArray?.cohort_id,
   );
 
   const courseId = firstNumber(
