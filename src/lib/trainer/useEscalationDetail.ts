@@ -22,7 +22,6 @@ export function useEscalationDetail(escalationId: number) {
           setNotFound(true);
           return;
         }
-        // Same name-resolution gap as the list view — see useEscalations.ts.
         const learner = await profileApi
           .getUserById(result.learnerId)
           .catch(() => null);
@@ -47,9 +46,7 @@ export function useEscalationDetail(escalationId: number) {
     setSendError(null);
     try {
       await respondToEscalation({ escalationId, message: message.trim() });
-      // EscalationResponse doesn't echo the reply back (see chat.types.ts),
-      // so this is set optimistically for the rest of this session rather
-      // than read back from the server.
+
       setEscalation((prev) =>
         prev
           ? {

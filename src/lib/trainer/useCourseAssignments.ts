@@ -17,6 +17,10 @@ function defaultDueDate(cohortEndDate?: string | null): string {
   return fallback.toISOString();
 }
 
+function defaultStartDate(): string {
+  return new Date().toISOString();
+}
+
 export interface AssignmentFormInput {
   title: string;
   description?: string;
@@ -79,6 +83,7 @@ export function useCourseAssignments(
           instructions: data.instructions,
           requirements: data.requirements,
           dueDate: defaultDueDate(cohortEndDate),
+          startDate: defaultStartDate(),
           maximumScore: DEFAULT_MAXIMUM_SCORE,
         },
       );

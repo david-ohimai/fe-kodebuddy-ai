@@ -8,15 +8,8 @@ import PersonalizeStep from './PersonalizeStep';
 import SetupLoadingStep from './SetupLoadingStep';
 import AllSetStep from './AllSetStep';
 import { selectCourse } from '@/lib/api/courses.api';
-import { joinCohort } from '@/lib/api/cohorts.api';
-import { ApiError, getErrorMessage } from '@/lib/api/client';
+import { getErrorMessage } from '@/lib/api/client';
 import type { OnboardingFormValues } from '@/types/auth.types';
-
-function isAlreadyEnrolledError(err: unknown): boolean {
-  if (!(err instanceof ApiError)) return false;
-  if (err.status === 409) return true;
-  return /already\s+(registered|enrolled|a member|joined)/i.test(err.message);
-}
 
 type Step = 'personalize' | 'loading' | 'all-set';
 
@@ -30,7 +23,7 @@ export default function Onboarding() {
   const [error, setError] = useState<string | null>(null);
 
   const handleContinue = async (values: OnboardingFormValues) => {
-    if (!values.cohortId && !values.courseId) {
+    if (!values.courseId) {
       setStep('loading');
       return;
     }
@@ -38,23 +31,11 @@ export default function Onboarding() {
     setSubmitting(true);
     setError(null);
     try {
-      if (values.cohortId) {
-        try {
-          await joinCohort(values.cohortId);
-        } catch (err) {
-          if (!isAlreadyEnrolledError(err)) throw err;
-        }
-      }
-      if (values.courseId) {
-        await selectCourse(values.courseId);
-      }
+      await selectCourse(values.courseId);
       setStep('loading');
     } catch (err) {
       setError(
-        getErrorMessage(
-          err,
-          'Could not save your cohort/course. Please try again.',
-        ),
+        getErrorMessage(err, 'Could not save your course. Please try again.'),
       );
     } finally {
       setSubmitting(false);

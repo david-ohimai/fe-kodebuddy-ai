@@ -42,16 +42,10 @@ interface AssignmentDetailDto {
   description: string | null;
   instructions: AssignmentItem[] | null;
   requirements: AssignmentItem[] | null;
-  /**
-   * When the assignment opens. Required by the API, but read as optional here:
-   * rows created before the column existed can still come back without it, and
-   * a missing release date means "already open".
-   */
   start_date?: string | null;
   due_date: string;
   maximum_score: number;
   created_by: number;
-  /** Resolved server-side; null when the trainer has set no full name. */
   created_by_name?: string | null;
   created_at: string;
   updated_at: string;
@@ -90,15 +84,9 @@ function mapLearnerAssignment(
   course: MyCourseRef,
   submission: Submission | undefined,
 ): LearnerAssignment {
-  // Derived from the learner's own submission. These previously came from the
-  // learner dashboard payload; that source went away when this switched to
-  // listMyCourses, and the three `status?.…` reads it left behind resolved to
-  // the global `window.status` string rather than failing loudly.
   const submitted = submission !== undefined;
   const graded = submission?.score != null;
 
-  // Past the due date and nothing handed in. The dashboard used to compute
-  // this server-side; there is no other source for it now.
   const isOverdue = !submitted && new Date(dto.due_date).getTime() < Date.now();
 
   const startDate = dto.start_date ?? null;
@@ -268,6 +256,7 @@ export interface CourseAssignmentInput {
   description?: string;
   instructions?: AssignmentItem[];
   requirements?: AssignmentItem[];
+  startDate: string;
   dueDate: string;
   maximumScore: number;
 }
@@ -286,6 +275,7 @@ export async function createModuleAssignment(
         description: input.description,
         instructions: input.instructions,
         requirements: input.requirements,
+        start_date: input.startDate,
         due_date: input.dueDate,
         maximum_score: input.maximumScore,
       },
@@ -299,6 +289,7 @@ export interface CourseAssignmentUpdateInput {
   description?: string;
   instructions?: AssignmentItem[];
   requirements?: AssignmentItem[];
+  startDate?: string;
   dueDate?: string;
   maximumScore?: number;
 }
@@ -318,6 +309,7 @@ export async function updateModuleAssignment(
         description: input.description,
         instructions: input.instructions,
         requirements: input.requirements,
+        start_date: input.startDate,
         due_date: input.dueDate,
         maximum_score: input.maximumScore,
       },
