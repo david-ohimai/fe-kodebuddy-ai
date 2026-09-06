@@ -100,6 +100,9 @@ const CourseDetailsView: React.FC<CourseDetailsViewProps> = ({
         onAddModule={() => setIsAddModuleOpen(true)}
         onEditModule={setEditingModule}
         onDeleteModule={setDeletingModule}
+        onMoveModule={(module, direction) =>
+          content.moveModule(module.id, direction)
+        }
         onAddLesson={setLessonModule}
         onEditLesson={(module, lesson) =>
           setEditingLesson({
@@ -118,6 +121,9 @@ const CourseDetailsView: React.FC<CourseDetailsViewProps> = ({
             lessonId: lesson.id,
             lessonTitle: lesson.title,
           })
+        }
+        onMoveLesson={(module, lesson, direction) =>
+          content.moveLesson(module.id, lesson.id, direction)
         }
       />
 

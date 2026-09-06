@@ -11,6 +11,16 @@ export interface MyCourseRef {
 export async function listMyCourses(): Promise<MyCourseRef[]> {
   const me = await getCurrentProfile();
 
+  if (me.courseId && me.cohortId && me.courseName) {
+    return [
+      {
+        courseId: me.courseId,
+        courseTitle: me.courseName,
+        cohortId: me.cohortId,
+      },
+    ];
+  }
+
   if (me.courseId) {
     try {
       const course = await coursesApi.getCourse(me.courseId);

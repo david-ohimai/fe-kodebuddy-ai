@@ -102,65 +102,125 @@ export default function EscalationDetailPage({
           <div className="mt-2 rounded-input bg-primary-light px-4 py-3">
             <p className="b2-r text-primary-dark">{escalation.question}</p>
           </div>
+
+          {(escalation.reason ||
+            escalation.detail ||
+            escalation.draftResponse) && (
+            <>
+              <p className="b2-b mt-5 text-text">Why the agent escalated</p>
+              <div className="mt-2 flex flex-col gap-3 rounded-input border border-disabled px-4 py-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  {escalation.reason && (
+                    <span className="f1-m rounded-full bg-warning-light px-2.5 py-1 text-warning-dark">
+                      {escalation.reason.replace(/_/g, ' ')}
+                    </span>
+                  )}
+                  {escalation.confidenceScore !== null &&
+                    escalation.confidenceScore !== undefined && (
+                      <span className="f1-r text-muted">
+                        Confidence:{' '}
+                        {Math.round(escalation.confidenceScore * 100)}%
+                      </span>
+                    )}
+                </div>
+                {escalation.detail && (
+                  <p className="b2-r text-text-secondary">
+                    {escalation.detail}
+                  </p>
+                )}
+                {escalation.draftResponse && (
+                  <div>
+                    <p className="f1-m text-muted">
+                      The agent&apos;s own attempt at an answer:
+                    </p>
+                    <p className="b2-r mt-1 text-text-secondary">
+                      {escalation.draftResponse}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
         </div>
       </AppCard>
 
-      <AppCard padding="lg">
-        <h2 className="b1-b text-text">Your response</h2>
-        <p className="b2-r mt-1 text-text-secondary">
-          Provide clear and helpful guidance to the learner. Be clear,
-          supportive and professional.
-        </p>
+      {escalation.status === 'resolved' && escalation.response ? (
+        <AppCard padding="lg">
+          <h2 className="b1-b text-text">Your response</h2>
+          <div className="mt-4 rounded-input bg-secondary-light px-4 py-3">
+            <p className="b2-r text-text">{escalation.response}</p>
+          </div>
+          {escalation.respondedAt && (
+            <p className="f1-r mt-2 text-muted">
+              Sent{' '}
+              {new Date(escalation.respondedAt).toLocaleString('en-US', {
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit',
+              })}
+            </p>
+          )}
+        </AppCard>
+      ) : (
+        <AppCard padding="lg">
+          <h2 className="b1-b text-text">Your response</h2>
+          <p className="b2-r mt-1 text-text-secondary">
+            Provide clear and helpful guidance to the learner. Be clear,
+            supportive and professional.
+          </p>
 
-        <div className="mt-4">
-          <AppTextarea
-            placeholder="Type your response...."
-            value={response}
-            onChange={(e) => setResponse(e.target.value)}
-            rows={7}
-            maxLength={4000}
-          />
-        </div>
+          <div className="mt-4">
+            <AppTextarea
+              placeholder="Type your response...."
+              value={response}
+              onChange={(e) => setResponse(e.target.value)}
+              rows={7}
+              maxLength={4000}
+            />
+          </div>
 
-        <div className="mt-3 flex justify-end">
-          <AppButton
-            radius="full"
-            startIcon={<Send size={16} />}
-            loading={sending}
-            disabled={!response.trim()}
-            onClick={handleSend}
-          >
-            Send response
-          </AppButton>
-        </div>
-
-        {sendError ? (
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-input bg-error-light px-4 py-3">
-            <div className="flex items-center gap-2">
-              <AlertCircle size={18} className="shrink-0 text-error" />
-              <p className="b2-m text-error">{sendError}</p>
-            </div>
+          <div className="mt-3 flex justify-end">
             <AppButton
-              variant="outlined"
-              color="error"
-              size="small"
               radius="full"
-              startIcon={<RotateCcw size={14} />}
+              startIcon={<Send size={16} />}
               loading={sending}
+              disabled={!response.trim()}
               onClick={handleSend}
             >
-              Retry
+              Send response
             </AppButton>
           </div>
-        ) : (
-          <div className="mt-4 rounded-input bg-primary-light px-4 py-3">
-            <p className="b2-r text-primary-dark">
-              Your response will be sent to the learner and added to the
-              conversation.
-            </p>
-          </div>
-        )}
-      </AppCard>
+
+          {sendError ? (
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-input bg-error-light px-4 py-3">
+              <div className="flex items-center gap-2">
+                <AlertCircle size={18} className="shrink-0 text-error" />
+                <p className="b2-m text-error">{sendError}</p>
+              </div>
+              <AppButton
+                variant="outlined"
+                color="error"
+                size="small"
+                radius="full"
+                startIcon={<RotateCcw size={14} />}
+                loading={sending}
+                onClick={handleSend}
+              >
+                Retry
+              </AppButton>
+            </div>
+          ) : (
+            <div className="mt-4 rounded-input bg-primary-light px-4 py-3">
+              <p className="b2-r text-primary-dark">
+                Your response will be sent to the learner and added to the
+                conversation.
+              </p>
+            </div>
+          )}
+        </AppCard>
+      )}
     </div>
   );
 }

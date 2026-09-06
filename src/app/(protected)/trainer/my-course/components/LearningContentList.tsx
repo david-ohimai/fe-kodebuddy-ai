@@ -1,5 +1,12 @@
 import React from 'react';
-import { ArrowLeft, ChevronRight, Pencil, Plus } from 'lucide-react';
+import {
+  ArrowLeft,
+  ChevronDown,
+  ChevronRight,
+  ChevronUp,
+  Pencil,
+  Plus,
+} from 'lucide-react';
 import { AppCard } from '@/components/ui/AppCard';
 import AppButton from '@/components/ui/AppButton';
 import AppEmptyState from '@/components/ui/AppEmptyState';
@@ -18,6 +25,7 @@ export interface LearningContentListProps {
   onSelectLesson: (lesson: Lesson) => void;
   onAddContent: () => void;
   onEditModule: () => void;
+  onMoveLesson: (lesson: Lesson, direction: 'up' | 'down') => void;
 }
 
 export default function LearningContentList({
@@ -30,6 +38,7 @@ export default function LearningContentList({
   onSelectLesson,
   onAddContent,
   onEditModule,
+  onMoveLesson,
 }: LearningContentListProps) {
   return (
     <div className="flex flex-col gap-4 p-5 sm:p-6">
@@ -99,7 +108,27 @@ export default function LearningContentList({
         ) : (
           <ul className="divide-y divide-disabled">
             {lessons.map((lesson, index) => (
-              <li key={lesson.id}>
+              <li key={lesson.id} className="flex items-center">
+                <div className="flex shrink-0 flex-col pl-4">
+                  <button
+                    type="button"
+                    disabled={index === 0}
+                    onClick={() => onMoveLesson(lesson, 'up')}
+                    aria-label={`Move ${lesson.title} up`}
+                    className="rounded p-0.5 text-muted enabled:hover:bg-disabled enabled:hover:text-text disabled:opacity-30"
+                  >
+                    <ChevronUp size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    disabled={index === lessons.length - 1}
+                    onClick={() => onMoveLesson(lesson, 'down')}
+                    aria-label={`Move ${lesson.title} down`}
+                    className="rounded p-0.5 text-muted enabled:hover:bg-disabled enabled:hover:text-text disabled:opacity-30"
+                  >
+                    <ChevronDown size={16} />
+                  </button>
+                </div>
                 <button
                   type="button"
                   onClick={() => onSelectLesson(lesson)}

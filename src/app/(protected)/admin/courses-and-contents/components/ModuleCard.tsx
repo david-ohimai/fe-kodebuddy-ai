@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus } from 'lucide-react';
+import { ChevronDown, ChevronUp, Plus } from 'lucide-react';
 import { AppCard } from '@/components/ui/AppCard';
 import AppButton from '@/components/ui/AppButton';
 import AppPill from '@/components/ui/AppPill';
@@ -14,36 +14,90 @@ import type { Lesson } from '@/lib/api/lessons.api';
 export interface ModuleCardProps {
   module: CourseModule;
   index: number;
+  isFirst: boolean;
+  isLast: boolean;
   lessons: Lesson[];
   onEditModule: () => void;
   onDeleteModule: () => void;
+  onMoveModule: (direction: 'up' | 'down') => void;
   onAddLesson: () => void;
   onEditLesson: (lesson: Lesson) => void;
   onDeleteLesson: (lesson: Lesson) => void;
+  onMoveLesson: (lesson: Lesson, direction: 'up' | 'down') => void;
+}
+
+function ReorderButtons({
+  isFirst,
+  isLast,
+  onMoveUp,
+  onMoveDown,
+  label,
+}: {
+  isFirst: boolean;
+  isLast: boolean;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+  label: string;
+}) {
+  return (
+    <div className="flex flex-col">
+      <button
+        type="button"
+        disabled={isFirst}
+        onClick={onMoveUp}
+        aria-label={`Move ${label} up`}
+        className="rounded p-0.5 text-muted enabled:hover:bg-disabled enabled:hover:text-text disabled:opacity-30"
+      >
+        <ChevronUp size={16} />
+      </button>
+      <button
+        type="button"
+        disabled={isLast}
+        onClick={onMoveDown}
+        aria-label={`Move ${label} down`}
+        className="rounded p-0.5 text-muted enabled:hover:bg-disabled enabled:hover:text-text disabled:opacity-30"
+      >
+        <ChevronDown size={16} />
+      </button>
+    </div>
+  );
 }
 
 export default function ModuleCard({
   module,
   index,
+  isFirst,
+  isLast,
   lessons,
   onEditModule,
   onDeleteModule,
+  onMoveModule,
   onAddLesson,
   onEditLesson,
   onDeleteLesson,
+  onMoveLesson,
 }: ModuleCardProps) {
   const meta = CONTENT_TYPE_META[DEFAULT_LESSON_CONTENT_TYPE];
 
   return (
     <AppCard padding="none">
       <div className="flex items-start justify-between gap-3 border-b border-disabled p-5 sm:p-6">
-        <div>
-          <p className="b2-b text-text">
-            {index + 1}. {module.title}
-          </p>
-          {module.description && (
-            <p className="f1-r mt-0.5 text-muted">{module.description}</p>
-          )}
+        <div className="flex items-start gap-2">
+          <ReorderButtons
+            isFirst={isFirst}
+            isLast={isLast}
+            onMoveUp={() => onMoveModule('up')}
+            onMoveDown={() => onMoveModule('down')}
+            label={module.title}
+          />
+          <div>
+            <p className="b2-b text-text">
+              {index + 1}. {module.title}
+            </p>
+            {module.description && (
+              <p className="f1-r mt-0.5 text-muted">{module.description}</p>
+            )}
+          </div>
         </div>
         <div className="flex shrink-0 items-center gap-3">
           <AppPill
@@ -73,23 +127,32 @@ export default function ModuleCard({
           {lessons.map((lesson, lessonIndex) => (
             <li
               key={lesson.id}
-              className="flex items-center justify-between px-5 py-3 sm:px-6"
+              className="flex items-center justify-between gap-3 px-5 py-3 sm:px-6"
             >
-              <div>
-                <p className="b2-m text-text">
-                  {index + 1}.{lessonIndex + 1} {lesson.title}
-                </p>
-                <div className="mt-1 flex flex-col items-start gap-2">
-                  {lesson.contentBody && (
-                    <span className="f1-r text-muted">
-                      {lesson.contentBody}
-                    </span>
-                  )}
-                  <AppPill
-                    label={meta.label}
-                    color={meta.pillColor}
-                    icon={meta.icon as React.ReactElement}
-                  />
+              <div className="flex items-start gap-2">
+                <ReorderButtons
+                  isFirst={lessonIndex === 0}
+                  isLast={lessonIndex === lessons.length - 1}
+                  onMoveUp={() => onMoveLesson(lesson, 'up')}
+                  onMoveDown={() => onMoveLesson(lesson, 'down')}
+                  label={lesson.title}
+                />
+                <div>
+                  <p className="b2-m text-text">
+                    {index + 1}.{lessonIndex + 1} {lesson.title}
+                  </p>
+                  <div className="mt-1 flex flex-col items-start gap-2">
+                    {lesson.contentBody && (
+                      <span className="f1-r text-muted">
+                        {lesson.contentBody}
+                      </span>
+                    )}
+                    <AppPill
+                      label={meta.label}
+                      color={meta.pillColor}
+                      icon={meta.icon as React.ReactElement}
+                    />
+                  </div>
                 </div>
               </div>
 
