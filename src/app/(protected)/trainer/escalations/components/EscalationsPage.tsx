@@ -12,9 +12,6 @@ import getUnstucked from '@/assets/images/get-unstucked.webp';
 export default function EscalationsPage() {
   const { escalations, loading } = useEscalations();
 
-  // Open ones need attention first; resolved ones are still visible (this
-  // list has always shown both, "No open escalations" below was the
-  // misleading part, not the data) but pushed to the bottom.
   const sorted = useMemo(
     () =>
       [...escalations].sort((a, b) =>
