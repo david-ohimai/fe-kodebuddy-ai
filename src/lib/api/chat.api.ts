@@ -184,8 +184,10 @@ function mapEscalation(dto: EscalationDto): Escalation {
     trainerId: dto.trainer_id,
     status: dto.status.toLowerCase() === 'resolved' ? 'resolved' : 'open',
     createdAt: dto.created_at,
-    response: null,
-    respondedAt: null,
+    // EscalationResponse now carries the trainer's reply, so this survives a
+    // reload rather than only existing optimistically after a send.
+    response: dto.response,
+    respondedAt: dto.responded_at,
   };
 }
 

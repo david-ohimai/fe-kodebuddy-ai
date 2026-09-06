@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Bell, ChevronRight } from 'lucide-react';
 import { cx } from '@/lib/utils/cx';
 import {
@@ -25,6 +26,8 @@ export default function NotificationsMenu({
   className,
 }: NotificationsMenuProps) {
   const { user } = useCurrentUserContext();
+  const router = useRouter();
+  const role = user?.role;
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
 
@@ -73,6 +76,35 @@ export default function NotificationsMenu({
       await markNotificationRead(id);
     } catch {}
   }, []);
+
+  /**
+   * Marks the notification read, then follows it to whatever it refers to.
+   *
+   * `related_entity_type` / `related_entity_id` are the server's own pointer.
+   * Escalations are the only kind it emits today, and the destination differs
+   * by role — a trainer answers them, a learner reads the answer. A
+   * notification with no destination just marks read and closes, as before.
+   */
+  const openNotification = useCallback(
+    (notification: AppNotification) => {
+      void markRead(notification.id);
+      setOpen(false);
+
+      if (
+        notification.relatedEntityType !== 'escalation' ||
+        notification.relatedEntityId == null
+      ) {
+        return;
+      }
+
+      router.push(
+        role === 'trainer'
+          ? `/trainer/escalations/${notification.relatedEntityId}`
+          : `/assignments/escalations/${notification.relatedEntityId}`,
+      );
+    },
+    [markRead, role, router],
+  );
 
   return (
     <div className={cx('relative', className)}>
@@ -137,7 +169,7 @@ export default function NotificationsMenu({
                   >
                     <button
                       type="button"
-                      onClick={() => markRead(notification.id)}
+                      onClick={() => openNotification(notification)}
                       className="flex w-full items-start gap-3 px-5 py-4 text-left transition-colors hover:bg-primary-light/40"
                     >
                       <span
