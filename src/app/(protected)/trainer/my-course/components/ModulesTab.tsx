@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronRight, Plus } from 'lucide-react';
+import { ChevronDown, ChevronRight, ChevronUp, Plus } from 'lucide-react';
 import AppButton from '@/components/ui/AppButton';
 import AppEmptyState from '@/components/ui/AppEmptyState';
 import AppSpinner from '@/components/ui/AppSpinner';
@@ -13,6 +13,7 @@ export interface ModulesTabProps {
   loading: boolean;
   onAddModule: () => void;
   onSelectModule: (module: CourseModule) => void;
+  onMoveModule: (module: CourseModule, direction: 'up' | 'down') => void;
 }
 
 export default function ModulesTab({
@@ -21,6 +22,7 @@ export default function ModulesTab({
   loading,
   onAddModule,
   onSelectModule,
+  onMoveModule,
 }: ModulesTabProps) {
   if (loading) {
     return (
@@ -64,7 +66,27 @@ export default function ModulesTab({
         {modules.map((module, index) => {
           const lessonCount = lessonsByModule[module.id]?.length ?? 0;
           return (
-            <li key={module.id}>
+            <li key={module.id} className="flex items-center">
+              <div className="flex shrink-0 flex-col pl-3">
+                <button
+                  type="button"
+                  disabled={index === 0}
+                  onClick={() => onMoveModule(module, 'up')}
+                  aria-label={`Move ${module.title} up`}
+                  className="rounded p-0.5 text-muted enabled:hover:bg-disabled enabled:hover:text-text disabled:opacity-30"
+                >
+                  <ChevronUp size={16} />
+                </button>
+                <button
+                  type="button"
+                  disabled={index === modules.length - 1}
+                  onClick={() => onMoveModule(module, 'down')}
+                  aria-label={`Move ${module.title} down`}
+                  className="rounded p-0.5 text-muted enabled:hover:bg-disabled enabled:hover:text-text disabled:opacity-30"
+                >
+                  <ChevronDown size={16} />
+                </button>
+              </div>
               <button
                 type="button"
                 onClick={() => onSelectModule(module)}

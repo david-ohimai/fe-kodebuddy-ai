@@ -19,6 +19,10 @@ export function mapUser(dto: UserDto): AuthUser {
     isActive: dto.is_active,
     createdAt: dto.created_at,
     courseId: dto.course_id ?? null,
+    courseName: dto.course_name ?? null,
+    cohortId: dto.cohort_id ?? null,
+    cohortName: dto.cohort_name ?? null,
+    profilePicture: dto.profile_picture ?? null,
   };
 }
 

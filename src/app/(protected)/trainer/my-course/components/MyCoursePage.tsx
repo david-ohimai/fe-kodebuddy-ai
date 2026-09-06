@@ -196,6 +196,9 @@ export default function MyCoursePage() {
               onSelectLesson={(lesson) => setSelectedLessonId(lesson.id)}
               onAddContent={() => setIsAddContentOpen(true)}
               onEditModule={() => setEditingModule(selectedModule)}
+              onMoveLesson={(lesson, direction) =>
+                content.moveLesson(selectedModule.id, lesson.id, direction)
+              }
             />
           ))}
 
@@ -357,6 +360,9 @@ export default function MyCoursePage() {
             loading={content.loading}
             onAddModule={() => setIsAddModuleOpen(true)}
             onSelectModule={handleSelectModule}
+            onMoveModule={(module, direction) =>
+              content.moveModule(module.id, direction)
+            }
           />
         )}
 

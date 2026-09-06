@@ -61,6 +61,10 @@ export interface AuthUser {
   isActive: boolean;
   createdAt: string;
   courseId: number | null;
+  courseName: string | null;
+  cohortId: number | null;
+  cohortName: string | null;
+  profilePicture: string | null;
 }
 
 export interface SignUpResult {
@@ -83,6 +87,10 @@ export interface UserDto {
   is_active: boolean;
   created_at: string;
   course_id?: number | null;
+  course_name?: string | null;
+  cohort_id?: number | null;
+  cohort_name?: string | null;
+  profile_picture?: string | null;
 }
 
 export interface UserResponseDto {

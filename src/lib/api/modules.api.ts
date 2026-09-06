@@ -48,6 +48,21 @@ export async function listCourseModules(
   return dtos.map(mapModule).sort((a, b) => a.order - b.order);
 }
 
+export async function reorderModules(
+  courseId: number,
+  modules: { id: number; order: number }[],
+): Promise<CourseModule[]> {
+  const dtos = await apiFetch<ModuleResponseDto[]>('/modules/reorder', {
+    method: 'PATCH',
+    auth: true,
+    body: {
+      course_id: courseId,
+      modules: modules.map((m) => ({ id: m.id, order: m.order })),
+    },
+  });
+  return dtos.map(mapModule).sort((a, b) => a.order - b.order);
+}
+
 export async function getModule(moduleId: number): Promise<CourseModule> {
   const dto = await apiFetch<ModuleResponseDto>(`/modules/${moduleId}`, {
     method: 'GET',

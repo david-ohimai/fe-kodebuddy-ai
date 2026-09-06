@@ -184,6 +184,74 @@ export function useCourseContent(courseId: number | null | undefined) {
     }
   };
 
+  const moveModule = async (moduleId: number, direction: 'up' | 'down') => {
+    const index = modules.findIndex((m) => m.id === moduleId);
+    const swapWith = direction === 'up' ? index - 1 : index + 1;
+    if (index === -1 || swapWith < 0 || swapWith >= modules.length) return;
+
+    const reordered = [...modules];
+    [reordered[index], reordered[swapWith]] = [
+      reordered[swapWith],
+      reordered[index],
+    ];
+    const withNewOrder = reordered.map((m, i) => ({ ...m, order: i + 1 }));
+
+    setModules(withNewOrder);
+    setSaving(true);
+    try {
+      if (!courseId) return;
+      const saved = await modulesApi.reorderModules(
+        courseId,
+        withNewOrder.map((m) => ({ id: m.id, order: m.order })),
+      );
+      setModules(saved);
+    } catch (err) {
+      setModules(modules);
+      showError(
+        'Could not reorder modules',
+        getErrorMessage(err, 'Please try again.'),
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const moveLesson = async (
+    moduleId: number,
+    lessonId: number,
+    direction: 'up' | 'down',
+  ) => {
+    const current = lessonsByModule[moduleId] ?? [];
+    const index = current.findIndex((l) => l.id === lessonId);
+    const swapWith = direction === 'up' ? index - 1 : index + 1;
+    if (index === -1 || swapWith < 0 || swapWith >= current.length) return;
+
+    const reordered = [...current];
+    [reordered[index], reordered[swapWith]] = [
+      reordered[swapWith],
+      reordered[index],
+    ];
+    const withNewOrder = reordered.map((l, i) => ({ ...l, order: i + 1 }));
+
+    setLessonsByModule((prev) => ({ ...prev, [moduleId]: withNewOrder }));
+    setSaving(true);
+    try {
+      const saved = await lessonsApi.reorderLessons(
+        moduleId,
+        withNewOrder.map((l) => ({ id: l.id, order: l.order })),
+      );
+      setLessonsByModule((prev) => ({ ...prev, [moduleId]: saved }));
+    } catch (err) {
+      setLessonsByModule((prev) => ({ ...prev, [moduleId]: current }));
+      showError(
+        'Could not reorder lessons',
+        getErrorMessage(err, 'Please try again.'),
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return {
     modules,
     lessonsByModule,
@@ -196,5 +264,7 @@ export function useCourseContent(courseId: number | null | undefined) {
     addLesson,
     editLesson,
     deleteLesson,
+    moveModule,
+    moveLesson,
   };
 }
