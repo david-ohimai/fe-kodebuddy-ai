@@ -177,6 +177,7 @@ export interface CourseAssignment {
   description: string | null;
   instructions: AssignmentItem[];
   requirements: AssignmentItem[];
+  startDate: string;
   dueDate: string;
   maximumScore: number;
   createdBy: number;
@@ -193,6 +194,7 @@ function mapCourseAssignment(dto: AssignmentDetailDto): CourseAssignment {
     description: dto.description,
     instructions: dto.instructions ?? [],
     requirements: dto.requirements ?? [],
+    startDate: dto.start_date ?? dto.created_at,
     dueDate: dto.due_date,
     maximumScore: dto.maximum_score,
     createdBy: dto.created_by,

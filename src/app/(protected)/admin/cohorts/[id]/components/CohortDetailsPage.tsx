@@ -43,15 +43,41 @@ export default function CohortDetailsPage({
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([
+
+    Promise.allSettled([
       cohortsApi.getCohortById(cohortId),
       cohortsApi.listCohortLearners(cohortId),
       cohortsApi.listCohortTrainers(cohortId),
       profileApi.listUsers(),
       coursesApi.listCourses(),
-    ])
-      .then(([value, learners, assignments, users, courses]) => {
+    ]).then(
+      ([
+        cohortResult,
+        learnersResult,
+        trainersResult,
+        usersResult,
+        coursesResult,
+      ]) => {
         if (cancelled) return;
+
+        if (cohortResult.status === 'rejected') {
+          showError(
+            'Could not load cohort',
+            getErrorMessage(cohortResult.reason, 'Please try again.'),
+          );
+          setLoading(false);
+          return;
+        }
+
+        const learners =
+          learnersResult.status === 'fulfilled' ? learnersResult.value : [];
+        const assignments =
+          trainersResult.status === 'fulfilled' ? trainersResult.value : [];
+        const users =
+          usersResult.status === 'fulfilled' ? usersResult.value : [];
+        const courses =
+          coursesResult.status === 'fulfilled' ? coursesResult.value : [];
+
         const activeTrainerIds = new Set(
           assignments.filter((a) => !a.removedAt).map((a) => a.trainerId),
         );
@@ -67,6 +93,7 @@ export default function CohortDetailsPage({
           .filter((c) => c.cohortId === cohortId)
           .map((c) => ({ id: c.id, title: c.title }));
 
+        const value = cohortResult.value;
         setRawCohort(value);
         setCohort({
           id: String(value.id),
@@ -78,18 +105,23 @@ export default function CohortDetailsPage({
           trainers,
           courses: cohortCourses,
         });
-      })
-      .catch((error) => {
-        if (!cancelled) {
+
+        const partialFailure = [
+          learnersResult,
+          trainersResult,
+          usersResult,
+          coursesResult,
+        ].some((r) => r.status === 'rejected');
+        if (partialFailure) {
           showError(
-            'Could not load cohort',
-            getErrorMessage(error, 'Please try again.'),
+            'Some cohort details could not load',
+            'The roster, trainer, or course lists may be incomplete. Try refreshing shortly.',
           );
         }
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+
+        setLoading(false);
+      },
+    );
 
     return () => {
       cancelled = true;

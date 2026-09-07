@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X } from 'lucide-react';
+import { Calendar, X } from 'lucide-react';
 import AppModal from '@/components/ui/AppModal';
 import AppButton from '@/components/ui/AppButton';
 import AppInput from '@/components/ui/AppInput';
@@ -12,6 +12,9 @@ export interface AssignmentModalInitial {
   description: string;
   instructionsText: string;
   requirementsText: string;
+  startDate: string;
+  dueDate: string;
+  maximumScore: number;
 }
 
 export interface AssignmentModalSubmit {
@@ -19,6 +22,9 @@ export interface AssignmentModalSubmit {
   description: string;
   instructionsText?: string;
   requirementsText?: string;
+  startDate: string;
+  dueDate: string;
+  maximumScore: number;
 }
 
 export interface AssignmentModalProps {
@@ -28,6 +34,18 @@ export interface AssignmentModalProps {
   saving?: boolean;
   onClose: () => void;
   onSubmit: (data: AssignmentModalSubmit) => void;
+}
+
+function today() {
+  return new Date().toISOString().split('T')[0];
+}
+
+function toStartOfDayIso(dateOnly: string): string {
+  return new Date(`${dateOnly}T00:00:00`).toISOString();
+}
+
+function toEndOfDayIso(dateOnly: string): string {
+  return new Date(`${dateOnly}T23:59:59`).toISOString();
 }
 
 export default function AssignmentModal({
@@ -48,12 +66,24 @@ export default function AssignmentModal({
   const [requirementsText, setRequirementsText] = useState(
     initial?.requirementsText ?? '',
   );
+  const [startDate, setStartDate] = useState(initial?.startDate ?? today());
+  const [dueDate, setDueDate] = useState(initial?.dueDate ?? '');
+  const [maximumScore, setMaximumScore] = useState(
+    initial?.maximumScore !== undefined ? String(initial.maximumScore) : '100',
+  );
 
   const reset = () => {
     setTitle(initial?.title ?? '');
     setDescription(initial?.description ?? '');
     setInstructionsText(initial?.instructionsText ?? '');
     setRequirementsText(initial?.requirementsText ?? '');
+    setStartDate(initial?.startDate ?? today());
+    setDueDate(initial?.dueDate ?? '');
+    setMaximumScore(
+      initial?.maximumScore !== undefined
+        ? String(initial.maximumScore)
+        : '100',
+    );
   };
 
   const handleClose = () => {
@@ -61,18 +91,38 @@ export default function AssignmentModal({
     onClose();
   };
 
-  const isSubmitDisabled = isEdit
-    ? !title.trim() ||
-      !description.trim() ||
-      !instructionsText.trim() ||
-      !requirementsText.trim()
-    : !title.trim();
+  const handleStartDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setStartDate(value);
+    if (dueDate && value && dueDate < value) {
+      setDueDate('');
+    }
+  };
+
+  const maximumScoreValue = Number(maximumScore);
+  const isMaximumScoreValid =
+    maximumScore.trim().length > 0 &&
+    Number.isFinite(maximumScoreValue) &&
+    maximumScoreValue > 0;
+
+  const isSubmitDisabled =
+    !title.trim() ||
+    !startDate ||
+    !dueDate ||
+    !isMaximumScoreValid ||
+    (isEdit &&
+      (!description.trim() ||
+        !instructionsText.trim() ||
+        !requirementsText.trim()));
 
   const handleSubmit = () => {
     if (isSubmitDisabled) return;
     onSubmit({
       title: title.trim(),
       description: description.trim(),
+      startDate: toStartOfDayIso(startDate),
+      dueDate: toEndOfDayIso(dueDate),
+      maximumScore: maximumScoreValue,
       ...(isEdit
         ? {
             instructionsText: instructionsText.trim(),
@@ -163,6 +213,51 @@ export default function AssignmentModal({
           showCharCount
           rows={3}
           onChange={(e) => setDescription(e.target.value)}
+        />
+
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+          <AppInput
+            label={
+              <span className="b2-b text-text">
+                Start date <span className="text-error">*</span>
+              </span>
+            }
+            hint="When this opens up to learners."
+            type="date"
+            icon={Calendar}
+            value={startDate}
+            onChange={handleStartDateChange}
+          />
+
+          <AppInput
+            label={
+              <span className="b2-b text-text">
+                Due date <span className="text-error">*</span>
+              </span>
+            }
+            hint="Last day learners can submit."
+            type="date"
+            icon={Calendar}
+            min={startDate || today()}
+            value={dueDate}
+            onChange={(e) => setDueDate(e.target.value)}
+          />
+        </div>
+
+        <AppInput
+          label={
+            <span className="b2-b text-text">
+              Maximum score <span className="text-error">*</span>
+            </span>
+          }
+          hint="The score a fully correct submission earns."
+          type="number"
+          min={1}
+          step={1}
+          placeholder="100"
+          value={maximumScore}
+          containerClassName="max-w-[200px]"
+          onChange={(e) => setMaximumScore(e.target.value)}
         />
 
         {isEdit && (

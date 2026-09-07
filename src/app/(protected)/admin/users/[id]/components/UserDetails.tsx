@@ -94,6 +94,7 @@ export default function UserDetails({ userId }: UserDetailsProps) {
 
   const [mentors, setMentors] = useState<AuthUser[]>([]);
   const [mentorsLoading, setMentorsLoading] = useState(false);
+  const [mentorsError, setMentorsError] = useState<string | null>(null);
   const [selectedMentorId, setSelectedMentorId] = useState<number | null>(null);
   const [assigningMentor, setAssigningMentor] = useState(false);
   const [mentorConfirmOpen, setMentorConfirmOpen] = useState(false);
@@ -129,6 +130,7 @@ export default function UserDetails({ userId }: UserDetailsProps) {
   const loadMentors = () => {
     let cancelled = false;
     setMentorsLoading(true);
+    setMentorsError(null);
     profileApi
       .listUsers()
       .then((users) => {
@@ -136,7 +138,13 @@ export default function UserDetails({ userId }: UserDetailsProps) {
           setMentors(users.filter((u) => u.role === 'mentor'));
         }
       })
-      .catch(() => {})
+      .catch((err) => {
+        if (!cancelled) {
+          setMentorsError(
+            getErrorMessage(err, 'Could not load the list of mentors.'),
+          );
+        }
+      })
       .finally(() => {
         if (!cancelled) setMentorsLoading(false);
       });
@@ -424,6 +432,17 @@ export default function UserDetails({ userId }: UserDetailsProps) {
                       'Pair this learner with a mentor for check-ins and progress support.',
                     control: mentorsLoading ? (
                       <p className="f1-r text-muted">Loading mentors...</p>
+                    ) : mentorsError ? (
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="f1-r text-error">{mentorsError}</p>
+                        <button
+                          type="button"
+                          onClick={loadMentors}
+                          className="f1-b text-primary hover:underline"
+                        >
+                          Retry
+                        </button>
+                      </div>
                     ) : mentors.length === 0 ? (
                       <p className="f1-r text-muted">
                         No mentors exist yet — promote a user to the mentor role

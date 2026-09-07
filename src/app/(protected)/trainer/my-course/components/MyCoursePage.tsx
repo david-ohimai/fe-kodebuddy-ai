@@ -165,6 +165,7 @@ export default function MyCoursePage() {
             loading={assignmentsState.loading}
             saving={assignmentsState.saving}
             hasModules={assignmentsState.hasModules}
+            suggestedDueDate={assignmentsState.suggestedDueDate}
             addAssignment={assignmentsState.addAssignment}
             editAssignment={assignmentsState.editAssignment}
             deleteAssignment={assignmentsState.deleteAssignment}
