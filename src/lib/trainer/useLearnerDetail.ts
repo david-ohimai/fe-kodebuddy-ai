@@ -47,7 +47,13 @@ export function useLearnerDetail(
     setLoading(true);
 
     Promise.all([
-      cohortsApi.listCohortLearners(cohortId),
+      cohortsApi.listCohortLearners(cohortId).catch((err) => {
+        console.warn(
+          `[useLearnerDetail] listCohortLearners(${cohortId}) failed — learner identity (name/email) will be unavailable.`,
+          err,
+        );
+        return [] as CohortLearner[];
+      }),
       mentorsApi
         .getLearnerCourseProgress(learnerId, courseId)
         .then((p) => p.completionPercentage)

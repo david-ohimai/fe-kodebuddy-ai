@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { cx } from '@/lib/utils/cx';
 import { useToast } from '@/components/ui/ToastProvider';
+import { getErrorMessage } from '@/lib/api/client';
 import {
   escalateToTrainer,
   isChatMocked,
@@ -226,7 +227,7 @@ export default function KodeBuddyChatPanel({
           },
         ]);
         setStreamingText('');
-      } catch {
+      } catch (err) {
         setStreamingText('');
         setMessages((prev) =>
           prev.map((m) =>
@@ -235,7 +236,10 @@ export default function KodeBuddyChatPanel({
         );
         showError(
           'Could not reach KodeBuddy',
-          'Your question was not sent. Check your connection and try again.',
+          getErrorMessage(
+            err,
+            'Your question was not sent. Check your connection and try again.',
+          ),
         );
       } finally {
         setThinking(false);
@@ -279,10 +283,10 @@ export default function KodeBuddyChatPanel({
       });
       setEscalationStage(receipt.stage);
       setDraft('');
-    } catch {
+    } catch (err) {
       showError(
         'Could not reach your trainer',
-        'Please try again in a moment.',
+        getErrorMessage(err, 'Please try again in a moment.'),
       );
     } finally {
       setSendingEscalation(false);

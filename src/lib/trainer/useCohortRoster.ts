@@ -1,7 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import { useToast } from '@/components/ui/ToastProvider';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import * as cohortsApi from '@/lib/api/cohorts.api';
 import * as mentorsApi from '@/lib/api/mentors.api';
 import * as activityApi from '@/lib/api/activity.api';
@@ -27,19 +26,20 @@ export function useCohortRoster(
   cohortId: number | undefined,
   courseId: number | undefined,
 ) {
-  const { showError } = useToast();
   const [roster, setRoster] = useState<RosterEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [sendingReminder, setSendingReminder] = useState(false);
 
   const [now] = useState(() => Date.now());
 
-  const loadRoster = () => {
+  const loadRoster = useCallback(() => {
     if (!cohortId || !courseId) {
       setLoading(false);
       return;
     }
     setLoading(true);
+    setError(null);
 
     Promise.all([
       cohortsApi.listCohortLearners(cohortId),
@@ -86,19 +86,16 @@ export function useCohortRoster(
         );
       })
       .catch((err) => {
-        showError(
-          'Could not load your cohort',
-          getErrorMessage(err, 'Please try again.'),
-        );
+        setError(getErrorMessage(err, 'Please try again.'));
+        setRoster([]);
       })
       .finally(() => setLoading(false));
-  };
+  }, [cohortId, courseId]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     loadRoster();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cohortId, courseId]);
+  }, [loadRoster]);
 
   const stats = useMemo(() => {
     const needsAttention = roster.filter(
@@ -134,6 +131,8 @@ export function useCohortRoster(
   return {
     roster,
     loading,
+    error,
+    retry: loadRoster,
     stats,
     sendingReminder,
     sendReminder,

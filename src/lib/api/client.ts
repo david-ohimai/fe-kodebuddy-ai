@@ -2,25 +2,6 @@ const DIRECT_API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') ??
   'https://kodebuddy-ai-be.onrender.com';
 
-/**
- * Where requests actually go.
- *
- * In the browser they take the same-origin `/api/backend` path, which
- * next.config.ts rewrites to the API. Being same-origin means no CORS
- * preflight and no dependency on the backend's FRONTEND_URL matching
- * whatever host the frontend is deployed to.
- *
- * Server-side code has no origin to be same as, so it calls the API directly.
- *
- * Set NEXT_PUBLIC_USE_DIRECT_API=true to bypass the rewrite in the browser —
- * useful when pointing a local frontend at a local backend.
- *
- * (This previously read `NEXT_PUBLIC_API_URL || typeof window === 'undefined'
- * ? direct : proxy`. `||` binds tighter than `?:`, so setting
- * NEXT_PUBLIC_API_URL turned the proxy *off* — the opposite of the intent —
- * and with it unset every browser call hit a `/api/backend` route that did
- * not exist yet.)
- */
 const API_BASE_URL =
   typeof window === 'undefined' ||
   process.env.NEXT_PUBLIC_USE_DIRECT_API === 'true'
@@ -94,6 +75,60 @@ interface ApiFetchOptions extends Omit<RequestInit, 'body'> {
   auth?: boolean;
 }
 
+interface RefreshResponseDto {
+  access_token: string;
+  refresh_token: string;
+}
+
+let refreshPromise: Promise<string | null> | null = null;
+
+function refreshAccessTokenOnce(): Promise<string | null> {
+  if (refreshPromise) return refreshPromise;
+
+  const refreshToken = getRefreshToken();
+  if (!refreshToken) {
+    console.warn(
+      '[auth] Access token expired and there is no stored refresh token — the session cannot be silently renewed.',
+    );
+    return Promise.resolve(null);
+  }
+
+  refreshPromise = fetch(`${API_BASE_URL}/user/refresh`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ refresh_token: refreshToken }),
+  })
+    .then(async (res) => {
+      if (!res.ok) {
+        console.warn(
+          `[auth] POST /user/refresh rejected the stored refresh token (status ${res.status}) — the session is genuinely over, not just an expired access token.`,
+        );
+        return null;
+      }
+      const data = (await res
+        .json()
+        .catch(() => null)) as RefreshResponseDto | null;
+      if (!data?.access_token) {
+        console.warn(
+          '[auth] POST /user/refresh returned 200 but no access_token — unexpected response shape.',
+        );
+        return null;
+      }
+      setAccessToken(data.access_token);
+      if (data.refresh_token) setRefreshToken(data.refresh_token);
+      return data.access_token;
+    })
+    .catch((err) => {
+      console.warn('[auth] POST /user/refresh threw:', err);
+      return null;
+    })
+    .finally(() => {
+      refreshPromise = null;
+    });
+
+  return refreshPromise;
+}
+
 function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -134,24 +169,34 @@ export async function apiFetch<TResponse = unknown>(
   path: string,
   { body, auth = false, headers, ...rest }: ApiFetchOptions = {},
 ): Promise<TResponse> {
-  const requestHeaders = new Headers(headers);
-  requestHeaders.set('Content-Type', 'application/json');
+  const doFetch = async (): Promise<Response> => {
+    const requestHeaders = new Headers(headers);
+    requestHeaders.set('Content-Type', 'application/json');
 
-  if (auth) {
-    const token = getAccessToken();
-    if (token) requestHeaders.set('Authorization', `Bearer ${token}`);
-  }
+    if (auth) {
+      const token = getAccessToken();
+      if (token) requestHeaders.set('Authorization', `Bearer ${token}`);
+    }
 
-  let response: Response;
-  try {
-    response = await fetchWithRetry(`${API_BASE_URL}${path}`, {
-      ...rest,
-      headers: requestHeaders,
-      body: body !== undefined ? JSON.stringify(body) : undefined,
-    });
-  } catch (cause) {
-    if (cause instanceof NetworkError) throw cause;
-    throw new NetworkError(cause);
+    try {
+      return await fetchWithRetry(`${API_BASE_URL}${path}`, {
+        ...rest,
+        headers: requestHeaders,
+        body: body !== undefined ? JSON.stringify(body) : undefined,
+      });
+    } catch (cause) {
+      if (cause instanceof NetworkError) throw cause;
+      throw new NetworkError(cause);
+    }
+  };
+
+  let response = await doFetch();
+
+  if (response.status === 401 && auth) {
+    const newAccessToken = await refreshAccessTokenOnce();
+    if (newAccessToken) {
+      response = await doFetch();
+    }
   }
 
   const isJson = response.headers

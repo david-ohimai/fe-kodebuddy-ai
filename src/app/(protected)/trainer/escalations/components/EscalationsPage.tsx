@@ -1,16 +1,18 @@
 'use client';
 
 import React, { useMemo } from 'react';
+import { RotateCcw } from 'lucide-react';
 import PageHeader from '@/components/ui/AppPageHeader';
 import { AppCard } from '@/components/ui/AppCard';
 import AppButton from '@/components/ui/AppButton';
 import AppEmptyState from '@/components/ui/AppEmptyState';
 import AppSpinner from '@/components/ui/AppSpinner';
 import { useEscalations } from '@/lib/trainer/useEscalations';
-import getUnstucked from '@/assets/images/get-unstucked.webp';
+import emptyStateImage from '@/assets/images/empty state.webp';
+import loadErrorImage from '@/assets/images/activity.webp';
 
 export default function EscalationsPage() {
-  const { escalations, loading } = useEscalations();
+  const { escalations, loading, error, refresh } = useEscalations();
 
   const sorted = useMemo(
     () =>
@@ -33,9 +35,19 @@ export default function EscalationsPage() {
           <div className="flex min-h-[300px] items-center justify-center">
             <AppSpinner size={40} />
           </div>
+        ) : error ? (
+          <AppEmptyState
+            image={loadErrorImage}
+            title="Could not load escalations"
+            description={error}
+            actionLabel="Retry"
+            actionIcon={<RotateCcw size={16} />}
+            onAction={refresh}
+            className="!min-h-[420px]"
+          />
         ) : sorted.length === 0 ? (
           <AppEmptyState
-            image={getUnstucked}
+            image={emptyStateImage}
             title="No escalations yet"
             description="When a learner needs human support, their escalation will appear here."
             className="!min-h-[420px]"

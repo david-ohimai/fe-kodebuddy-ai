@@ -1,10 +1,10 @@
 import { apiFetch } from './client';
-import { mapUser } from './auth.api';
+import { getUserById } from './profile.api';
 import type {
   CreateCohortPayload,
   UpdateCohortPayload,
 } from '@/types/cohort.types';
-import type { UserDto } from '@/types/auth.types';
+import type { AuthUser } from '@/types/auth.types';
 
 export interface Cohort {
   id: number;
@@ -127,15 +127,31 @@ interface CohortLearnerResponseDto {
 export async function listCohortLearners(
   cohortId: number,
 ): Promise<CohortLearner[]> {
-  const [enrollments, users] = await Promise.all([
-    apiFetch<CohortLearnerResponseDto[]>(
-      `/assign-cohorts/${cohortId}/learners`,
-      { method: 'GET', auth: true },
-    ),
-    apiFetch<UserDto[]>('/profile/users', { method: 'GET', auth: true }),
-  ]);
+  const enrollments = await apiFetch<CohortLearnerResponseDto[]>(
+    `/assign-cohorts/${cohortId}/learners`,
+    { method: 'GET', auth: true },
+  );
 
-  const usersById = new Map(users.map((user) => [user.id, mapUser(user)]));
+  // Name/email are enriched per learner (GET /profile/users/{id}) rather
+  // than via the bulk GET /profile/users list: that list endpoint is
+  // admin-only, and a trainer legitimately viewing their own cohort's
+  // roster was getting the whole roster wiped out by a 403 on the name
+  // lookup alone. Each lookup is caught independently so one missing or
+  // denied profile never hides the rest of the roster.
+  const users = await Promise.all(
+    enrollments.map((e) =>
+      getUserById(e.learner_id).catch((err) => {
+        console.warn(
+          `[cohorts] GET /profile/users/${e.learner_id} failed — showing this learner without a resolved name/email.`,
+          err,
+        );
+        return null;
+      }),
+    ),
+  );
+  const usersById = new Map(
+    users.filter((u): u is AuthUser => u !== null).map((u) => [u.id, u]),
+  );
 
   return enrollments
     .filter((enrollment) => {

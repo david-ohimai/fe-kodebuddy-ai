@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { AlertCircle, TrendingUp, UserCircle2 } from 'lucide-react';
+import { AlertCircle, RotateCcw, TrendingUp, UserCircle2 } from 'lucide-react';
 import { AppCard } from '@/components/ui/AppCard';
 import AppEmptyState from '@/components/ui/AppEmptyState';
 import AppSpinner from '@/components/ui/AppSpinner';
@@ -26,10 +26,12 @@ export default function TrainerDashboard() {
     'there';
 
   const { data, cohortWithoutCourse, loading } = useMyAssignedCourse(user?.id);
-  const { roster, loading: loadingRoster } = useCohortRoster(
-    data?.cohort.id,
-    data?.course.id,
-  );
+  const {
+    roster,
+    loading: loadingRoster,
+    error: rosterError,
+    retry: retryRoster,
+  } = useCohortRoster(data?.cohort.id, data?.course.id);
   const needsAttention = roster
     .filter((r) => r.status === 'needs_attention')
     .slice(0, 5);
@@ -175,6 +177,15 @@ export default function TrainerDashboard() {
                 <div className="flex min-h-[160px] items-center justify-center">
                   <AppSpinner size={32} />
                 </div>
+              ) : rosterError ? (
+                <AppEmptyState
+                  title="Could not load your cohort"
+                  description={rosterError}
+                  actionLabel="Retry"
+                  actionIcon={<RotateCcw size={16} />}
+                  onAction={retryRoster}
+                  className="!min-h-0 py-14"
+                />
               ) : needsAttention.length === 0 ? (
                 <AppEmptyState
                   image={activity}
