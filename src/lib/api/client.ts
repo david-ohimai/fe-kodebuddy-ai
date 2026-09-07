@@ -192,10 +192,27 @@ export async function apiFetch<TResponse = unknown>(
 
   let response = await doFetch();
 
+  if (!response.ok && response.redirected) {
+    console.warn(
+      `[api] ${path} failed (${response.status}) after following a redirect — retrying once as a fresh request, since redirects can silently drop the Authorization header.`,
+    );
+    response = await doFetch();
+  }
+
   if (response.status === 401 && auth) {
+    console.warn(
+      `[auth] 401 on ${path} with an access token present (length ${getAccessToken()?.length ?? 0}) — attempting a refresh-and-retry.`,
+    );
     const newAccessToken = await refreshAccessTokenOnce();
     if (newAccessToken) {
       response = await doFetch();
+      if (response.status === 401) {
+        console.warn(
+          `[auth] ${path} still 401 after a successful refresh (new token length ${newAccessToken.length}). This is NOT plain expiry — either this endpoint has its own permission rule, or the refresh token was already rotated by another tab/request before this one used it.`,
+        );
+      } else {
+        console.info(`[auth] ${path} succeeded after refresh-and-retry.`);
+      }
     }
   }
 

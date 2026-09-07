@@ -27,6 +27,23 @@ const nextConfig: NextConfig = {
    */
   async rewrites() {
     return [
+      // POST /submissions/ is the one route in this API with nothing after
+      // the trailing slash. Next's :path* catch-all below reconstructs the
+      // destination from matched *segments*, which silently drops a bare
+      // trailing slash — so /api/backend/submissions/ was reaching the
+      // backend as /submissions (no slash), which FastAPI redirects to
+      // /submissions/. Next's rewrite just proxies that redirect response
+      // straight through, Location header and all, which points at the
+      // real backend origin — so the browser followed a same-origin request
+      // into a genuinely cross-origin redirect, and browsers strip the
+      // Authorization header when a cross-origin redirect is followed. This
+      // explicit rule matches first and hardcodes the trailing slash on the
+      // destination, so the request reaches the correct route directly and
+      // no redirect (and no header loss) ever happens.
+      {
+        source: '/api/backend/submissions',
+        destination: `${API_ORIGIN}/submissions/`,
+      },
       {
         source: '/api/backend/:path*',
         destination: `${API_ORIGIN}/:path*`,
