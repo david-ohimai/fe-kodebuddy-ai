@@ -211,6 +211,7 @@ export default function UsersPage() {
       key: 'actions',
       header: 'Actions',
       align: 'right',
+      width: 88,
       render: (u) => (
         <AppButton
           href={`/admin/users/${u.id}`}

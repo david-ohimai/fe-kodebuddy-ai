@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { AlertCircle, TrendingUp, UserCircle2 } from 'lucide-react';
 import { AppCard } from '@/components/ui/AppCard';
@@ -12,6 +12,9 @@ import CircularProgress from '@/components/course/CircularProgress';
 import { useCurrentUserContext } from '@/lib/auth/CurrentUserContext';
 import { useMyAssignedCourse } from '@/lib/trainer/useMyAssignedCourse';
 import { useCohortRoster } from '@/lib/trainer/useCohortRoster';
+import { listTrainerEscalations } from '@/lib/api/chat.api';
+import * as activityApi from '@/lib/api/activity.api';
+import { ACTIVITY_TYPE_LABEL } from '@/lib/api/activity.api';
 import noCourses from '@/assets/images/no-courses.webp';
 import activity from '@/assets/images/activity.webp';
 
@@ -30,6 +33,32 @@ export default function TrainerDashboard() {
   const needsAttention = roster
     .filter((r) => r.status === 'needs_attention')
     .slice(0, 5);
+
+  const [openEscalations, setOpenEscalations] = useState<number | null>(null);
+  const [activities, setActivities] = useState<activityApi.ActivityEntry[]>([]);
+  const [loadingSidebar, setLoadingSidebar] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    Promise.allSettled([
+      listTrainerEscalations(),
+      activityApi.listTrainerActivity(20),
+    ]).then(([escalationsResult, activityResult]) => {
+      if (cancelled) return;
+      if (escalationsResult.status === 'fulfilled') {
+        setOpenEscalations(
+          escalationsResult.value.filter((e) => e.status === 'open').length,
+        );
+      }
+      if (activityResult.status === 'fulfilled') {
+        setActivities(activityResult.value);
+      }
+      setLoadingSidebar(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <div>
@@ -116,7 +145,9 @@ export default function TrainerDashboard() {
                     </p>
                   </div>
                 </div>
-                <p className="h3-b text-muted">—</p>
+                <p className="h3-b text-text">
+                  {openEscalations === null ? '—' : openEscalations}
+                </p>
                 <Link
                   href="/trainer/escalations"
                   className="b2-b mt-3 inline-block text-primary hover:underline"
@@ -188,6 +219,46 @@ export default function TrainerDashboard() {
               </div>
             </AppCard>
           </div>
+
+          <AppCard padding="none">
+            <div className="border-b border-muted/20 px-6 py-4">
+              <h3 className="b1-b text-text">Recent Activity</h3>
+            </div>
+            {loadingSidebar ? (
+              <div className="flex min-h-[160px] items-center justify-center">
+                <AppSpinner size={32} />
+              </div>
+            ) : activities.length === 0 ? (
+              <AppEmptyState
+                image={activity}
+                title="No activity yet"
+                description="Activity from your cohort will appear here."
+                className="!min-h-0 py-14"
+              />
+            ) : (
+              <ul className="divide-y divide-muted/20">
+                {activities.map((entry) => (
+                  <li
+                    key={entry.id}
+                    className="flex items-center justify-between gap-3 px-6 py-4"
+                  >
+                    <p className="b2-r text-text-secondary">
+                      {entry.title || ACTIVITY_TYPE_LABEL[entry.activityType]}
+                      {entry.description ? ` · ${entry.description}` : ''}
+                    </p>
+                    <span className="f1-r shrink-0 text-muted">
+                      {new Date(entry.createdAt).toLocaleString('en-US', {
+                        day: 'numeric',
+                        month: 'short',
+                        hour: 'numeric',
+                        minute: '2-digit',
+                      })}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </AppCard>
         </div>
       )}
     </div>

@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState } from 'react';
 import { ChevronRight, Plus } from 'lucide-react';
-import Link from 'next/link';
 import AppButton from '@/components/ui/AppButton';
 import PageHeader from '@/components/ui/AppPageHeader';
 import TableHeader from '@/components/ui/AppTableHeader';
@@ -164,16 +163,20 @@ const CohortsView: React.FC = () => {
     },
     {
       key: 'action',
-      header: 'Action',
+      header: 'Actions',
       align: 'right',
+      width: 88,
       render: (row) => (
-        <Link
+        <AppButton
           href={`/admin/cohorts/${row.id}`}
-          aria-label="View cohort"
-          className="flex h-8 w-8 items-center justify-center rounded-full text-muted hover:bg-disabled hover:text-text"
+          variant="text"
+          color="neutral"
+          size="icon"
+          ariaLabel="View cohort"
+          className="h-8 w-8 text-muted hover:bg-primary-light hover:text-primary"
         >
           <ChevronRight size={18} />
-        </Link>
+        </AppButton>
       ),
     },
   ];
@@ -241,7 +244,9 @@ const CohortsView: React.FC = () => {
               <AppEmptyState
                 image={noCohorts}
                 title={
-                  cohorts.length === 0 ? 'No cohorts yet' : 'No matching cohorts'
+                  cohorts.length === 0
+                    ? 'No cohorts yet'
+                    : 'No matching cohorts'
                 }
                 description={
                   cohorts.length === 0
@@ -249,7 +254,9 @@ const CohortsView: React.FC = () => {
                     : 'Try adjusting your search.'
                 }
                 actionLabel={cohorts.length === 0 ? 'Create cohort' : undefined}
-                onAction={cohorts.length === 0 ? () => setView('add') : undefined}
+                onAction={
+                  cohorts.length === 0 ? () => setView('add') : undefined
+                }
               />
             )}
           </>

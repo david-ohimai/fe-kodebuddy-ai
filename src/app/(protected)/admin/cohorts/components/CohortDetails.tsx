@@ -165,21 +165,20 @@ const CohortDetailsView: React.FC<CohortDetailsViewProps> = ({
       </button>
 
       <AppCard padding="none">
-        <div className="flex items-start justify-between border-b border-disabled px-6 py-5">
+        <div className="flex flex-wrap items-start justify-between gap-3 border-b border-disabled px-6 py-5">
           <div>
             <h2 className="h5-b text-text">Cohort details</h2>
             <p className="b2-r mt-1 text-muted">
               View and manage the details of this cohort.
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <AppButton
               variant="outlined"
               color="error"
               radius="full"
               size="small"
               startIcon={<Trash2 size={14} />}
-              className={actionButtonClass}
               onClick={onDeleteCohort}
             >
               Delete cohort
@@ -190,7 +189,6 @@ const CohortDetailsView: React.FC<CohortDetailsViewProps> = ({
               radius="full"
               size="small"
               startIcon={<Pencil size={14} />}
-              className={actionButtonClass}
               onClick={onEditCohort}
             >
               Edit cohort
