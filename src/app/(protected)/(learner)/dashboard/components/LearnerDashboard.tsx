@@ -274,11 +274,13 @@ export default function LearnerDashboard() {
             />
           </AppCard>
 
-          <AskKodeBuddyWidget onAsk={setAskedQuestion} />
+          {hasCourseInProgress && (
+            <AskKodeBuddyWidget onAsk={setAskedQuestion} />
+          )}
         </div>
       </div>
 
-      {askedQuestion !== null && (
+      {askedQuestion !== null && activeCourses[0] && (
         <>
           <div
             role="presentation"
@@ -288,11 +290,15 @@ export default function LearnerDashboard() {
           <aside className="fixed inset-x-4 top-4 bottom-4 z-50 lg:inset-y-6 lg:right-6 lg:left-auto lg:w-100">
             <KodeBuddyChatPanel
               context={{
-                courseId: activeCourses[0]?.courseId ?? 0,
+                courseId: activeCourses[0].courseId,
                 moduleId: null,
                 assignmentId: null,
-                label: activeCourses[0]?.courseTitle ?? 'General',
+                label: activeCourses[0].courseTitle,
               }}
+              courseOptions={activeCourses.map((course) => ({
+                id: course.courseId,
+                title: course.courseTitle,
+              }))}
               initialQuestion={askedQuestion}
               onClose={() => setAskedQuestion(null)}
             />

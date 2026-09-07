@@ -10,7 +10,13 @@ import AppEmptyState from '@/components/ui/AppEmptyState';
 import AppProgressBar from '@/components/ui/AppProgressBar';
 import { useMyEnrolledCourses } from '@/lib/learn/useMyEnrolledCourses';
 import { useCurrentUserContext } from '@/lib/auth/CurrentUserContext';
+import AskKodeBuddyFab from '@/components/chat/AskKodeBuddyFab';
 import emptyStateImage from '@/assets/images/empty state.webp';
+
+const LEARN_SUGGESTIONS = [
+  'What should I focus on next in this course?',
+  'Summarize what this module covers',
+];
 
 export default function LearnPage() {
   const router = useRouter();
@@ -79,6 +85,8 @@ export default function LearnPage() {
           ))}
         </div>
       )}
+
+      <AskKodeBuddyFab suggestions={LEARN_SUGGESTIONS} />
     </div>
   );
 }

@@ -1,7 +1,6 @@
 import { apiFetch } from './client';
 import { listMyCourses, type MyCourseRef } from './myCourses';
 import { isFaqResourceType } from './faqs.api';
-import { DEMO_RESOURCES } from '@/lib/mocks/resource.mocks';
 import {
   normaliseResourceType,
   type LearnerResource,
@@ -29,23 +28,6 @@ interface ResourceResponseDto {
   is_active: boolean;
 }
 
-function fallbackEnabled(): boolean {
-  return process.env.NEXT_PUBLIC_DEMO_FALLBACK !== 'false';
-}
-
-function withFallback(
-  live: LearnerResource[],
-  context: string,
-): LearnerResource[] {
-  if (live.length > 0) return live;
-  if (!fallbackEnabled()) return live;
-  console.warn(
-    `[resources] ${context} — serving demo fixtures. ` +
-      'Set NEXT_PUBLIC_DEMO_FALLBACK=false to disable.',
-  );
-  return DEMO_RESOURCES;
-}
-
 function mapResource(
   dto: ResourceResponseDto,
   module: ModuleResponseDto,
@@ -68,45 +50,34 @@ function mapResource(
 }
 
 export async function listLearnerResources(): Promise<LearnerResource[]> {
-  try {
-    const courses = await listMyCourses();
-    if (courses.length === 0) {
-      return withFallback([], 'learner has no enrolled courses');
-    }
+  const courses = await listMyCourses();
+  if (courses.length === 0) return [];
 
-    const moduleGroups = await Promise.all(
-      courses.map(async (course) => {
-        const modules = await apiFetch<ModuleResponseDto[]>(
-          `/modules/course/${course.courseId}`,
+  const moduleGroups = await Promise.all(
+    courses.map(async (course) => {
+      const modules = await apiFetch<ModuleResponseDto[]>(
+        `/modules/course/${course.courseId}`,
+        { method: 'GET', auth: true },
+      );
+      return { course, modules: modules ?? [] };
+    }),
+  );
+
+  const resourceGroups = await Promise.all(
+    moduleGroups.flatMap(({ course, modules }) =>
+      modules.map(async (module) => {
+        const resources = await apiFetch<ResourceResponseDto[]>(
+          `/modules/${module.id}/resources`,
           { method: 'GET', auth: true },
         );
-        return { course, modules: modules ?? [] };
+        return (resources ?? []).map((dto) => mapResource(dto, module, course));
       }),
-    );
+    ),
+  );
 
-    const resourceGroups = await Promise.all(
-      moduleGroups.flatMap(({ course, modules }) =>
-        modules.map(async (module) => {
-          const resources = await apiFetch<ResourceResponseDto[]>(
-            `/modules/${module.id}/resources`,
-            { method: 'GET', auth: true },
-          );
-          return (resources ?? []).map((dto) =>
-            mapResource(dto, module, course),
-          );
-        }),
-      ),
-    );
-
-    const live = resourceGroups
-      .flat()
-      .filter((r) => r.isActive && !isFaqResourceType(r.rawType));
-    return withFallback(live, 'API returned no resources');
-  } catch (err) {
-    if (!fallbackEnabled()) throw err;
-    console.warn('[resources] request failed, serving demo fixtures:', err);
-    return DEMO_RESOURCES;
-  }
+  return resourceGroups
+    .flat()
+    .filter((r) => r.isActive && !isFaqResourceType(r.rawType));
 }
 
 export async function getLearnerResource(
