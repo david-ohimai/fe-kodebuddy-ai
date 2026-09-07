@@ -1,19 +1,24 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search } from 'lucide-react';
+import { RotateCcw, Search } from 'lucide-react';
 import PageHeader from '@/components/ui/AppPageHeader';
 import { AppCard } from '@/components/ui/AppCard';
 import AppSpinner from '@/components/ui/AppSpinner';
 import AppEmptyState from '@/components/ui/AppEmptyState';
 import AppTab from '@/components/ui/AppTab';
-import { useToast } from '@/components/ui/ToastProvider';
 import { listLearnerResources } from '@/lib/api/resources.api';
 import { getErrorMessage } from '@/lib/api/client';
 import type { LearnerResource, ResourceType } from '@/types/resource.types';
 import emptyStateImage from '@/assets/images/empty state res.webp';
 import ResourceCard from './ResourceCard';
+import AskKodeBuddyFab from '@/components/chat/AskKodeBuddyFab';
+
+const RESOURCES_SUGGESTIONS = [
+  'Recommend a resource for a topic I\u2019m stuck on',
+  'What resources go with my current course?',
+];
 
 const filters: Array<{ label: string; value: 'All Resources' | ResourceType }> =
   [
@@ -26,9 +31,11 @@ const filters: Array<{ label: string; value: 'All Resources' | ResourceType }> =
 
 export default function ResourcesPage() {
   const router = useRouter();
-  const { showError } = useToast();
   const [resources, setResources] = useState<LearnerResource[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
+  const retry = useCallback(() => setReloadKey((key) => key + 1), []);
   const [search, setSearch] = useState('');
   const [activeFilter, setActiveFilter] = useState<
     'All Resources' | ResourceType
@@ -36,26 +43,30 @@ export default function ResourcesPage() {
 
   useEffect(() => {
     let cancelled = false;
-    listLearnerResources()
-      .then((list) => {
-        if (!cancelled) setResources(list);
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          showError(
-            'Could not load resources',
-            getErrorMessage(err, 'Please try again.'),
-          );
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+
+    function loadResources() {
+      setLoading(true);
+      setError(null);
+      listLearnerResources()
+        .then((list) => {
+          if (!cancelled) setResources(list);
+        })
+        .catch((err) => {
+          if (!cancelled) {
+            setError(getErrorMessage(err, 'Please try again.'));
+          }
+        })
+        .finally(() => {
+          if (!cancelled) setLoading(false);
+        });
+    }
+
+    loadResources();
+
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [reloadKey]);
 
   const filteredResources = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -119,6 +130,17 @@ export default function ResourcesPage() {
         <div className="flex min-h-[320px] items-center justify-center">
           <AppSpinner size={40} />
         </div>
+      ) : error ? (
+        <AppCard padding="lg">
+          <AppEmptyState
+            image={emptyStateImage}
+            title="Could not load resources"
+            description={error}
+            actionLabel="Retry"
+            actionIcon={<RotateCcw size={16} />}
+            onAction={retry}
+          />
+        </AppCard>
       ) : filteredResources.length > 0 ? (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {filteredResources.map((resource) => (
@@ -147,6 +169,8 @@ export default function ResourcesPage() {
           />
         </AppCard>
       )}
+
+      <AskKodeBuddyFab suggestions={RESOURCES_SUGGESTIONS} />
     </div>
   );
 }

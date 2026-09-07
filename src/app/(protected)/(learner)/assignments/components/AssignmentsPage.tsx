@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { RotateCcw } from 'lucide-react';
 import PageHeader from '@/components/ui/AppPageHeader';
 import AppEmptyState from '@/components/ui/AppEmptyState';
 import AppTab from '@/components/ui/AppTab';
-import { useToast } from '@/components/ui/ToastProvider';
 import { listLearnerAssignments } from '@/lib/api/assignments.api';
 import { getErrorMessage } from '@/lib/api/client';
 import type { LearnerAssignment } from '@/types/assignment.types';
@@ -12,7 +12,13 @@ import type { Escalation } from '@/types/escalation.types';
 import { listMyEscalations } from '@/lib/api/escalations.api';
 import AssignmentCard from './AssignmentCard';
 import EscalationCard from './EscalationCard';
+import AskKodeBuddyFab from '@/components/chat/AskKodeBuddyFab';
 import emptyStateImage from '@/assets/images/empty state assign.webp';
+
+const ASSIGNMENTS_SUGGESTIONS = [
+  'What assignments do I have due soon?',
+  "I'm not sure where to start with an assignment",
+];
 
 type AssignmentTab =
   'all' | 'pending' | 'in-progress' | 'submitted' | 'escalations';
@@ -66,55 +72,64 @@ function LoadingGrid() {
 }
 
 export default function AssignmentsPage() {
-  const { showError } = useToast();
-
   const [assignments, setAssignments] = useState<LearnerAssignment[]>([]);
+  const [assignmentsError, setAssignmentsError] = useState<string | null>(null);
   const [escalations, setEscalations] = useState<Escalation[]>([]);
   const [escalationsLoading, setEscalationsLoading] = useState(true);
   const [escalationsError, setEscalationsError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<AssignmentTab>('all');
+  const [reloadKey, setReloadKey] = useState(0);
+  const retry = useCallback(() => setReloadKey((key) => key + 1), []);
 
   useEffect(() => {
     let cancelled = false;
 
-    // Loaded alongside the assignments rather than on tab switch: the two are
-    // independent, and a failure in one must not blank the other.
-    listMyEscalations()
-      .then((list) => {
-        if (!cancelled) setEscalations(list);
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          setEscalationsError(
-            getErrorMessage(err, 'Could not load your escalations.'),
-          );
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setEscalationsLoading(false);
-      });
+    function loadEscalations() {
+      setEscalationsLoading(true);
+      setEscalationsError(null);
+      listMyEscalations()
+        .then((list) => {
+          if (!cancelled) setEscalations(list);
+        })
+        .catch((err) => {
+          if (!cancelled) {
+            setEscalationsError(
+              getErrorMessage(err, 'Could not load your escalations.'),
+            );
+          }
+        })
+        .finally(() => {
+          if (!cancelled) setEscalationsLoading(false);
+        });
+    }
 
-    listLearnerAssignments()
-      .then((list) => {
-        if (!cancelled) setAssignments(list);
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          showError(
-            'Could not load assignments',
-            getErrorMessage(err, 'Please try again in a moment.'),
-          );
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+    function loadAssignments() {
+      setLoading(true);
+      setAssignmentsError(null);
+      listLearnerAssignments()
+        .then((list) => {
+          if (!cancelled) setAssignments(list);
+        })
+        .catch((err) => {
+          if (!cancelled) {
+            setAssignmentsError(
+              getErrorMessage(err, 'Please try again in a moment.'),
+            );
+          }
+        })
+        .finally(() => {
+          if (!cancelled) setLoading(false);
+        });
+    }
+
+    loadEscalations();
+    loadAssignments();
 
     return () => {
       cancelled = true;
     };
-  }, [showError]);
+  }, [reloadKey]);
 
   const visible = useMemo(
     () => assignments.filter((a) => matchesTab(a, activeTab)),
@@ -145,6 +160,9 @@ export default function AssignmentsPage() {
               image={emptyStateImage}
               title="Could not load your escalations"
               description={escalationsError}
+              actionLabel="Retry"
+              actionIcon={<RotateCcw size={16} />}
+              onAction={retry}
             />
           ) : escalations.length === 0 ? (
             <AppEmptyState
@@ -161,11 +179,26 @@ export default function AssignmentsPage() {
           )
         ) : loading ? (
           <LoadingGrid />
+        ) : assignmentsError ? (
+          <AppEmptyState
+            image={emptyStateImage}
+            title="Could not load assignments"
+            description={assignmentsError}
+            actionLabel="Retry"
+            actionIcon={<RotateCcw size={16} />}
+            onAction={retry}
+          />
         ) : visible.length === 0 ? (
           <AppEmptyState
             image={emptyStateImage}
-            title="No assignment"
-            description="There are no assignments in this categories yet"
+            title={
+              assignments.length === 0 ? 'No assignments yet' : 'No assignment'
+            }
+            description={
+              assignments.length === 0
+                ? 'Your assignments will show up here once your trainer adds them.'
+                : 'There are no assignments in this categories yet'
+            }
           />
         ) : (
           <div className={GRID}>
@@ -175,6 +208,8 @@ export default function AssignmentsPage() {
           </div>
         )}
       </div>
+
+      <AskKodeBuddyFab suggestions={ASSIGNMENTS_SUGGESTIONS} />
     </div>
   );
 }

@@ -5,7 +5,6 @@ import {
   type AssignmentItem,
   type LearnerAssignment,
 } from '@/types/assignment.types';
-import { DEMO_ASSIGNMENTS } from '@/lib/mocks/assignment.mocks';
 import { listMySubmissions, type Submission } from './submissions.api';
 
 export interface Assignment {
@@ -61,23 +60,6 @@ interface ModuleResponseDto {
   is_active: boolean;
 }
 
-function fallbackEnabled(): boolean {
-  return process.env.NEXT_PUBLIC_DEMO_FALLBACK !== 'false';
-}
-
-function withFallback(
-  live: LearnerAssignment[],
-  context: string,
-): LearnerAssignment[] {
-  if (live.length > 0) return live;
-  if (!fallbackEnabled()) return live;
-  console.warn(
-    `[assignments] ${context} — serving demo fixtures. ` +
-      'Set NEXT_PUBLIC_DEMO_FALLBACK=false to disable.',
-  );
-  return DEMO_ASSIGNMENTS;
-}
-
 function mapLearnerAssignment(
   dto: AssignmentDetailDto,
   module: ModuleResponseDto,
@@ -129,66 +111,56 @@ function mapLearnerAssignment(
 }
 
 export async function listLearnerAssignments(): Promise<LearnerAssignment[]> {
-  try {
-    const [courses, submissions] = await Promise.all([
-      listMyCourses(),
-      listMySubmissions().catch(() => [] as Submission[]),
-    ]);
+  const [courses, submissions] = await Promise.all([
+    listMyCourses(),
+    listMySubmissions().catch(() => [] as Submission[]),
+  ]);
 
-    const submissionByAssignment = new Map<number, Submission>();
-    for (const submission of submissions) {
-      const existing = submissionByAssignment.get(submission.assignmentId);
-      if (
-        !existing ||
-        new Date(submission.submittedAt) > new Date(existing.submittedAt)
-      ) {
-        submissionByAssignment.set(submission.assignmentId, submission);
-      }
+  const submissionByAssignment = new Map<number, Submission>();
+  for (const submission of submissions) {
+    const existing = submissionByAssignment.get(submission.assignmentId);
+    if (
+      !existing ||
+      new Date(submission.submittedAt) > new Date(existing.submittedAt)
+    ) {
+      submissionByAssignment.set(submission.assignmentId, submission);
     }
+  }
 
-    if (courses.length === 0) {
-      return withFallback([], 'learner has no enrolled courses');
-    }
+  if (courses.length === 0) return [];
 
-    const moduleGroups = await Promise.all(
-      courses.map(async (course) => {
-        const modules = await apiFetch<ModuleResponseDto[]>(
-          `/modules/course/${course.courseId}`,
+  const moduleGroups = await Promise.all(
+    courses.map(async (course) => {
+      const modules = await apiFetch<ModuleResponseDto[]>(
+        `/modules/course/${course.courseId}`,
+        { method: 'GET', auth: true },
+      );
+      return { course, modules: modules ?? [] };
+    }),
+  );
+
+  const assignmentGroups = await Promise.all(
+    moduleGroups.flatMap(({ course, modules }) =>
+      modules.map(async (module) => {
+        const assignments = await apiFetch<AssignmentDetailDto[]>(
+          `/modules/${module.id}/assignments`,
           { method: 'GET', auth: true },
         );
-        return { course, modules: modules ?? [] };
+        return (assignments ?? []).map((dto) =>
+          mapLearnerAssignment(
+            dto,
+            module,
+            course,
+            submissionByAssignment.get(dto.id),
+          ),
+        );
       }),
-    );
+    ),
+  );
 
-    const assignmentGroups = await Promise.all(
-      moduleGroups.flatMap(({ course, modules }) =>
-        modules.map(async (module) => {
-          const assignments = await apiFetch<AssignmentDetailDto[]>(
-            `/modules/${module.id}/assignments`,
-            { method: 'GET', auth: true },
-          );
-          return (assignments ?? []).map((dto) =>
-            mapLearnerAssignment(
-              dto,
-              module,
-              course,
-              submissionByAssignment.get(dto.id),
-            ),
-          );
-        }),
-      ),
-    );
-
-    const live = assignmentGroups
-      .flat()
-      .sort((a, b) => a.moduleOrder - b.moduleOrder || a.id - b.id);
-
-    return withFallback(live, 'API returned no assignments');
-  } catch (err) {
-    if (!fallbackEnabled()) throw err;
-    console.warn('[assignments] request failed, serving demo fixtures:', err);
-    return DEMO_ASSIGNMENTS;
-  }
+  return assignmentGroups
+    .flat()
+    .sort((a, b) => a.moduleOrder - b.moduleOrder || a.id - b.id);
 }
 
 export async function getLearnerAssignment(
