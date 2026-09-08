@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { getEscalation, respondToEscalation } from '@/lib/api/chat.api';
-import * as profileApi from '@/lib/api/profile.api';
+import * as coursesApi from '@/lib/api/courses.api';
 import { getErrorMessage } from '@/lib/api/client';
 import type { Escalation } from '@/types/chat.types';
 
@@ -22,9 +22,11 @@ export function useEscalationDetail(escalationId: number) {
           setNotFound(true);
           return;
         }
-        const learner = await profileApi
-          .getUserById(result.learnerId)
-          .catch(() => null);
+
+        const learners = await coursesApi
+          .listCourseLearners(result.courseId)
+          .catch(() => []);
+        const learner = learners.find((l) => l.learnerId === result.learnerId);
         setEscalation({
           ...result,
           learnerName: learner?.fullName || learner?.email || null,

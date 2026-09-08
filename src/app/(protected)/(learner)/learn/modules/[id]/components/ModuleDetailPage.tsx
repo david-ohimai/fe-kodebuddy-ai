@@ -15,7 +15,7 @@ interface ModuleDetailPageProps {
 }
 
 export default function ModuleDetailPage({ moduleId }: ModuleDetailPageProps) {
-  const { module, course, lessons, moduleProgress, loading, error } =
+  const { module, course, lessons, moduleProgress, loading, error, retry } =
     useModuleDetail(moduleId);
   const [chatOpen, setChatOpen] = useState(false);
 
@@ -32,6 +32,9 @@ export default function ModuleDetailPage({ moduleId }: ModuleDetailPageProps) {
       <AppCard padding="lg" className="text-center">
         <p className="b1-b text-text">Could not load this module</p>
         <p className="b2-r mt-1 text-muted">{error ?? 'Please try again.'}</p>
+        <AppButton className="mt-4" onClick={retry}>
+          Retry
+        </AppButton>
       </AppCard>
     );
   }
@@ -62,7 +65,9 @@ export default function ModuleDetailPage({ moduleId }: ModuleDetailPageProps) {
             <p className="f1-m uppercase text-muted">Module {module.order}</p>
             <h1 className="h4-b mt-1 text-text">{module.title}</h1>
             <div className="mt-3 flex max-w-64 items-center gap-3">
-              <AppProgressBar percent={moduleProgress?.completionPercentage ?? 0} />
+              <AppProgressBar
+                percent={moduleProgress?.completionPercentage ?? 0}
+              />
               <span className="b2-m shrink-0 text-text-secondary">
                 {completed} of {total} lessons completed
               </span>
@@ -105,7 +110,9 @@ export default function ModuleDetailPage({ moduleId }: ModuleDetailPageProps) {
               </span>
 
               <div className="min-w-0 flex-1">
-                <p className={'b1-b ' + (isLocked ? 'text-muted' : 'text-text')}>
+                <p
+                  className={'b1-b ' + (isLocked ? 'text-muted' : 'text-text')}
+                >
                   {index + 1}. {lesson.title}
                 </p>
                 <p

@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { useToast } from '@/components/ui/ToastProvider';
-import * as cohortsApi from '@/lib/api/cohorts.api';
+import * as coursesApi from '@/lib/api/courses.api';
 import * as mentorsApi from '@/lib/api/mentors.api';
 import * as activityApi from '@/lib/api/activity.api';
 import { getErrorMessage } from '@/lib/api/client';
-import type { CohortLearner } from '@/lib/api/cohorts.api';
+import type { CourseLearner } from '@/lib/api/courses.api';
 import type { CourseModule } from '@/lib/api/modules.api';
 import type { ActivityEntry } from '@/lib/api/activity.api';
 
@@ -26,13 +26,12 @@ export interface LearnerDetail {
 }
 
 export function useLearnerDetail(
-  cohortId: number | undefined,
   courseId: number | undefined,
   modules: CourseModule[],
   learnerId: number,
 ) {
   const { showError } = useToast();
-  const [identity, setIdentity] = useState<CohortLearner | null>(null);
+  const [identity, setIdentity] = useState<CourseLearner | null>(null);
   const [detail, setDetail] = useState<LearnerDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
@@ -40,19 +39,19 @@ export function useLearnerDetail(
   const moduleIds = modules.map((m) => m.id).join(',');
 
   const loadLearner = () => {
-    if (!cohortId || !courseId) {
+    if (!courseId) {
       setLoading(false);
       return;
     }
     setLoading(true);
 
     Promise.all([
-      cohortsApi.listCohortLearners(cohortId).catch((err) => {
+      coursesApi.listCourseLearners(courseId).catch((err) => {
         console.warn(
-          `[useLearnerDetail] listCohortLearners(${cohortId}) failed — learner identity (name/email) will be unavailable.`,
+          `[useLearnerDetail] listCourseLearners(${courseId}) failed — learner identity (name/email) will be unavailable.`,
           err,
         );
-        return [] as CohortLearner[];
+        return [] as CourseLearner[];
       }),
       mentorsApi
         .getLearnerCourseProgress(learnerId, courseId)
@@ -123,7 +122,7 @@ export function useLearnerDetail(
     // eslint-disable-next-line react-hooks/set-state-in-effect
     loadLearner();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cohortId, courseId, learnerId, moduleIds]);
+  }, [courseId, learnerId, moduleIds]);
 
   const sendCheckIn = async (message: string) => {
     setSending(true);

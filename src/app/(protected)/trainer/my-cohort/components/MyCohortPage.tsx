@@ -83,7 +83,7 @@ export default function MyCohortPage() {
     stats,
     sendingReminder,
     sendReminder,
-  } = useCohortRoster(data?.cohort.id, data?.course.id);
+  } = useCohortRoster(data?.course.id);
 
   const [activeTab, setActiveTab] = useState<RosterTab>('all');
   const [page, setPage] = useState(1);
