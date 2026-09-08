@@ -169,9 +169,21 @@ export async function apiFetch<TResponse = unknown>(
   path: string,
   { body, auth = false, headers, ...rest }: ApiFetchOptions = {},
 ): Promise<TResponse> {
+  // The resource endpoints (POST/PATCH /modules/{id}/resources and the
+  // lesson equivalents) take multipart/form-data, not JSON, because they
+  // accept an uploaded file alongside the text fields. Passing a FormData
+  // body here opts into that: the Content-Type header is deliberately left
+  // unset so the browser can generate it *with* the multipart boundary —
+  // setting it by hand produces a boundary-less header and the backend
+  // fails to parse any field at all.
+  const isFormData =
+    typeof FormData !== 'undefined' && body instanceof FormData;
+
   const doFetch = async (): Promise<Response> => {
     const requestHeaders = new Headers(headers);
-    requestHeaders.set('Content-Type', 'application/json');
+    if (!isFormData) {
+      requestHeaders.set('Content-Type', 'application/json');
+    }
 
     if (auth) {
       const token = getAccessToken();
@@ -182,7 +194,11 @@ export async function apiFetch<TResponse = unknown>(
       return await fetchWithRetry(`${API_BASE_URL}${path}`, {
         ...rest,
         headers: requestHeaders,
-        body: body !== undefined ? JSON.stringify(body) : undefined,
+        body: isFormData
+          ? (body as FormData)
+          : body !== undefined
+            ? JSON.stringify(body)
+            : undefined,
       });
     } catch (cause) {
       if (cause instanceof NetworkError) throw cause;

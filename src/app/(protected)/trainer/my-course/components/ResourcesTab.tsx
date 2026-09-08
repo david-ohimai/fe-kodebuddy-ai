@@ -7,7 +7,8 @@ import AppEmptyState from '@/components/ui/AppEmptyState';
 import AppSpinner from '@/components/ui/AppSpinner';
 import { useToast } from '@/components/ui/ToastProvider';
 import { getErrorMessage } from '@/lib/api/client';
-import { getResourceTypeMeta } from '@/lib/trainer/resourceTypeMeta';
+import { getResourceDisplayMeta } from '@/lib/trainer/resourceTypeMeta';
+import ResourceExtractionBadge from '@/components/trainer/ResourceExtractionBadge';
 import ResourceModal from './ResourceModal';
 import noResources from '@/assets/images/empty state res.webp';
 import type { CourseResource } from '@/lib/api/resources.api';
@@ -33,11 +34,7 @@ export default function ResourcesTab({
   const { showError } = useToast();
   const [isAddOpen, setIsAddOpen] = useState(false);
 
-  const handleAdd = async (data: {
-    title: string;
-    url: string;
-    type: string;
-  }) => {
+  const handleAdd = async (data: ResourceFormInput) => {
     try {
       await addResource(data);
       setIsAddOpen(false);
@@ -103,7 +100,12 @@ export default function ResourcesTab({
 
       <ul className="divide-y divide-disabled rounded-input border border-disabled">
         {resources.map((resource) => {
-          const meta = getResourceTypeMeta(resource.type);
+          const meta = getResourceDisplayMeta({
+            type: resource.type,
+            mimeType: resource.mimeType,
+            url: resource.url,
+            fileName: resource.fileName,
+          });
           const Icon = meta.icon;
           return (
             <li key={resource.id}>
@@ -121,6 +123,7 @@ export default function ResourcesTab({
                   <p className="b2-b text-text">{resource.title}</p>
                   <p className="f1-r text-muted">Type: {meta.label}</p>
                 </div>
+                <ResourceExtractionBadge status={resource.extractionStatus} />
                 <ChevronRight size={18} className="shrink-0 text-muted" />
               </button>
             </li>

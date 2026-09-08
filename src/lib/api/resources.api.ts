@@ -18,10 +18,24 @@ interface ModuleResponseDto {
 interface ResourceResponseDto {
   id: number;
   module_id: number;
+  lesson_id: number | null;
   title: string;
   description: string | null;
   type: string;
   url: string | null;
+  content: string | null;
+
+  // Set when the resource was created by uploading a file.
+  file_name: string | null;
+  mime_type: string | null;
+
+  // Written by the backend's background ingestion task
+  // (app/agent/ingestion.py::sync_resource_embeddings) once it has tried to
+  // turn this resource into embeddable text. Null until that task has run,
+  // which is why the UI treats "no status yet" as pending rather than failed.
+  content_extract_status: string | null;
+  content_extract_error: string | null;
+
   created_by: number;
   created_at: string;
   updated_at: string;
@@ -38,9 +52,15 @@ function mapResource(
     moduleId: dto.module_id,
     title: dto.title,
     description: dto.description,
-    type: normaliseResourceType(dto.type),
+    type: normaliseResourceType(dto.type, {
+      url: dto.url,
+      mimeType: dto.mime_type,
+      fileName: dto.file_name,
+    }),
     rawType: dto.type,
     url: dto.url,
+    fileName: dto.file_name ?? null,
+    mimeType: dto.mime_type ?? null,
     isActive: dto.is_active,
     createdAt: dto.created_at,
     moduleTitle: module.title,
@@ -87,13 +107,32 @@ export async function getLearnerResource(
   return all.find((r) => r.id === id) ?? null;
 }
 
+export type ExtractionStatus = 'ok' | 'partial' | 'failed' | 'pending';
+
+/**
+ * `content_extract_status` is null until the backend's background ingestion
+ * task has run for this resource, so a freshly created row legitimately has
+ * no status yet — that reads as "pending", not as a failure.
+ */
+function mapExtractionStatus(raw: string | null | undefined): ExtractionStatus {
+  const value = (raw ?? '').trim().toLowerCase();
+  if (value === 'ok' || value === 'partial' || value === 'failed') return value;
+  return 'pending';
+}
+
 export interface CourseResource {
   id: number;
   moduleId: number;
+  lessonId: number | null;
   title: string;
   description: string | null;
   type: string;
   url: string | null;
+  content: string | null;
+  fileName: string | null;
+  mimeType: string | null;
+  extractionStatus: ExtractionStatus;
+  extractionError: string | null;
   createdBy: number;
   createdAt: string;
   updatedAt: string;
@@ -104,10 +143,16 @@ function mapCourseResource(dto: ResourceResponseDto): CourseResource {
   return {
     id: dto.id,
     moduleId: dto.module_id,
+    lessonId: dto.lesson_id ?? null,
     title: dto.title,
     description: dto.description,
     type: dto.type,
     url: dto.url,
+    content: dto.content ?? null,
+    fileName: dto.file_name ?? null,
+    mimeType: dto.mime_type ?? null,
+    extractionStatus: mapExtractionStatus(dto.content_extract_status),
+    extractionError: dto.content_extract_error ?? null,
     createdBy: dto.created_by,
     createdAt: dto.created_at,
     updatedAt: dto.updated_at,
@@ -129,9 +174,39 @@ export async function listModuleResourcesFull(
 
 export interface CourseResourceInput {
   title: string;
+  /** One of the backend enum values: 'article' | 'link' | 'file'. */
   type: string;
   url?: string;
   description?: string;
+  /** Body text for `article` resources — this is what gets embedded. */
+  content?: string;
+  /** The upload for `file` resources. */
+  file?: File | null;
+}
+
+/**
+ * The resource endpoints take multipart/form-data (every field is a FastAPI
+ * `Form(...)`, plus an optional `UploadFile`), so these bodies are FormData
+ * rather than JSON — see the isFormData branch in client.ts.
+ *
+ * Only fields that are actually set are appended. On PATCH every field is
+ * `Form(default=None)`, so an omitted key means "leave unchanged", whereas
+ * appending an empty string would overwrite the stored value with "" and, for
+ * `type`, fail enum validation outright.
+ */
+function buildResourceFormData(
+  input: CourseResourceInput | CourseResourceUpdateInput,
+): FormData {
+  const form = new FormData();
+
+  if (input.title !== undefined) form.append('title', input.title);
+  if (input.type) form.append('type', input.type);
+  if (input.url) form.append('url', input.url);
+  if (input.description) form.append('description', input.description);
+  if (input.content) form.append('content', input.content);
+  if (input.file) form.append('file', input.file);
+
+  return form;
 }
 
 export async function createModuleResource(
@@ -143,12 +218,7 @@ export async function createModuleResource(
     {
       method: 'POST',
       auth: true,
-      body: {
-        title: input.title,
-        type: input.type,
-        url: input.url,
-        description: input.description,
-      },
+      body: buildResourceFormData(input),
     },
   );
   return mapCourseResource(dto);
@@ -159,6 +229,8 @@ export interface CourseResourceUpdateInput {
   type?: string;
   url?: string;
   description?: string;
+  content?: string;
+  file?: File | null;
 }
 
 export async function updateModuleResource(
@@ -171,12 +243,7 @@ export async function updateModuleResource(
     {
       method: 'PATCH',
       auth: true,
-      body: {
-        title: input.title,
-        type: input.type,
-        url: input.url,
-        description: input.description,
-      },
+      body: buildResourceFormData(input),
     },
   );
   return mapCourseResource(dto);

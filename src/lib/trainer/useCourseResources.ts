@@ -9,9 +9,14 @@ import type { CourseModule } from '@/lib/api/modules.api';
 
 export interface ResourceFormInput {
   title: string;
+  /** A backend enum value: 'article' | 'link' | 'file'. */
   type: string;
   url?: string;
   description?: string;
+  /** Body text for `article` resources — this is what gets embedded. */
+  content?: string;
+  /** The upload for `file` resources. */
+  file?: File | null;
 }
 
 /** Course-wide, aggregated the same way useCourseAssignments/useCourseFaqs are. */
@@ -68,7 +73,7 @@ export function useCourseResources(modules: CourseModule[]) {
       setResources((prev) => [...prev, created]);
       showSuccess(
         'Resource added successfully.',
-        `"${data.title}" was added to this course.`,
+        `"${data.title}" was added. KodeBuddy is processing it now — its indexing status will show in the list shortly.`,
       );
       return created;
     } finally {

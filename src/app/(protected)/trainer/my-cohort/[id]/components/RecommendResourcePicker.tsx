@@ -7,7 +7,7 @@ import AppButton from '@/components/ui/AppButton';
 import AppTab from '@/components/ui/AppTab';
 import AppSpinner from '@/components/ui/AppSpinner';
 import AppEmptyState from '@/components/ui/AppEmptyState';
-import { getResourceTypeMeta } from '@/lib/trainer/resourceTypeMeta';
+import { getResourceDisplayMeta } from '@/lib/trainer/resourceTypeMeta';
 import type { CourseResource } from '@/lib/api/resources.api';
 import type { CourseModule } from '@/lib/api/modules.api';
 
@@ -96,7 +96,12 @@ export default function RecommendResourcePicker({
       ) : (
         <ul className="flex flex-col gap-3">
           {filtered.map((resource) => {
-            const meta = getResourceTypeMeta(resource.type);
+            const meta = getResourceDisplayMeta({
+              type: resource.type,
+              mimeType: resource.mimeType,
+              url: resource.url,
+              fileName: resource.fileName,
+            });
             const Icon = meta.icon;
             const isSelected = resource.id === selectedId;
             const order = moduleOrderById.get(resource.moduleId);

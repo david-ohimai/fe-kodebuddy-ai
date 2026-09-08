@@ -8,7 +8,10 @@ import AppPill from '@/components/ui/AppPill';
 import AppConfirmModal from '@/components/ui/AppConfirmModal';
 import { useToast } from '@/components/ui/ToastProvider';
 import { getErrorMessage } from '@/lib/api/client';
-import { getResourceTypeMeta } from '@/lib/trainer/resourceTypeMeta';
+import { getResourceDisplayMeta } from '@/lib/trainer/resourceTypeMeta';
+import ResourceExtractionBadge, {
+  getExtractionHint,
+} from '@/components/trainer/ResourceExtractionBadge';
 import ResourceModal from './ResourceModal';
 import type { CourseResource } from '@/lib/api/resources.api';
 import type { ResourceFormInput } from '@/lib/trainer/useCourseResources';
@@ -39,14 +42,15 @@ export default function ResourceDetailView({
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
 
-  const meta = getResourceTypeMeta(resource.type);
+  const meta = getResourceDisplayMeta({
+    type: resource.type,
+    mimeType: resource.mimeType,
+    url: resource.url,
+    fileName: resource.fileName,
+  });
   const Icon = meta.icon;
 
-  const handleEdit = async (data: {
-    title: string;
-    url: string;
-    type: string;
-  }) => {
+  const handleEdit = async (data: ResourceFormInput) => {
     try {
       await editResource(resource, data);
       setIsEditOpen(false);
@@ -106,6 +110,14 @@ export default function ResourceDetailView({
               <div className="mt-1.5 flex flex-wrap items-center gap-2">
                 <span className="f1-r text-muted">Type:</span>
                 <AppPill label={meta.label} color="primary" />
+                {resource.fileName && (
+                  <>
+                    <span className="f1-r ml-2 text-muted">File:</span>
+                    <span className="f1-r break-all text-text">
+                      {resource.fileName}
+                    </span>
+                  </>
+                )}
                 {resource.url && (
                   <>
                     <span className="f1-r ml-2 text-muted">Link:</span>
@@ -121,6 +133,26 @@ export default function ResourceDetailView({
                 )}
               </div>
             </div>
+          </div>
+
+          {/*
+            The AI-indexing outcome, surfaced where the trainer can act on it.
+            A `failed` resource still looks perfectly saved otherwise — this is
+            the only place the reason it isn't grounding answers is visible.
+          */}
+          <div className="mt-5 rounded-input border border-disabled p-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="f1-r text-muted">KodeBuddy indexing:</span>
+              <ResourceExtractionBadge status={resource.extractionStatus} />
+            </div>
+            <p className="f1-r mt-1.5 text-text-secondary">
+              {getExtractionHint(resource.extractionStatus)}
+            </p>
+            {resource.extractionError && (
+              <p className="f1-r mt-1.5 break-words text-error">
+                {resource.extractionError}
+              </p>
+            )}
           </div>
 
           <div className="mt-5 flex justify-end gap-3 border-t border-disabled pt-5">
@@ -147,12 +179,21 @@ export default function ResourceDetailView({
       </AppCard>
 
       <ResourceModal
+        // Remount when the underlying resource changes so the form re-seeds
+        // from the new values — the fields are useState-initialised, so a
+        // long-lived instance would keep showing the previously edited row.
+        key={`${resource.id}:${resource.updatedAt}`}
         open={isEditOpen}
         saving={saving}
         initial={{
           title: resource.title,
           url: resource.url ?? '',
-          type: meta.label,
+          // The stored enum value, not `meta.label` — the label is a display
+          // string ("PDF", "Video") that the backend's type enum rejects.
+          type: resource.type,
+          description: resource.description ?? '',
+          content: resource.content ?? '',
+          fileName: resource.fileName,
         }}
         onClose={() => setIsEditOpen(false)}
         onSubmit={handleEdit}
