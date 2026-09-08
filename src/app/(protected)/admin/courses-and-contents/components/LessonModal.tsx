@@ -5,6 +5,7 @@ import { X, Upload, Check } from 'lucide-react';
 import AppButton from '@/components/ui/AppButton';
 import AppInput from '@/components/ui/AppInput';
 import AppModal from '@/components/ui/AppModal';
+import AppTextarea from '@/components/ui/AppTextarea';
 import {
   CONTENT_TYPES,
   CONTENT_TYPE_META,
@@ -18,6 +19,8 @@ export interface LessonToEdit {
   contentType: LessonContentType;
   fileName?: string;
   fileSize?: string;
+  resourceUrl?: string;
+  articleContent?: string;
 }
 
 export interface LessonModalProps {
@@ -32,6 +35,8 @@ export interface LessonModalProps {
     file?: File;
     fileName?: string;
     fileSize?: string;
+    resourceUrl?: string;
+    articleContent?: string;
   }) => void;
 }
 
@@ -50,7 +55,7 @@ const LessonModal: React.FC<LessonModalProps> = ({
   const [title, setTitle] = useState(lesson?.title ?? '');
   const [description, setDescription] = useState(lesson?.description ?? '');
   const [contentType, setContentType] = useState<LessonContentType>(
-    lesson?.contentType ?? 'video',
+    lesson?.contentType ?? 'document',
   );
   const [fileName, setFileName] = useState<string | undefined>(
     lesson?.fileName,
@@ -59,20 +64,29 @@ const LessonModal: React.FC<LessonModalProps> = ({
     lesson?.fileSize,
   );
   const [file, setFile] = useState<File | undefined>(undefined);
+  const [resourceUrl, setResourceUrl] = useState(lesson?.resourceUrl ?? '');
+  const [articleContent, setArticleContent] = useState(
+    lesson?.articleContent ?? '',
+  );
 
   const [initialTitle] = useState(lesson?.title ?? '');
   const [initialDescription] = useState(lesson?.description);
   const [initialFileName] = useState(lesson?.fileName);
+  const [initialContentType] = useState(lesson?.contentType);
+  const [initialResourceUrl] = useState(lesson?.resourceUrl);
+  const [initialArticleContent] = useState(lesson?.articleContent);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const reset = () => {
     setTitle(lesson?.title ?? '');
     setDescription(lesson?.description ?? '');
-    setContentType(lesson?.contentType ?? 'video');
+    setContentType(lesson?.contentType ?? 'document');
     setFileName(lesson?.fileName);
     setFileSize(lesson?.fileSize);
     setFile(undefined);
+    setResourceUrl(lesson?.resourceUrl ?? '');
+    setArticleContent(lesson?.articleContent ?? '');
   };
 
   const handleClose = () => {
@@ -89,12 +103,22 @@ const LessonModal: React.FC<LessonModalProps> = ({
     e.target.value = '';
   };
 
-  const isSubmitDisabled = !title.trim();
+  const hasResource =
+    isEdit ||
+    (contentType === 'document'
+      ? Boolean(file || fileName)
+      : contentType === 'link'
+        ? Boolean(resourceUrl.trim())
+        : Boolean(articleContent.trim()));
+  const isSubmitDisabled = !title.trim() || !hasResource;
   const isDirty =
     !isEdit ||
     title.trim() !== initialTitle ||
     (description.trim() || undefined) !== initialDescription ||
-    fileName !== initialFileName;
+    fileName !== initialFileName ||
+    contentType !== initialContentType ||
+    resourceUrl.trim() !== (initialResourceUrl ?? '') ||
+    articleContent.trim() !== (initialArticleContent ?? '');
 
   const handleSubmit = () => {
     if (isSubmitDisabled) return;
@@ -111,6 +135,8 @@ const LessonModal: React.FC<LessonModalProps> = ({
       file,
       fileName,
       fileSize,
+      resourceUrl: resourceUrl.trim() || undefined,
+      articleContent: articleContent.trim() || undefined,
     });
     reset();
   };
@@ -206,16 +232,76 @@ const LessonModal: React.FC<LessonModalProps> = ({
             onChange={(e) => setDescription(e.target.value)}
           />
 
-          {isEdit ? (
-            <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-1.5">
+            <div className="flex flex-col gap-0.5">
               <span className="b2-b text-text">
-                Content / Resource <span className="text-error">*</span>
+                Content / resource <span className="text-error">*</span>
               </span>
+              <span className="f1-r text-muted">
+                Choose the type of resource for this lesson.
+              </span>
+            </div>
 
+            <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-3">
+              {CONTENT_TYPES.map((option) => {
+                const isSelected = contentType === option.type;
+                return (
+                  <button
+                    key={option.type}
+                    type="button"
+                    onClick={() => {
+                      setContentType(option.type);
+                      setFile(undefined);
+                      setFileName(undefined);
+                      setFileSize(undefined);
+                      setResourceUrl('');
+                      setArticleContent('');
+                    }}
+                    className={
+                      'relative flex items-start gap-3 rounded-input border p-3.5 text-left transition-colors ' +
+                      (isSelected
+                        ? 'border-primary bg-primary-light'
+                        : 'border-disabled hover:border-muted')
+                    }
+                  >
+                    <span
+                      className={
+                        'absolute right-3 top-3 flex h-4 w-4 items-center justify-center rounded border ' +
+                        (isSelected
+                          ? 'border-primary bg-primary text-background'
+                          : 'border-disabled bg-background')
+                      }
+                    >
+                      {isSelected && <Check size={12} strokeWidth={3} />}
+                    </span>
+
+                    <span
+                      className={
+                        'flex h-9 w-9 shrink-0 items-center justify-center rounded-full ' +
+                        option.tint
+                      }
+                    >
+                      {option.icon}
+                    </span>
+
+                    <span className="flex flex-col gap-0.5 pr-4">
+                      <span className="b2-b text-text">{option.label}</span>
+                      <span className="f1-r text-muted">
+                        {option.description}
+                      </span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {contentType === 'document' ? (
+            <div className="flex flex-col gap-2">
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="video/*,application/pdf,.doc,.docx,.ppt,.pptx"
+                accept="application/pdf,.doc,.docx,.ppt,.pptx"
                 className="hidden"
                 onChange={handleFileChange}
               />
@@ -227,7 +313,7 @@ const LessonModal: React.FC<LessonModalProps> = ({
                 className="w-fit"
                 onClick={() => fileInputRef.current?.click()}
               >
-                Replace content
+                {fileName ? 'Replace document' : 'Upload document'}
               </AppButton>
 
               {fileName ? (
@@ -262,124 +348,26 @@ const LessonModal: React.FC<LessonModalProps> = ({
               )}
 
               <p className="f1-r text-muted">
-                Upload or attach the main content for this lesson. Supported
-                formats: such as Video, Document/File, or Article.
+                Upload a PDF, Word document, or presentation for this lesson.
               </p>
             </div>
+          ) : contentType === 'link' ? (
+            <AppInput
+              label="Resource link"
+              placeholder="https://example.com/resource"
+              type="url"
+              value={resourceUrl}
+              onChange={(e) => setResourceUrl(e.target.value)}
+            />
           ) : (
-            <div className="flex flex-col gap-1.5">
-              <div className="flex flex-col gap-0.5">
-                <span className="b2-b text-text">
-                  Content / resource <span className="text-error">*</span>
-                </span>
-                <span className="f1-r text-muted">
-                  Choose the type of content you want to add for this lesson.
-                </span>
-              </div>
-
-              {file ? (
-                <div className="flex items-center gap-3 rounded-input bg-disabled/40 px-3.5 py-2.5">
-                  <span
-                    className={
-                      'flex h-8 w-8 shrink-0 items-center justify-center rounded ' +
-                      activeMeta.tint
-                    }
-                  >
-                    {activeMeta.icon}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="b2-m truncate text-text">{file.name}</p>
-                    <p className="f1-r text-muted">
-                      {formatFileSize(file.size)}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setFile(undefined);
-                      setFileName(undefined);
-                      setFileSize(undefined);
-                    }}
-                    aria-label="Remove file"
-                    className="shrink-0 text-muted hover:text-text"
-                  >
-                    <X size={16} />
-                  </button>
-                </div>
-              ) : (
-                <>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="video/*,application/pdf,.doc,.docx,.ppt,.pptx"
-                    className="hidden"
-                    onChange={handleFileChange}
-                  />
-                  <AppButton
-                    variant="outlined"
-                    size="small"
-                    radius="full"
-                    startIcon={<Upload size={14} />}
-                    className="w-fit"
-                    onClick={() => fileInputRef.current?.click()}
-                  >
-                    Upload content
-                  </AppButton>
-                </>
-              )}
-
-              <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {CONTENT_TYPES.map((option) => {
-                  const isSelected = contentType === option.type;
-                  return (
-                    <button
-                      key={option.type}
-                      type="button"
-                      onClick={() => setContentType(option.type)}
-                      className={
-                        'relative flex items-start gap-3 rounded-input border p-3.5 text-left transition-colors ' +
-                        (isSelected
-                          ? 'border-primary bg-primary-light'
-                          : 'border-disabled hover:border-muted')
-                      }
-                    >
-                      <span
-                        className={
-                          'absolute right-3 top-3 flex h-4 w-4 items-center justify-center rounded border ' +
-                          (isSelected
-                            ? 'border-primary bg-primary text-background'
-                            : 'border-disabled bg-background')
-                        }
-                      >
-                        {isSelected && <Check size={12} strokeWidth={3} />}
-                      </span>
-
-                      <span
-                        className={
-                          'flex h-9 w-9 shrink-0 items-center justify-center rounded-full ' +
-                          option.tint
-                        }
-                      >
-                        {option.icon}
-                      </span>
-
-                      <span className="flex flex-col gap-0.5 pr-4">
-                        <span className="b2-b text-text">{option.label}</span>
-                        <span className="f1-r text-muted">
-                          {option.description}
-                        </span>
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {!isEdit && (
-            <p className="f1-r text-muted">
-              You can add or update the content after saving the lesson.
-            </p>
+            <AppTextarea
+              label="Article content"
+              placeholder="Write the article content for this lesson"
+              value={articleContent}
+              maxLength={5000}
+              showCharCount
+              onChange={(e) => setArticleContent(e.target.value)}
+            />
           )}
         </div>
       </div>
