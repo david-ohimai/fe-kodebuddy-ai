@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import {
   BarChart3,
   BookOpen,
@@ -225,8 +226,16 @@ export default function LearnerDashboard() {
           </AppCard>
 
           <AppCard padding="none">
-            <div className="border-b border-muted/20 px-5 py-3">
+            <div className="flex items-center justify-between border-b border-muted/20 px-5 py-3">
               <p className="b2-b text-text">Recent Activity</p>
+              {activities.length > 0 && (
+                <Link
+                  href="/recent-activities"
+                  className="b2-m text-primary hover:underline"
+                >
+                  View more
+                </Link>
+              )}
             </div>
             {activityLoading ? (
               <div className="flex min-h-[140px] items-center justify-center">
@@ -241,7 +250,7 @@ export default function LearnerDashboard() {
               />
             ) : (
               <ul className="divide-y divide-muted/20">
-                {activities.map((entry) => (
+                {activities.slice(0, 7).map((entry) => (
                   <li
                     key={entry.id}
                     className="flex flex-wrap items-center justify-between gap-2 px-5 py-3"

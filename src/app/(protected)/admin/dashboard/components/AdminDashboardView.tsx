@@ -226,9 +226,14 @@ const AdminDashboardView: React.FC = () => {
         <div className="flex items-center justify-between border-b border-muted/20 px-6 py-4">
           <h3 className="b1-b text-text">Recent Activity</h3>
           {hasActivity && (
-            <button type="button" className="b2-m text-primary hover:underline">
-              View all
-            </button>
+            <AppButton
+              href="/admin/recent-activities"
+              variant="text"
+              size="small"
+              className="-mr-3"
+            >
+              View more
+            </AppButton>
           )}
         </div>
 
@@ -238,12 +243,13 @@ const AdminDashboardView: React.FC = () => {
           </div>
         ) : hasActivity ? (
           <ul>
-            {activities.map((item, i) => (
+            {activities.slice(0, 7).map((item, i) => (
               <li
                 key={item.id}
                 className={cx(
                   'flex items-center justify-between px-6 py-4',
-                  i !== activities.length - 1 && 'border-b border-muted/20',
+                  i !== Math.min(activities.length, 7) - 1 &&
+                    'border-b border-muted/20',
                 )}
               >
                 <p className="b2-r text-text-secondary">
