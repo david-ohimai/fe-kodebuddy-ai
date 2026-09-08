@@ -232,8 +232,16 @@ export default function TrainerDashboard() {
           </div>
 
           <AppCard padding="none">
-            <div className="border-b border-muted/20 px-6 py-4">
+            <div className="flex items-center justify-between border-b border-muted/20 px-6 py-4">
               <h3 className="b1-b text-text">Recent Activity</h3>
+              {activities.length > 0 && (
+                <Link
+                  href="/trainer/recent-activities"
+                  className="b2-m text-primary hover:underline"
+                >
+                  View more
+                </Link>
+              )}
             </div>
             {loadingSidebar ? (
               <div className="flex min-h-[160px] items-center justify-center">
@@ -248,7 +256,7 @@ export default function TrainerDashboard() {
               />
             ) : (
               <ul className="divide-y divide-muted/20">
-                {activities.map((entry) => (
+                {activities.slice(0, 7).map((entry) => (
                   <li
                     key={entry.id}
                     className="flex items-center justify-between gap-3 px-6 py-4"
