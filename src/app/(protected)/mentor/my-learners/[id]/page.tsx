@@ -48,15 +48,15 @@ export default function MentorLearnerDetailPage() {
   useEffect(() => {
     let cancelled = false;
 
-    if (!Number.isInteger(learnerId)) {
-      setLearner(null);
-      setLoading(false);
-      return;
-    }
+    async function load() {
+      if (!Number.isInteger(learnerId)) {
+        setLearner(null);
+        setLoading(false);
+        return;
+      }
 
-    mentorsApi
-      .listMyAssignedLearners()
-      .then((assignedLearners) => {
+      try {
+        const assignedLearners = await mentorsApi.listMyAssignedLearners();
         if (cancelled) return;
 
         const matchedLearner = assignedLearners.find(
@@ -64,13 +64,14 @@ export default function MentorLearnerDetailPage() {
         );
 
         setLearner(matchedLearner ? toDetailLearner(matchedLearner) : null);
-      })
-      .catch(() => {
+      } catch {
         if (!cancelled) setLearner(null);
-      })
-      .finally(() => {
+      } finally {
         if (!cancelled) setLoading(false);
-      });
+      }
+    }
+
+    load();
 
     return () => {
       cancelled = true;

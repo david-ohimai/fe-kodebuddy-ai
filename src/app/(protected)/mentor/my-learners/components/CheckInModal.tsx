@@ -2,8 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
-import CheckCircleOutlinedIcon from '@mui/icons-material/CheckCircleOutlined';
+import { CheckCircle2, Info } from 'lucide-react';
 import AppModal from '@/components/ui/AppModal';
 import AppConfirmModal from '@/components/ui/AppConfirmModal';
 import AppButton from '@/components/ui/AppButton';
@@ -64,12 +63,7 @@ export default function CheckInModal({
       <AppConfirmModal
         open={open}
         onClose={handleClose}
-        icon={
-          <CheckCircleOutlinedIcon
-            sx={{ fontSize: 64 }}
-            className="text-success"
-          />
-        }
+        icon={<CheckCircle2 size={64} className="text-success" />}
         title={`Check in sent to ${learnerFirstName}`}
         description={
           <>
@@ -124,10 +118,7 @@ export default function CheckInModal({
     >
       <div className="flex flex-col gap-4 p-6">
         <div className="flex items-start gap-2 rounded-card bg-primary-light p-3">
-          <InfoOutlinedIcon
-            fontSize="small"
-            className="mt-0.5 shrink-0 text-primary"
-          />
+          <Info size={16} className="mt-0.5 shrink-0 text-primary" />
           <p className="b2-r text-primary">
             This learner has been inactive for {inactiveDays} days on{' '}
             {currentModuleTitle} — a quick nudge could help them get back on

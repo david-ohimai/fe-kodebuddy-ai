@@ -2,13 +2,13 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import EventNoteIcon from '@mui/icons-material/EventNote';
-import CheckCircleOutlinedIcon from '@mui/icons-material/CheckCircleOutlined';
-import SendIcon from '@mui/icons-material/Send';
+import { ArrowLeft, CheckSquare, Clock, Send } from 'lucide-react';
 import { AppCard } from '@/components/ui/AppCard';
 import AppButton from '@/components/ui/AppButton';
 import AppProgressBar from '@/components/ui/AppProgressBar';
+import { useToast } from '@/components/ui/ToastProvider';
+import * as mentorsApi from '@/lib/api/mentors.api';
+import { getErrorMessage } from '@/lib/api/client';
 import CheckInModal from './CheckInModal';
 import ResourcePickerCard, {
   RecommendableResource,
@@ -130,6 +130,8 @@ const LearnerDetailPage: React.FC<LearnerDetailPageProps> = ({
   backHref = '/mentor/my-learners',
   onViewAllActivity,
 }) => {
+  const { showError } = useToast();
+
   const [checkInOpen, setCheckInOpen] = useState(false);
   const [sendingCheckIn, setSendingCheckIn] = useState(false);
   const [checkInsCount, setCheckInsCount] = useState(learner.checkInsSentCount);
@@ -148,8 +150,17 @@ const LearnerDetailPage: React.FC<LearnerDetailPageProps> = ({
   const handleSendCheckIn = async (message: string) => {
     setSendingCheckIn(true);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 600));
+      await mentorsApi.createCheckIn({
+        learnerId: Number(learner.id),
+        scheduledTime: new Date().toISOString(),
+        notes: message,
+      });
       setCheckInsCount((count) => count + 1);
+    } catch (err) {
+      showError(
+        'Could not send check-in',
+        getErrorMessage(err, 'Please try again.'),
+      );
     } finally {
       setSendingCheckIn(false);
     }
@@ -158,7 +169,22 @@ const LearnerDetailPage: React.FC<LearnerDetailPageProps> = ({
   const handleSendResource = async (note: string) => {
     setSendingResource(true);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 600));
+      const resourceTitle = selectedResource?.title ?? 'a resource';
+      const notes =
+        `Recommended resource: ${resourceTitle}${note ? `\n\n${note}` : ''}`.slice(
+          0,
+          1000,
+        );
+      await mentorsApi.createCheckIn({
+        learnerId: Number(learner.id),
+        scheduledTime: new Date().toISOString(),
+        notes,
+      });
+    } catch (err) {
+      showError(
+        'Could not send recommendation',
+        getErrorMessage(err, 'Please try again.'),
+      );
     } finally {
       setSendingResource(false);
     }
@@ -170,7 +196,7 @@ const LearnerDetailPage: React.FC<LearnerDetailPageProps> = ({
         href={backHref}
         className="b2-b inline-flex w-fit items-center gap-1.5 text-primary hover:underline"
       >
-        <ArrowBackIcon fontSize="small" /> Back to learners
+        <ArrowLeft size={16} /> Back to learners
       </Link>
 
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -205,7 +231,7 @@ const LearnerDetailPage: React.FC<LearnerDetailPageProps> = ({
           </AppButton>
           <AppButton
             radius="full"
-            startIcon={<SendIcon fontSize="small" />}
+            startIcon={<Send size={16} />}
             onClick={() => setCheckInOpen(true)}
           >
             Send check in
@@ -235,7 +261,7 @@ const LearnerDetailPage: React.FC<LearnerDetailPageProps> = ({
             </AppCard>
             <AppCard padding="md">
               <AppCard.Icon variant="primary" className="mb-3">
-                <EventNoteIcon />
+                <Clock />
               </AppCard.Icon>
               <p className="b2-m text-text-secondary">Last activity</p>
               <p className="h3-b mt-1 text-text">
@@ -245,7 +271,7 @@ const LearnerDetailPage: React.FC<LearnerDetailPageProps> = ({
             </AppCard>
             <AppCard padding="md">
               <AppCard.Icon variant="primary" className="mb-3">
-                <CheckCircleOutlinedIcon />
+                <CheckSquare />
               </AppCard.Icon>
               <p className="b2-m text-text-secondary">Check ins</p>
               <p className="h3-b mt-1 text-text">{checkInsCount}</p>

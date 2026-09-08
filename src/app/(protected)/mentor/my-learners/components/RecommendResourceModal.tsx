@@ -2,8 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { PlayCircle, FileText, File } from 'lucide-react';
-import CheckCircleOutlinedIcon from '@mui/icons-material/CheckCircleOutlined';
+import { PlayCircle, FileText, File, CheckCircle2 } from 'lucide-react';
 import AppModal from '@/components/ui/AppModal';
 import AppConfirmModal from '@/components/ui/AppConfirmModal';
 import AppButton from '@/components/ui/AppButton';
@@ -61,12 +60,7 @@ export default function RecommendResourceModal({
       <AppConfirmModal
         open={open}
         onClose={handleClose}
-        icon={
-          <CheckCircleOutlinedIcon
-            sx={{ fontSize: 64 }}
-            className="text-success"
-          />
-        }
+        icon={<CheckCircle2 size={64} className="text-success" />}
         title="Resource sent"
         description={`${learnerFirstName} has been notified about "${resource.title}".`}
         secondaryButton={{
@@ -119,7 +113,9 @@ export default function RecommendResourceModal({
         </div>
 
         <AppTextarea
-          label={<span className="b2-b text-text">Write a note (optional)</span>}
+          label={
+            <span className="b2-b text-text">Write a note (optional)</span>
+          }
           placeholder="Your personalized message"
           value={note}
           maxLength={500}

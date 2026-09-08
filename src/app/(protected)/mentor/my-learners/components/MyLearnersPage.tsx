@@ -1,9 +1,7 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import FileDownloadOutlinedIcon from '@mui/icons-material/FileDownloadOutlined';
-import ChevronRightIcon from '@mui/icons-material/ChevronRight';
-import GroupOutlinedIcon from '@mui/icons-material/GroupOutlined';
+import { ChevronRight, Download, Users } from 'lucide-react';
 import AppPageHeader from '@/components/ui/AppPageHeader';
 import AppTable, { AppTableColumn } from '@/components/ui/AppTable';
 import AppProgressBar from '@/components/ui/AppProgressBar';
@@ -97,7 +95,7 @@ function EmptyLearnersState() {
   return (
     <div className="flex flex-col items-center justify-center gap-3 px-6 py-16 text-center">
       <div className="flex h-12 w-12 items-center justify-center rounded-full bg-disabled">
-        <GroupOutlinedIcon className="text-muted" />
+        <Users size={20} className="text-muted" />
       </div>
       <p className="b2-m text-text">No learners assigned yet</p>
       <p className="b2-r max-w-xs text-text-secondary">
@@ -177,9 +175,7 @@ const MyLearnersPage: React.FC<MyLearnersPageProps> = ({
       key: 'chevron',
       header: '',
       align: 'right',
-      render: () => (
-        <ChevronRightIcon fontSize="small" className="text-muted" />
-      ),
+      render: () => <ChevronRight size={16} className="text-muted" />,
     },
   ];
 
@@ -196,7 +192,7 @@ const MyLearnersPage: React.FC<MyLearnersPageProps> = ({
             color="primary"
             size="medium"
             radius="full"
-            startIcon={<FileDownloadOutlinedIcon fontSize="small" />}
+            startIcon={<Download size={16} />}
             onClick={onExport}
             disabled={!hasLearners}
           >
