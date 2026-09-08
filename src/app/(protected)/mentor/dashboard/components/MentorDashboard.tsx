@@ -14,6 +14,7 @@ import activity from '@/assets/images/activity.webp';
 
 interface MentorStats {
   totalLearners: number;
+  upcomingCheckIns: number;
   checkInsThisWeek: number;
 }
 
@@ -27,6 +28,7 @@ export default function MentorDashboard() {
 
   const [stats, setStats] = useState<MentorStats>({
     totalLearners: 0,
+    upcomingCheckIns: 0,
     checkInsThisWeek: 0,
   });
   const [activities, setActivities] = useState<activityApi.ActivityEntry[]>([]);
@@ -43,17 +45,19 @@ export default function MentorDashboard() {
       if (cancelled) return;
 
       const sevenDaysAgo = Date.now() - 7 * 86_400_000;
+      const checkIns =
+        checkInsResult.status === 'fulfilled' ? checkInsResult.value : [];
+
       setStats({
         totalLearners:
           learnersResult.status === 'fulfilled'
             ? learnersResult.value.length
             : 0,
-        checkInsThisWeek:
-          checkInsResult.status === 'fulfilled'
-            ? checkInsResult.value.filter(
-                (c) => new Date(c.createdAt).getTime() >= sevenDaysAgo,
-              ).length
-            : 0,
+        upcomingCheckIns: checkIns.filter((c) => c.status === 'upcoming')
+          .length,
+        checkInsThisWeek: checkIns.filter(
+          (c) => new Date(c.createdAt).getTime() >= sevenDaysAgo,
+        ).length,
       });
 
       if (activityResult.status === 'fulfilled') {
@@ -87,15 +91,15 @@ export default function MentorDashboard() {
     },
     {
       icon: Flag,
-      label: 'Needs attention',
-      value: '—',
-      subtext: 'Not available for mentors yet',
+      label: 'Upcoming check-ins',
+      value: stats.upcomingCheckIns,
+      subtext: 'Scheduled to happen',
     },
     {
       icon: ClipboardCheck,
-      label: 'Check ins',
+      label: 'Check-ins this week',
       value: stats.checkInsThisWeek,
-      subtext: 'Sent this week',
+      subtext: 'Logged in the last 7 days',
     },
   ];
 

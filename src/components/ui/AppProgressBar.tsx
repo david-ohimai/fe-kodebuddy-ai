@@ -27,8 +27,8 @@ export default function AppProgressBar({
     >
       <div
         className={
-          'h-full rounded-full bg-secondary transition-all' +
-          (barClassName ? ` ${barClassName}` : '')
+          'h-full rounded-full transition-all' +
+          (barClassName ? ` ${barClassName}` : ' bg-secondary')
         }
         style={{ width: `${clamped}%` }}
       />
