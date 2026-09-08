@@ -23,6 +23,7 @@ export default function LessonDetailPage({ lessonId }: LessonDetailPageProps) {
     nextLesson,
     loading,
     error,
+    retry,
     toggling,
     justCompleted,
     markComplete,
@@ -41,6 +42,9 @@ export default function LessonDetailPage({ lessonId }: LessonDetailPageProps) {
       <AppCard padding="lg" className="text-center">
         <p className="b1-b text-text">Could not load this lesson</p>
         <p className="b2-r mt-1 text-muted">{error ?? 'Please try again.'}</p>
+        <AppButton className="mt-4" onClick={retry}>
+          Retry
+        </AppButton>
       </AppCard>
     );
   }
@@ -72,7 +76,10 @@ export default function LessonDetailPage({ lessonId }: LessonDetailPageProps) {
 
       {justCompleted && (
         <div className="flex items-start gap-3 rounded-card border border-success/20 bg-success-light px-5 py-4">
-          <CheckCircle2 size={20} className="mt-0.5 shrink-0 text-success-dark" />
+          <CheckCircle2
+            size={20}
+            className="mt-0.5 shrink-0 text-success-dark"
+          />
           <div>
             <p className="b2-b text-success-dark">
               Lesson Completed Successfully!

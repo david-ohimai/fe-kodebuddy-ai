@@ -15,7 +15,7 @@ interface CourseDetailPageProps {
 }
 
 export default function CourseDetailPage({ courseId }: CourseDetailPageProps) {
-  const { course, modules, courseProgress, loading, error } =
+  const { course, modules, courseProgress, loading, error, retry } =
     useCourseCurriculum(courseId);
 
   if (loading) {
@@ -31,6 +31,9 @@ export default function CourseDetailPage({ courseId }: CourseDetailPageProps) {
       <AppCard padding="lg" className="text-center">
         <p className="b1-b text-text">Could not load this course</p>
         <p className="b2-r mt-1 text-muted">{error ?? 'Please try again.'}</p>
+        <AppButton className="mt-4" onClick={retry}>
+          Retry
+        </AppButton>
       </AppCard>
     );
   }

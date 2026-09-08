@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { getModule, type CourseModule } from '@/lib/api/modules.api';
 import { getCourse, type Course } from '@/lib/api/courses.api';
 import { listModuleLessons, type Lesson } from '@/lib/api/lessons.api';
 import { getModuleProgress, type ModuleProgress } from '@/lib/api/progress.api';
+import { getErrorMessage } from '@/lib/api/client';
 
 export interface LessonWithProgress extends Lesson {
   isCompleted: boolean;
@@ -19,11 +20,15 @@ export function useModuleDetail(moduleId: number) {
   );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
+  const retry = useCallback(() => setReloadKey((key) => key + 1), []);
 
   useEffect(() => {
     let cancelled = false;
 
     async function load() {
+      setLoading(true);
+      setError(null);
       try {
         const moduleData = await getModule(moduleId);
         const [courseData, lessonList, progress] = await Promise.all([
@@ -49,9 +54,14 @@ export function useModuleDetail(moduleId: number) {
           );
           setModuleProgress(progress);
         }
-      } catch {
+      } catch (err) {
         if (!cancelled) {
-          setError('Could not load this module. Please try again.');
+          setError(
+            getErrorMessage(
+              err,
+              'Could not load this module. Please try again.',
+            ),
+          );
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -62,7 +72,7 @@ export function useModuleDetail(moduleId: number) {
     return () => {
       cancelled = true;
     };
-  }, [moduleId]);
+  }, [moduleId, reloadKey]);
 
-  return { module, course, lessons, moduleProgress, loading, error };
+  return { module, course, lessons, moduleProgress, loading, error, retry };
 }
