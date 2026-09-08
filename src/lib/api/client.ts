@@ -192,6 +192,21 @@ export async function apiFetch<TResponse = unknown>(
 
   let response = await doFetch();
 
+  const method = (rest.method ?? 'GET').toUpperCase();
+  if (
+    !response.ok &&
+    method === 'GET' &&
+    [500, 502, 503, 504].includes(response.status)
+  ) {
+    for (let attempt = 0; attempt < 2 && !response.ok; attempt++) {
+      console.warn(
+        `[api] ${path} returned ${response.status} — likely the backend waking up from idle. Retrying (${attempt + 1}/2)...`,
+      );
+      await delay(1500);
+      response = await doFetch();
+    }
+  }
+
   if (!response.ok && response.redirected) {
     console.warn(
       `[api] ${path} failed (${response.status}) after following a redirect — retrying once as a fresh request, since redirects can silently drop the Authorization header.`,

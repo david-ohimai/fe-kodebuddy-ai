@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import * as cohortsApi from '@/lib/api/cohorts.api';
+import * as coursesApi from '@/lib/api/courses.api';
 import * as mentorsApi from '@/lib/api/mentors.api';
 import * as activityApi from '@/lib/api/activity.api';
 import { getErrorMessage } from '@/lib/api/client';
@@ -12,7 +12,6 @@ export interface RosterEntry {
   learnerId: number;
   fullName: string | null;
   email: string;
-  joinedAt: string;
   progressPercentage: number | null;
   status: RosterStatus | null;
   lastActiveAt: string | null;
@@ -22,10 +21,7 @@ export type RosterTab = 'all' | 'needs_attention' | 'on_track';
 
 const STATUS_THRESHOLD = 50;
 
-export function useCohortRoster(
-  cohortId: number | undefined,
-  courseId: number | undefined,
-) {
+export function useCohortRoster(courseId: number | undefined) {
   const [roster, setRoster] = useState<RosterEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -34,7 +30,7 @@ export function useCohortRoster(
   const [now] = useState(() => Date.now());
 
   const loadRoster = useCallback(() => {
-    if (!cohortId || !courseId) {
+    if (!courseId) {
       setLoading(false);
       return;
     }
@@ -42,12 +38,10 @@ export function useCohortRoster(
     setError(null);
 
     Promise.all([
-      cohortsApi.listCohortLearners(cohortId),
+      coursesApi.listCourseLearners(courseId),
       activityApi.listTrainerActivity(100).catch(() => []),
     ])
       .then(async ([learners, activity]) => {
-        const activeLearners = learners.filter((l) => l.isActive);
-
         const lastActiveByLearner = new Map<number, string>();
         for (const entry of activity) {
           const current = lastActiveByLearner.get(entry.userId);
@@ -57,7 +51,7 @@ export function useCohortRoster(
         }
 
         const progressResults = await Promise.all(
-          activeLearners.map((l) =>
+          learners.map((l) =>
             mentorsApi
               .getLearnerCourseProgress(l.learnerId, courseId)
               .then((p) => p.completionPercentage)
@@ -66,13 +60,12 @@ export function useCohortRoster(
         );
 
         setRoster(
-          activeLearners.map((l, index) => {
+          learners.map((l, index) => {
             const progressPercentage = progressResults[index];
             return {
               learnerId: l.learnerId,
               fullName: l.fullName,
               email: l.email,
-              joinedAt: l.joinedAt,
               progressPercentage,
               status:
                 progressPercentage === null
@@ -90,7 +83,7 @@ export function useCohortRoster(
         setRoster([]);
       })
       .finally(() => setLoading(false));
-  }, [cohortId, courseId]);
+  }, [courseId]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect

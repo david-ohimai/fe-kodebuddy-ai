@@ -3,15 +3,16 @@
 import { useEffect, useState } from 'react';
 import * as coursesApi from '@/lib/api/courses.api';
 import * as cohortsApi from '@/lib/api/cohorts.api';
+import * as mentorsApi from '@/lib/api/mentors.api';
 import { getTrainerDashboard } from '@/lib/api/dashboard.api';
 import { ApiError } from '@/lib/api/client';
-import type { Course } from '@/lib/api/courses.api';
-import type { Cohort, CohortLearner } from '@/lib/api/cohorts.api';
+import type { Course, CourseLearner } from '@/lib/api/courses.api';
+import type { Cohort } from '@/lib/api/cohorts.api';
 
 export interface AssignedCourseInfo {
   course: Course;
   cohort: Cohort;
-  learners: CohortLearner[];
+  learners: CourseLearner[];
   learnerCount: number;
   completionPercent: number;
 }
@@ -54,11 +55,6 @@ function extractAssignment(
     cohort?.cohort_id,
     firstCohortFromArray?.id,
     firstCohortFromArray?.cohort_id,
-    // Where it actually is: TrainerDashboardResponse has no top-level cohort
-    // and no `cohorts` array — each TrainerCourseSummary carries its own
-    // cohort_id. Without this the id resolved to null and the whole
-    // assignment was discarded, so a trainer with a real course and learners
-    // saw the "no course" empty state.
     firstCourseFromArray?.cohort_id,
   );
 
@@ -126,26 +122,36 @@ export function useMyAssignedCourse(
           return;
         }
 
-        const learners = await cohortsApi
-          .getCohortLearners(cohort.id)
+        const learners = await coursesApi
+          .listCourseLearners(course.id)
           .catch((err) => {
             const detail =
               err instanceof ApiError
                 ? `${err.status} ${err.message}`
                 : String(err);
             console.error(
-              `[useMyAssignedCourse] GET /assign-cohorts/${cohort.id}/learners failed: ${detail}`,
+              `[useMyAssignedCourse] GET /courses/${course.id}/learners failed: ${detail}`,
             );
             return [];
           });
-        const activeLearners = learners.filter((l) => l.isActive);
+
+        const progressResults = await Promise.all(
+          learners.map((l) =>
+            mentorsApi
+              .getLearnerCourseProgress(l.learnerId, course.id)
+              .then((p) => p.completionPercentage)
+              .catch(() => null),
+          ),
+        );
+        const resolvedProgress = progressResults.filter(
+          (p): p is number => p !== null,
+        );
         const completionPercent =
-          activeLearners.length === 0
+          resolvedProgress.length === 0
             ? 0
             : Math.round(
-                (activeLearners.filter((l) => l.completedAt).length /
-                  activeLearners.length) *
-                  100,
+                resolvedProgress.reduce((sum, p) => sum + p, 0) /
+                  resolvedProgress.length,
               );
 
         if (!cancelled) {
@@ -154,8 +160,8 @@ export function useMyAssignedCourse(
           setData({
             course,
             cohort,
-            learners: activeLearners,
-            learnerCount: activeLearners.length,
+            learners,
+            learnerCount: learners.length,
             completionPercent,
           });
         }

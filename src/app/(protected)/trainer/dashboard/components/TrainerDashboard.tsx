@@ -31,7 +31,7 @@ export default function TrainerDashboard() {
     loading: loadingRoster,
     error: rosterError,
     retry: retryRoster,
-  } = useCohortRoster(data?.cohort.id, data?.course.id);
+  } = useCohortRoster(data?.course.id);
   const needsAttention = roster
     .filter((r) => r.status === 'needs_attention')
     .slice(0, 5);

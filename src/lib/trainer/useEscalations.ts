@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import * as chatApi from '@/lib/api/chat.api';
-import * as profileApi from '@/lib/api/profile.api';
+import * as coursesApi from '@/lib/api/courses.api';
 import { getErrorMessage } from '@/lib/api/client';
-import type { AuthUser } from '@/types/auth.types';
+import type { CourseLearner } from '@/lib/api/courses.api';
 import type { Escalation } from '@/types/chat.types';
 
 export function useEscalations() {
@@ -18,33 +18,28 @@ export function useEscalations() {
     chatApi
       .listTrainerEscalations()
       .then(async (items) => {
-        // EscalationResponse only carries learner_id, no name/email — see
-        // chat.types.ts. Resolved per learner (GET /profile/users/{id})
-        // rather than the bulk GET /profile/users list, which is
-        // admin-only: a trainer fetching their own assigned escalations
-        // was getting the whole list wiped out by a 403 on that one bulk
-        // name lookup. Each lookup is caught independently so a missing or
-        // denied profile just falls back to "Unknown learner" instead of
-        // hiding every escalation.
-        const learnerIds = [...new Set(items.map((e) => e.learnerId))];
-        const users = await Promise.all(
-          learnerIds.map((id) =>
-            profileApi.getUserById(id).catch((err) => {
+        const courseIds = [...new Set(items.map((e) => e.courseId))];
+        const learnersByCourse = await Promise.all(
+          courseIds.map((courseId) =>
+            coursesApi.listCourseLearners(courseId).catch((err) => {
               console.warn(
-                `[escalations] GET /profile/users/${id} failed — showing this escalation as "Unknown learner".`,
+                `[escalations] GET /courses/${courseId}/learners failed — escalations for this course will show "Unknown learner".`,
                 err,
               );
-              return null;
+              return [] as CourseLearner[];
             }),
           ),
         );
-        const usersById = new Map(
-          users.filter((u): u is AuthUser => u !== null).map((u) => [u.id, u]),
-        );
+        const learnerById = new Map<number, CourseLearner>();
+        for (const learners of learnersByCourse) {
+          for (const learner of learners) {
+            learnerById.set(learner.learnerId, learner);
+          }
+        }
 
         setEscalations(
           items.map((e) => {
-            const learner = usersById.get(e.learnerId);
+            const learner = learnerById.get(e.learnerId);
             return {
               ...e,
               learnerName: learner?.fullName || learner?.email || null,
