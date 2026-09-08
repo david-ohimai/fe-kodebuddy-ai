@@ -17,7 +17,7 @@ export const CONTENT_TYPES: ContentTypeMeta[] = [
   {
     type: 'document',
     label: 'Document',
-    description: 'Upload a document or other file.',
+    description: 'Upload a file.',
     icon: <FileText size={18} />,
     tint: 'bg-success-light text-success',
     pillColor: 'success',
@@ -25,7 +25,7 @@ export const CONTENT_TYPES: ContentTypeMeta[] = [
   {
     type: 'link',
     label: 'Link',
-    description: 'Add a web link as the lesson resource.',
+    description: 'Add a web link.',
     icon: <Link2 size={18} />,
     tint: 'bg-primary-light text-primary',
     pillColor: 'primary',
@@ -33,7 +33,7 @@ export const CONTENT_TYPES: ContentTypeMeta[] = [
   {
     type: 'article',
     label: 'Article',
-    description: 'Write an article as the lesson resource.',
+    description: 'Write lesson content.',
     icon: <Newspaper size={18} />,
     tint: 'bg-warning-light text-warning-dark',
     pillColor: 'warning',
