@@ -175,6 +175,7 @@ export interface CourseResourceInput {
   type: string;
   url?: string;
   description?: string;
+  content?: string;
   file?: File;
 }
 
@@ -187,6 +188,7 @@ export async function createModuleResource(
   formData.append('type', input.type);
   if (input.description) formData.append('description', input.description);
   if (input.url) formData.append('url', input.url);
+  if (input.content) formData.append('content', input.content);
   if (input.file) formData.append('file', input.file);
 
   const dto = await apiFetch<ResourceResponseDto>(
@@ -205,6 +207,7 @@ export interface CourseResourceUpdateInput {
   type?: string;
   url?: string;
   description?: string;
+  content?: string;
   file?: File;
 }
 
@@ -219,6 +222,8 @@ export async function updateModuleResource(
   if (input.description !== undefined)
     formData.append('description', input.description ?? '');
   if (input.url !== undefined) formData.append('url', input.url ?? '');
+  if (input.content !== undefined)
+    formData.append('content', input.content ?? '');
   if (input.file) formData.append('file', input.file);
 
   const dto = await apiFetch<ResourceResponseDto>(

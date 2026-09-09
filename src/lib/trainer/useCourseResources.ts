@@ -14,6 +14,8 @@ export interface ResourceFormInput {
   type: string;
   url?: string;
   description?: string;
+  content?: string;
+  file?: File;
 }
 
 /** Course-wide, aggregated the same way useCourseAssignments/useCourseFaqs are. */
@@ -91,9 +93,13 @@ export function useCourseResources(
     }
     setSaving(true);
     try {
+      const backendType = data.type === 'document' ? 'file' : data.type;
       const created = await resourcesApi.createModuleResource(
         defaultModuleId,
-        data,
+        {
+          ...data,
+          type: backendType,
+        },
       );
       setResources((prev) => [...prev, created]);
       showSuccess(
@@ -112,10 +118,14 @@ export function useCourseResources(
   ) => {
     setSaving(true);
     try {
+      const backendType = data.type === 'document' ? 'file' : data.type;
       const updated = await resourcesApi.updateModuleResource(
         resource.moduleId,
         resource.id,
-        data,
+        {
+          ...data,
+          type: backendType,
+        },
       );
       setResources((prev) =>
         prev.map((r) => (r.id === updated.id ? updated : r)),

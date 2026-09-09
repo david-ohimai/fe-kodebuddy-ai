@@ -9,7 +9,9 @@ import AppConfirmModal from '@/components/ui/AppConfirmModal';
 import { useToast } from '@/components/ui/ToastProvider';
 import { getErrorMessage } from '@/lib/api/client';
 import { getResourceTypeMeta } from '@/lib/trainer/resourceTypeMeta';
-import ResourceModal from './ResourceModal';
+import ResourceModal, {
+  type ResourceModalSubmitData,
+} from './ResourceModal';
 import type { CourseResource } from '@/lib/api/resources.api';
 import type { ResourceFormInput } from '@/lib/trainer/useCourseResources';
 
@@ -42,11 +44,7 @@ export default function ResourceDetailView({
   const meta = getResourceTypeMeta(resource.type);
   const Icon = meta.icon;
 
-  const handleEdit = async (data: {
-    title: string;
-    url: string;
-    type: string;
-  }) => {
+  const handleEdit = async (data: ResourceModalSubmitData) => {
     try {
       await editResource(resource, data);
       setIsEditOpen(false);
@@ -103,9 +101,22 @@ export default function ResourceDetailView({
             </span>
             <div className="min-w-0 flex-1">
               <p className="b1-b text-text">{resource.title}</p>
+              {resource.description && (
+                <p className="b2-r mt-1 text-text-secondary">
+                  {resource.description}
+                </p>
+              )}
               <div className="mt-1.5 flex flex-wrap items-center gap-2">
                 <span className="f1-r text-muted">Type:</span>
                 <AppPill label={meta.label} color="primary" />
+                {resource.fileName && (
+                  <>
+                    <span className="f1-r ml-2 text-muted">File:</span>
+                    <span className="f1-r font-medium text-text">
+                      {resource.fileName}
+                    </span>
+                  </>
+                )}
                 {resource.url && (
                   <>
                     <span className="f1-r ml-2 text-muted">Link:</span>
@@ -120,7 +131,7 @@ export default function ResourceDetailView({
                   </>
                 )}
                 {resource.content && (
-                  <div className="mt-4 rounded-lg border border-disabled bg-surface-raised p-4">
+                  <div className="mt-4 w-full rounded-lg border border-disabled bg-surface-raised p-4">
                     <p className="f1-r mb-1 text-muted">Article Content:</p>
                     <p className="b2-r whitespace-pre-wrap text-text">
                       {resource.content}
@@ -159,8 +170,11 @@ export default function ResourceDetailView({
         saving={saving}
         initial={{
           title: resource.title,
+          description: resource.description ?? '',
           url: resource.url ?? '',
-          type: meta.label,
+          content: resource.content ?? '',
+          type: resource.type,
+          fileName: resource.fileName ?? undefined,
         }}
         onClose={() => setIsEditOpen(false)}
         onSubmit={handleEdit}

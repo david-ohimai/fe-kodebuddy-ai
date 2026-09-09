@@ -8,7 +8,9 @@ import AppSpinner from '@/components/ui/AppSpinner';
 import { useToast } from '@/components/ui/ToastProvider';
 import { getErrorMessage } from '@/lib/api/client';
 import { getResourceTypeMeta } from '@/lib/trainer/resourceTypeMeta';
-import ResourceModal from './ResourceModal';
+import ResourceModal, {
+  type ResourceModalSubmitData,
+} from './ResourceModal';
 import noResources from '@/assets/images/empty state res.webp';
 import type { CourseResource } from '@/lib/api/resources.api';
 import type { ResourceFormInput } from '@/lib/trainer/useCourseResources';
@@ -33,11 +35,7 @@ export default function ResourcesTab({
   const { showError } = useToast();
   const [isAddOpen, setIsAddOpen] = useState(false);
 
-  const handleAdd = async (data: {
-    title: string;
-    url: string;
-    type: string;
-  }) => {
+  const handleAdd = async (data: ResourceModalSubmitData) => {
     try {
       await addResource(data);
       setIsAddOpen(false);
