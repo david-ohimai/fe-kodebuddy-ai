@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { ChevronRight, Plus } from 'lucide-react';
 import AppButton from '@/components/ui/AppButton';
 import AppEmptyState from '@/components/ui/AppEmptyState';
@@ -9,9 +9,7 @@ import AppSpinner from '@/components/ui/AppSpinner';
 import { useToast } from '@/components/ui/ToastProvider';
 import { getErrorMessage } from '@/lib/api/client';
 import { getResourceTypeMeta } from '@/lib/trainer/resourceTypeMeta';
-import ResourceModal, {
-  type ResourceModalSubmitData,
-} from './ResourceModal';
+import ResourceModal, { type ResourceModalSubmitData } from './ResourceModal';
 import noResources from '@/assets/images/empty state res.webp';
 import type { CourseResource } from '@/lib/api/resources.api';
 import type { ResourceFormInput } from '@/lib/trainer/useCourseResources';
@@ -40,19 +38,20 @@ export default function ResourcesTab({
   const [page, setPage] = useState(1);
 
   const totalPages = Math.max(1, Math.ceil(resources.length / PAGE_SIZE));
-  const rangeStart = resources.length === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
-  const rangeEnd = Math.min(page * PAGE_SIZE, resources.length);
+  // Clamp at the point of use rather than syncing it back into state via an
+  // effect: if `resources` shrinks (e.g. after a delete) and `page` is now
+  // past the end, the paged/range values below just fall back to the last
+  // valid page for this render — no extra render cycle needed to correct it.
+  const currentPage = Math.min(page, totalPages);
+  const rangeStart =
+    resources.length === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
+  const rangeEnd = Math.min(currentPage * PAGE_SIZE, resources.length);
 
   const pagedResources = useMemo(
-    () => resources.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
-    [resources, page],
+    () =>
+      resources.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
+    [resources, currentPage],
   );
-
-  useEffect(() => {
-    if (page > totalPages) {
-      setPage(totalPages);
-    }
-  }, [page, totalPages]);
 
   const handleAdd = async (data: ResourceModalSubmitData) => {
     try {
@@ -151,7 +150,7 @@ export default function ResourcesTab({
           Showing {rangeStart}–{rangeEnd} of {resources.length} resources
         </p>
         <AppPagination
-          currentPage={page}
+          currentPage={currentPage}
           totalPages={totalPages}
           onChange={setPage}
           className="flex-wrap !my-0"

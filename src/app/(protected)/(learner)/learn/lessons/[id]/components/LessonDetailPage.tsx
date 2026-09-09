@@ -28,7 +28,6 @@ export default function LessonDetailPage({ lessonId }: LessonDetailPageProps) {
     lesson,
     module,
     course,
-    siblingLessons,
     resource,
     isCompleted,
     completedCount,
