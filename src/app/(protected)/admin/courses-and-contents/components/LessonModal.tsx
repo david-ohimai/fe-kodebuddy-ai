@@ -44,6 +44,31 @@ export interface LessonModalProps {
 const formatFileSize = (bytes: number) =>
   `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 
+function isValidLink(value: string): boolean {
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+
+  const hasValidPrefix =
+    /^https?:\/\//i.test(trimmed) || /^www\./i.test(trimmed);
+  if (!hasValidPrefix) return false;
+
+  const urlToParse = /^https?:\/\//i.test(trimmed)
+    ? trimmed
+    : `https://${trimmed}`;
+
+  try {
+    const url = new URL(urlToParse);
+    return Boolean(
+      url.hostname &&
+        url.hostname.includes('.') &&
+        url.hostname.length > 3 &&
+        !url.hostname.endsWith('.'),
+    );
+  } catch {
+    return false;
+  }
+}
+
 const LessonModal: React.FC<LessonModalProps> = ({
   open,
   moduleTitle,
@@ -73,6 +98,7 @@ const LessonModal: React.FC<LessonModalProps> = ({
   );
   const [file, setFile] = useState<File | undefined>(undefined);
   const [resourceUrl, setResourceUrl] = useState(lesson?.resourceUrl ?? '');
+  const [linkError, setLinkError] = useState<string | null>(null);
   const [articleContent, setArticleContent] = useState(
     lesson?.articleContent ?? '',
   );
@@ -96,6 +122,7 @@ const LessonModal: React.FC<LessonModalProps> = ({
     setFileSize(lesson?.fileSize);
     setFile(undefined);
     setResourceUrl(lesson?.resourceUrl ?? '');
+    setLinkError(null);
     setArticleContent(lesson?.articleContent ?? '');
   };
 
@@ -138,10 +165,27 @@ const LessonModal: React.FC<LessonModalProps> = ({
   const handleSubmit = async () => {
     if (isSubmitDisabled || submitting) return;
 
+    if (hasResource && contentType === 'link') {
+      const trimmedUrl = resourceUrl.trim();
+      if (!isValidLink(trimmedUrl)) {
+        setLinkError(
+          'Please enter a valid link starting with https://, http://, or www.',
+        );
+        return;
+      }
+    }
+
     if (isEdit && !isDirty) {
       onClose();
       return;
     }
+
+    const finalResourceUrl =
+      hasResource && contentType === 'link' && resourceUrl.trim()
+        ? /^https?:\/\//i.test(resourceUrl.trim())
+          ? resourceUrl.trim()
+          : `https://${resourceUrl.trim()}`
+        : undefined;
 
     setSubmitting(true);
     try {
@@ -152,7 +196,7 @@ const LessonModal: React.FC<LessonModalProps> = ({
         file: hasResource ? file : undefined,
         fileName: hasResource ? fileName : undefined,
         fileSize: hasResource ? fileSize : undefined,
-        resourceUrl: hasResource ? resourceUrl.trim() || undefined : undefined,
+        resourceUrl: finalResourceUrl,
         articleContent: hasResource
           ? articleContent.trim() || undefined
           : undefined,
@@ -266,7 +310,10 @@ const LessonModal: React.FC<LessonModalProps> = ({
             description="Optionally attach a document, link, or article to this lesson."
             checked={hasResource}
             disabled={submitting}
-            onChange={(_val, checked) => setHasResource(checked)}
+            onChange={(_val, checked) => {
+              setHasResource(checked);
+              if (!checked) setLinkError(null);
+            }}
           />
 
           {hasResource && (
@@ -295,6 +342,7 @@ const LessonModal: React.FC<LessonModalProps> = ({
                           setFileName(undefined);
                           setFileSize(undefined);
                           setResourceUrl('');
+                          setLinkError(null);
                           setArticleContent('');
                         }}
                         className={
@@ -401,10 +449,14 @@ const LessonModal: React.FC<LessonModalProps> = ({
                 <AppInput
                   label="Resource link"
                   placeholder="https://example.com/resource"
-                  type="url"
+                  type="text"
                   value={resourceUrl}
                   disabled={submitting}
-                  onChange={(e) => setResourceUrl(e.target.value)}
+                  error={linkError ?? undefined}
+                  onChange={(e) => {
+                    setResourceUrl(e.target.value);
+                    if (linkError) setLinkError(null);
+                  }}
                 />
               ) : (
                 <AppTextarea
