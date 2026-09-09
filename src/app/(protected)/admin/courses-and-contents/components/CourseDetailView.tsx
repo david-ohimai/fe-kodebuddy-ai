@@ -15,6 +15,8 @@ import { useCourseActions } from '../hooks/useCourseActions';
 import { useToast } from '@/components/ui/ToastProvider';
 import { getErrorMessage } from '@/lib/api/client';
 import { DEFAULT_LESSON_CONTENT_TYPE } from '@/lib/api/lessons.api';
+import * as resourcesApi from '@/lib/api/resources.api';
+import type { LessonContentType } from '@/types/lesson-content.types';
 import type { Course } from '@/lib/api/courses.api';
 import type { CourseModule } from '@/lib/api/modules.api';
 
@@ -104,17 +106,43 @@ const CourseDetailsView: React.FC<CourseDetailsViewProps> = ({
           content.moveModule(module.id, direction)
         }
         onAddLesson={setLessonModule}
-        onEditLesson={(module, lesson) =>
+        onEditLesson={async (module, lesson) => {
+          let existingResource: resourcesApi.CourseResource | null = null;
+          try {
+            const resList = await resourcesApi.listLessonResources(lesson.id);
+            if (resList.length > 0) existingResource = resList[0];
+          } catch (err) {
+            console.warn('Could not load lesson resource for editing:', err);
+          }
+
+          const rawType = (
+            existingResource?.type ??
+            lesson.resourceType ??
+            DEFAULT_LESSON_CONTENT_TYPE
+          ).toLowerCase();
+          const contentType: LessonContentType =
+            rawType === 'file' || rawType === 'document'
+              ? 'document'
+              : rawType === 'link'
+                ? 'link'
+                : 'article';
+
           setEditingLesson({
             moduleId: module.id,
             lesson: {
               id: String(lesson.id),
               title: lesson.title,
-              description: lesson.contentBody ?? undefined,
-              contentType: DEFAULT_LESSON_CONTENT_TYPE,
+              description:
+                existingResource?.description ??
+                lesson.contentBody ??
+                undefined,
+              contentType,
+              fileName: existingResource?.fileName ?? lesson.resourceFileName,
+              resourceUrl: existingResource?.url ?? undefined,
+              articleContent: existingResource?.content ?? undefined,
             },
-          })
-        }
+          });
+        }}
         onDeleteLesson={(module, lesson) =>
           setDeletingLesson({
             moduleId: module.id,

@@ -124,46 +124,53 @@ export default function ModuleCard({
         />
       ) : (
         <ul className="flex flex-col divide-y divide-disabled">
-          {lessons.map((lesson, lessonIndex) => (
-            <li
-              key={lesson.id}
-              className="flex items-center justify-between gap-3 px-5 py-3 sm:px-6"
-            >
-              <div className="flex items-start gap-2">
-                <ReorderButtons
-                  isFirst={lessonIndex === 0}
-                  isLast={lessonIndex === lessons.length - 1}
-                  onMoveUp={() => onMoveLesson(lesson, 'up')}
-                  onMoveDown={() => onMoveLesson(lesson, 'down')}
-                  label={lesson.title}
-                />
-                <div>
-                  <p className="b2-m text-text">
-                    {index + 1}.{lessonIndex + 1} {lesson.title}
-                  </p>
-                  <div className="mt-1 flex flex-col items-start gap-2">
-                    {lesson.contentBody && (
-                      <span className="f1-r text-muted">
-                        {lesson.contentBody}
-                      </span>
-                    )}
-                    <AppPill
-                      label={meta.label}
-                      color={meta.pillColor}
-                      icon={meta.icon as React.ReactElement}
-                    />
+          {lessons.map((lesson, lessonIndex) => {
+            const lessonMeta =
+              lesson.resourceType && CONTENT_TYPE_META[lesson.resourceType]
+                ? CONTENT_TYPE_META[lesson.resourceType]
+                : meta;
+
+            return (
+              <li
+                key={lesson.id}
+                className="flex items-center justify-between gap-3 px-5 py-3 sm:px-6"
+              >
+                <div className="flex items-start gap-2">
+                  <ReorderButtons
+                    isFirst={lessonIndex === 0}
+                    isLast={lessonIndex === lessons.length - 1}
+                    onMoveUp={() => onMoveLesson(lesson, 'up')}
+                    onMoveDown={() => onMoveLesson(lesson, 'down')}
+                    label={lesson.title}
+                  />
+                  <div>
+                    <p className="b2-m text-text">
+                      {index + 1}.{lessonIndex + 1} {lesson.title}
+                    </p>
+                    <div className="mt-1 flex flex-col items-start gap-2">
+                      {lesson.contentBody && (
+                        <span className="f1-r text-muted">
+                          {lesson.contentBody}
+                        </span>
+                      )}
+                      <AppPill
+                        label={lessonMeta.label}
+                        color={lessonMeta.pillColor}
+                        icon={lessonMeta.icon as React.ReactElement}
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <OptionsMenu
-                editLabel="Edit Lesson"
-                deleteLabel="Delete Lesson"
-                onEdit={() => onEditLesson(lesson)}
-                onDelete={() => onDeleteLesson(lesson)}
-              />
-            </li>
-          ))}
+                <OptionsMenu
+                  editLabel="Edit Lesson"
+                  deleteLabel="Delete Lesson"
+                  onEdit={() => onEditLesson(lesson)}
+                  onDelete={() => onDeleteLesson(lesson)}
+                />
+              </li>
+            );
+          })}
           <li className="px-5 py-3 sm:px-6">
             <AppButton
               variant="outlined"

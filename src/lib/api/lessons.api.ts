@@ -13,6 +13,8 @@ export interface Lesson {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+  resourceType?: LessonContentType;
+  resourceFileName?: string;
 }
 
 interface LessonResponseDto {

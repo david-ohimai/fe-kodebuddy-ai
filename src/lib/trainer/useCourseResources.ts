@@ -7,6 +7,8 @@ import { getErrorMessage } from '@/lib/api/client';
 import type { CourseResource } from '@/lib/api/resources.api';
 import type { CourseModule } from '@/lib/api/modules.api';
 
+import type { Lesson } from '@/lib/api/lessons.api';
+
 export interface ResourceFormInput {
   title: string;
   type: string;
@@ -15,13 +17,22 @@ export interface ResourceFormInput {
 }
 
 /** Course-wide, aggregated the same way useCourseAssignments/useCourseFaqs are. */
-export function useCourseResources(modules: CourseModule[]) {
+export function useCourseResources(
+  modules: CourseModule[],
+  lessonsByModule?: Record<number, Lesson[]>,
+) {
   const { showSuccess, showError } = useToast();
   const [resources, setResources] = useState<CourseResource[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   const moduleIds = modules.map((m) => m.id).join(',');
+  const lessonIds = lessonsByModule
+    ? Object.values(lessonsByModule)
+        .flat()
+        .map((l) => l.id)
+        .join(',')
+    : '';
 
   const loadResources = () => {
     if (modules.length === 0) {
@@ -30,12 +41,31 @@ export function useCourseResources(modules: CourseModule[]) {
       return;
     }
     setLoading(true);
-    Promise.all(
-      modules.map((m) =>
-        resourcesApi.listModuleResourcesFull(m.id).catch(() => []),
-      ),
-    )
-      .then((lists) => setResources(lists.flat()))
+
+    const modulePromises = modules.map((m) =>
+      resourcesApi.listModuleResourcesFull(m.id).catch(() => []),
+    );
+    const lessonIdList = lessonsByModule
+      ? Object.values(lessonsByModule)
+          .flat()
+          .map((l) => l.id)
+      : [];
+    const lessonPromises = lessonIdList.map((lid) =>
+      resourcesApi.listLessonResources(lid).catch(() => []),
+    );
+
+    Promise.all([...modulePromises, ...lessonPromises])
+      .then((lists) => {
+        const seen = new Set<number>();
+        const merged: CourseResource[] = [];
+        for (const r of lists.flat()) {
+          if (!seen.has(r.id)) {
+            seen.add(r.id);
+            merged.push(r);
+          }
+        }
+        setResources(merged);
+      })
       .catch((err) => {
         showError(
           'Could not load resources',
@@ -49,7 +79,7 @@ export function useCourseResources(modules: CourseModule[]) {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     loadResources();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [moduleIds]);
+  }, [moduleIds, lessonIds]);
 
   // New resources attach to the course's first module for the same reason
   // new assignments/FAQs do — see useCourseAssignments.

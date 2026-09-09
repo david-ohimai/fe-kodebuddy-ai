@@ -64,7 +64,10 @@ export default function MyCoursePage() {
     data?.cohort.endDate,
   );
   const faqsState = useCourseFaqs(content.modules);
-  const resourcesState = useCourseResources(content.modules);
+  const resourcesState = useCourseResources(
+    content.modules,
+    content.lessonsByModule,
+  );
 
   const [activeTab, setActiveTab] = useState('overview');
   const [selectedModuleId, setSelectedModuleId] = useState<number | null>(null);

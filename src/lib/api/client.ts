@@ -170,8 +170,12 @@ export async function apiFetch<TResponse = unknown>(
   { body, auth = false, headers, ...rest }: ApiFetchOptions = {},
 ): Promise<TResponse> {
   const doFetch = async (): Promise<Response> => {
+    const isFormData =
+      typeof FormData !== 'undefined' && body instanceof FormData;
     const requestHeaders = new Headers(headers);
-    requestHeaders.set('Content-Type', 'application/json');
+    if (!isFormData) {
+      requestHeaders.set('Content-Type', 'application/json');
+    }
 
     if (auth) {
       const token = getAccessToken();
@@ -182,7 +186,11 @@ export async function apiFetch<TResponse = unknown>(
       return await fetchWithRetry(`${API_BASE_URL}${path}`, {
         ...rest,
         headers: requestHeaders,
-        body: body !== undefined ? JSON.stringify(body) : undefined,
+        body: isFormData
+          ? (body as FormData)
+          : body !== undefined
+            ? JSON.stringify(body)
+            : undefined,
       });
     } catch (cause) {
       if (cause instanceof NetworkError) throw cause;
