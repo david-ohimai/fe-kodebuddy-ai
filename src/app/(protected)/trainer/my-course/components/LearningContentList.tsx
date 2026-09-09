@@ -1,4 +1,5 @@
 import React from 'react';
+
 import {
   ArrowLeft,
   ChevronDown,
@@ -9,8 +10,13 @@ import {
 } from 'lucide-react';
 import { AppCard } from '@/components/ui/AppCard';
 import AppButton from '@/components/ui/AppButton';
+import AppPill from '@/components/ui/AppPill';
 import AppEmptyState from '@/components/ui/AppEmptyState';
 import AppSpinner from '@/components/ui/AppSpinner';
+import {
+  CONTENT_TYPE_META,
+  type LessonContentType,
+} from '@/types/lesson-content.types';
 import noLessons from '@/assets/images/no-lessons.webp';
 import type { CourseModule } from '@/lib/api/modules.api';
 import type { Lesson } from '@/lib/api/lessons.api';
@@ -137,9 +143,23 @@ export default function LearningContentList({
                   <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-light b2-b text-primary">
                     {index + 1}
                   </span>
-                  <p className="b2-m min-w-0 flex-1 text-text">
-                    {lesson.title}
-                  </p>
+                  <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+                    <p className="b2-m text-text">{lesson.title}</p>
+                    {lesson.resourceType &&
+                      (() => {
+                        const meta =
+                          CONTENT_TYPE_META[
+                            lesson.resourceType as LessonContentType
+                          ];
+                        return meta ? (
+                          <AppPill
+                            label={meta.label}
+                            color={meta.pillColor}
+                            icon={meta.icon as React.ReactElement}
+                          />
+                        ) : null;
+                      })()}
+                  </div>
                   <ChevronRight size={18} className="shrink-0 text-muted" />
                 </button>
               </li>

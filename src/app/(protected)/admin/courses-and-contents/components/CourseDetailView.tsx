@@ -6,6 +6,7 @@ import ReportProblemIcon from '@mui/icons-material/ReportProblem';
 import AppConfirmModal from '@/components/ui/AppConfirmModal';
 import AddModuleModal from '@/components/course/AddModuleModal';
 import LessonModal, { type LessonToEdit } from './LessonModal';
+import LessonDetailView from './LessonDetailModal';
 import DescriptionModal from './DescriptionModal';
 import CourseHeaderCard from './CourseHeaderCard';
 import CourseOverviewCard from './CourseOverviewCard';
@@ -14,7 +15,9 @@ import { useCourseContent } from '@/lib/courses/useCourseContent';
 import { useCourseActions } from '../hooks/useCourseActions';
 import { useToast } from '@/components/ui/ToastProvider';
 import { getErrorMessage } from '@/lib/api/client';
-import { DEFAULT_LESSON_CONTENT_TYPE } from '@/lib/api/lessons.api';
+import type { Lesson } from '@/lib/api/lessons.api';
+import * as resourcesApi from '@/lib/api/resources.api';
+import type { LessonContentType } from '@/types/lesson-content.types';
 import type { Course } from '@/lib/api/courses.api';
 import type { CourseModule } from '@/lib/api/modules.api';
 
@@ -54,6 +57,12 @@ const CourseDetailsView: React.FC<CourseDetailsViewProps> = ({
     lessonTitle: string;
   } | null>(null);
 
+  const [viewingLesson, setViewingLesson] = useState<{
+    lesson: Lesson;
+    resource: resourcesApi.CourseResource | null;
+    loading: boolean;
+  } | null>(null);
+
   const [isPublishConfirmOpen, setIsPublishConfirmOpen] = useState(false);
   const [isDeleteCourseConfirmOpen, setIsDeleteCourseConfirmOpen] =
     useState(false);
@@ -62,6 +71,18 @@ const CourseDetailsView: React.FC<CourseDetailsViewProps> = ({
   const [descriptionDraft, setDescriptionDraft] = useState(
     course.description ?? '',
   );
+
+  // ── Inline page: lesson detail ────────────────────────────────────────────
+  if (viewingLesson) {
+    return (
+      <LessonDetailView
+        lesson={viewingLesson.lesson}
+        resource={viewingLesson.resource}
+        loading={viewingLesson.loading}
+        onBack={() => setViewingLesson(null)}
+      />
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -104,17 +125,67 @@ const CourseDetailsView: React.FC<CourseDetailsViewProps> = ({
           content.moveModule(module.id, direction)
         }
         onAddLesson={setLessonModule}
-        onEditLesson={(module, lesson) =>
+        onViewLesson={async (_module, lesson) => {
+          setViewingLesson({ lesson, resource: null, loading: true });
+          try {
+            const resList = await resourcesApi.listLessonResources(lesson.id);
+            setViewingLesson({
+              lesson,
+              resource: resList.length > 0 ? resList[0] : null,
+              loading: false,
+            });
+          } catch {
+            setViewingLesson({ lesson, resource: null, loading: false });
+          }
+        }}
+        onEditLesson={async (module, lesson) => {
+          let existingResource: resourcesApi.CourseResource | null = null;
+          try {
+            const resList = await resourcesApi.listLessonResources(lesson.id);
+            if (resList.length > 0) existingResource = resList[0];
+          } catch (err) {
+            console.warn('Could not load lesson resource for editing:', err);
+          }
+
+          const hasResource = Boolean(existingResource || lesson.resourceType);
+          const rawType = (
+            existingResource?.type ??
+            lesson.resourceType ??
+            ''
+          ).toLowerCase();
+          const contentType: LessonContentType | undefined = hasResource
+            ? rawType === 'file' || rawType === 'document'
+              ? 'document'
+              : rawType === 'link'
+                ? 'link'
+                : 'article'
+            : undefined;
+
           setEditingLesson({
             moduleId: module.id,
             lesson: {
               id: String(lesson.id),
               title: lesson.title,
-              description: lesson.contentBody ?? undefined,
-              contentType: DEFAULT_LESSON_CONTENT_TYPE,
+              description:
+                lesson.contentBody ??
+                existingResource?.description ??
+                undefined,
+              contentType,
+              fileName:
+                contentType === 'document'
+                  ? (existingResource?.fileName ?? lesson.resourceFileName)
+                  : undefined,
+              resourceUrl:
+                contentType === 'link'
+                  ? (existingResource?.url ?? undefined)
+                  : undefined,
+              articleContent:
+                contentType === 'article'
+                  ? (existingResource?.content ?? undefined)
+                  : undefined,
             },
-          })
-        }
+          });
+        }}
         onDeleteLesson={(module, lesson) =>
           setDeletingLesson({
             moduleId: module.id,
@@ -193,6 +264,7 @@ const CourseDetailsView: React.FC<CourseDetailsViewProps> = ({
                 : 'Could not add lesson',
               getErrorMessage(err, 'Please try again.'),
             );
+            throw err;
           }
         }}
       />

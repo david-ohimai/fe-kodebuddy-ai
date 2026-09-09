@@ -1,11 +1,23 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowLeft, ArrowRight, CheckCircle2 } from 'lucide-react';
+import {
+  ArrowLeft,
+  ArrowRight,
+  CheckCircle2,
+  FileText,
+  ExternalLink,
+  AlignLeft,
+} from 'lucide-react';
 import { AppCard } from '@/components/ui/AppCard';
 import AppButton from '@/components/ui/AppButton';
+import AppPill from '@/components/ui/AppPill';
 import AppSpinner from '@/components/ui/AppSpinner';
 import { useLessonDetail } from '@/lib/learn/useLessonDetail';
+import {
+  CONTENT_TYPE_META,
+  type LessonContentType,
+} from '@/types/lesson-content.types';
 
 interface LessonDetailPageProps {
   lessonId: number;
@@ -16,6 +28,8 @@ export default function LessonDetailPage({ lessonId }: LessonDetailPageProps) {
     lesson,
     module,
     course,
+    siblingLessons,
+    resource,
     isCompleted,
     completedCount,
     totalLessons,
@@ -28,6 +42,18 @@ export default function LessonDetailPage({ lessonId }: LessonDetailPageProps) {
     justCompleted,
     markComplete,
   } = useLessonDetail(lessonId);
+
+  const rawType = resource?.type?.toLowerCase();
+  const contentType: LessonContentType | null =
+    rawType === 'file' || rawType === 'document'
+      ? 'document'
+      : rawType === 'link'
+        ? 'link'
+        : rawType === 'article'
+          ? 'article'
+          : null;
+
+  const resourceMeta = contentType ? CONTENT_TYPE_META[contentType] : null;
 
   if (loading) {
     return (
@@ -63,8 +89,15 @@ export default function LessonDetailPage({ lessonId }: LessonDetailPageProps) {
       </div>
 
       <div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <span className="b2-b text-primary">Lesson {lesson.order}</span>
+          {resourceMeta && (
+            <AppPill
+              label={resourceMeta.label}
+              color={resourceMeta.pillColor}
+              icon={resourceMeta.icon as React.ReactElement}
+            />
+          )}
           {isCompleted && (
             <span className="f1-b inline-flex items-center gap-1 rounded-full bg-success-light px-2.5 py-1 uppercase text-success-dark">
               <CheckCircle2 size={12} /> Completed
@@ -103,6 +136,136 @@ export default function LessonDetailPage({ lessonId }: LessonDetailPageProps) {
           </p>
         )}
       </AppCard>
+
+      {resource && contentType && resourceMeta && (
+        <AppCard padding="lg">
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-disabled pb-4">
+              <div className="flex items-center gap-2.5">
+                <h2 className="b1-b text-text">Lesson Resource</h2>
+                <AppPill
+                  label={resourceMeta.label}
+                  color={resourceMeta.pillColor}
+                  icon={resourceMeta.icon as React.ReactElement}
+                />
+              </div>
+              <AppButton
+                href={`/resources/${resource.id}`}
+                variant="outlined"
+                color="neutral"
+                size="small"
+                radius="full"
+                endIcon={<ArrowRight size={13} />}
+              >
+                View in Resources
+              </AppButton>
+            </div>
+
+            <div>
+              <p className="b2-m text-text">{resource.title}</p>
+              {resource.description && (
+                <p className="b2-r mt-1 text-text-secondary">
+                  {resource.description}
+                </p>
+              )}
+            </div>
+
+            {/* Document */}
+            {contentType === 'document' && (
+              <div className="flex flex-col gap-2">
+                <p className="f1-r text-muted">Document</p>
+                <div className="flex items-center gap-3 rounded-input border border-disabled bg-disabled/10 px-4 py-3">
+                  <span
+                    className={
+                      'flex h-10 w-10 shrink-0 items-center justify-center rounded ' +
+                      resourceMeta.tint
+                    }
+                  >
+                    <FileText size={18} />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="b2-m truncate text-text">
+                      {resource.fileName ?? 'Uploaded document'}
+                    </p>
+                    {resource.url ? (
+                      <a
+                        href={resource.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="f1-r inline-flex items-center gap-1 text-primary hover:underline"
+                      >
+                        Open file <ExternalLink size={11} />
+                      </a>
+                    ) : (
+                      <p className="f1-r text-muted">No file URL available</p>
+                    )}
+                  </div>
+                  {resource.url && (
+                    <AppButton
+                      variant="outlined"
+                      size="small"
+                      radius="full"
+                      startIcon={<ExternalLink size={13} />}
+                      onClick={() => window.open(resource.url!, '_blank')}
+                    >
+                      View
+                    </AppButton>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Link */}
+            {contentType === 'link' && resource.url && (
+              <div className="flex flex-col gap-2">
+                <p className="f1-r text-muted">Resource link</p>
+                <div className="flex items-center gap-3 rounded-input border border-disabled bg-disabled/10 px-4 py-3">
+                  <span
+                    className={
+                      'flex h-10 w-10 shrink-0 items-center justify-center rounded ' +
+                      resourceMeta.tint
+                    }
+                  >
+                    <ExternalLink size={18} />
+                  </span>
+                  <a
+                    href={resource.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="b2-r min-w-0 flex-1 truncate text-primary hover:underline"
+                  >
+                    {resource.url}
+                  </a>
+                  <AppButton
+                    variant="outlined"
+                    size="small"
+                    radius="full"
+                    startIcon={<ExternalLink size={13} />}
+                    onClick={() => window.open(resource.url!, '_blank')}
+                  >
+                    Open
+                  </AppButton>
+                </div>
+              </div>
+            )}
+
+            {/* Article */}
+            {contentType === 'article' && resource.content && (
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-1.5 text-muted">
+                  <AlignLeft size={14} />
+                  <p className="f1-r">Article content</p>
+                </div>
+                <div className="rounded-input border border-disabled bg-disabled/5 p-4">
+                  <p className="b2-r whitespace-pre-wrap leading-relaxed text-text">
+                    {resource.content}
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        </AppCard>
+      )}
 
       <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
         <div className="flex flex-wrap items-center gap-4">

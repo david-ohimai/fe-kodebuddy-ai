@@ -5,10 +5,15 @@ import Link from 'next/link';
 import { ArrowLeft, CheckCircle2, PlayCircle, Sparkles } from 'lucide-react';
 import { AppCard } from '@/components/ui/AppCard';
 import AppButton from '@/components/ui/AppButton';
+import AppPill from '@/components/ui/AppPill';
 import AppSpinner from '@/components/ui/AppSpinner';
 import AppProgressBar from '@/components/ui/AppProgressBar';
 import KodeBuddyChatPanel from '@/components/chat/KodeBuddyChatPanel';
 import { useModuleDetail } from '@/lib/learn/useModuleDetail';
+import {
+  CONTENT_TYPE_META,
+  type LessonContentType,
+} from '@/types/lesson-content.types';
 
 interface ModuleDetailPageProps {
   moduleId: number;
@@ -88,6 +93,12 @@ export default function ModuleDetailPage({ moduleId }: ModuleDetailPageProps) {
 
       <div className="flex flex-col divide-y divide-disabled rounded-card border border-disabled bg-background">
         {rows.map(({ lesson, isCurrent, isLocked }, index) => {
+          const lessonMeta =
+            lesson.resourceType &&
+            CONTENT_TYPE_META[lesson.resourceType as LessonContentType]
+              ? CONTENT_TYPE_META[lesson.resourceType as LessonContentType]
+              : null;
+
           const content = (
             <div className="flex items-center gap-4 px-5 py-4">
               <span
@@ -110,11 +121,20 @@ export default function ModuleDetailPage({ moduleId }: ModuleDetailPageProps) {
               </span>
 
               <div className="min-w-0 flex-1">
-                <p
-                  className={'b1-b ' + (isLocked ? 'text-muted' : 'text-text')}
-                >
-                  {index + 1}. {lesson.title}
-                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <p
+                    className={'b1-b ' + (isLocked ? 'text-muted' : 'text-text')}
+                  >
+                    {index + 1}. {lesson.title}
+                  </p>
+                  {lessonMeta && (
+                    <AppPill
+                      label={lessonMeta.label}
+                      color={lessonMeta.pillColor}
+                      icon={lessonMeta.icon as React.ReactElement}
+                    />
+                  )}
+                </div>
                 <p
                   className={
                     'f1-m mt-0.5 uppercase ' +

@@ -153,10 +153,15 @@ async function fetchWithRetry(
 }
 
 function extractErrorMessage(payload: unknown, status: number): string {
+  if (typeof payload === 'string' && payload.trim()) {
+    return payload;
+  }
   if (payload && typeof payload === 'object') {
     const record = payload as Record<string, unknown>;
     if (typeof record.message === 'string') return record.message;
     if (typeof record.detail === 'string') return record.detail;
+    if (typeof record.error === 'string') return record.error;
+    if (typeof record.msg === 'string') return record.msg;
     if (Array.isArray(record.detail) && record.detail.length > 0) {
       const first = record.detail[0] as { msg?: string };
       if (first?.msg) return first.msg;
@@ -170,8 +175,12 @@ export async function apiFetch<TResponse = unknown>(
   { body, auth = false, headers, ...rest }: ApiFetchOptions = {},
 ): Promise<TResponse> {
   const doFetch = async (): Promise<Response> => {
+    const isFormData =
+      typeof FormData !== 'undefined' && body instanceof FormData;
     const requestHeaders = new Headers(headers);
-    requestHeaders.set('Content-Type', 'application/json');
+    if (!isFormData) {
+      requestHeaders.set('Content-Type', 'application/json');
+    }
 
     if (auth) {
       const token = getAccessToken();
@@ -179,10 +188,15 @@ export async function apiFetch<TResponse = unknown>(
     }
 
     try {
-      return await fetchWithRetry(`${API_BASE_URL}${path}`, {
+      const baseUrl = API_BASE_URL;
+      return await fetchWithRetry(`${baseUrl}${path}`, {
         ...rest,
         headers: requestHeaders,
-        body: body !== undefined ? JSON.stringify(body) : undefined,
+        body: isFormData
+          ? (body as FormData)
+          : body !== undefined
+            ? JSON.stringify(body)
+            : undefined,
       });
     } catch (cause) {
       if (cause instanceof NetworkError) throw cause;
@@ -231,10 +245,13 @@ export async function apiFetch<TResponse = unknown>(
     }
   }
 
-  const isJson = response.headers
-    .get('content-type')
-    ?.includes('application/json');
-  const payload = isJson ? await response.json().catch(() => null) : null;
+  const contentType = response.headers.get('content-type') ?? '';
+  let payload: unknown = null;
+  if (contentType.includes('application/json')) {
+    payload = await response.json().catch(() => null);
+  } else {
+    payload = await response.text().catch(() => null);
+  }
 
   if (!response.ok) {
     throw new ApiError(
