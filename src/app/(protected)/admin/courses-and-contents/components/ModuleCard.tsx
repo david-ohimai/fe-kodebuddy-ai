@@ -21,6 +21,7 @@ export interface ModuleCardProps {
   onDeleteModule: () => void;
   onMoveModule: (direction: 'up' | 'down') => void;
   onAddLesson: () => void;
+  onViewLesson: (lesson: Lesson) => void;
   onEditLesson: (lesson: Lesson) => void;
   onDeleteLesson: (lesson: Lesson) => void;
   onMoveLesson: (lesson: Lesson, direction: 'up' | 'down') => void;
@@ -73,6 +74,7 @@ export default function ModuleCard({
   onDeleteModule,
   onMoveModule,
   onAddLesson,
+  onViewLesson,
   onEditLesson,
   onDeleteLesson,
   onMoveLesson,
@@ -163,8 +165,10 @@ export default function ModuleCard({
                 </div>
 
                 <OptionsMenu
+                  viewLabel="View Lesson"
                   editLabel="Edit Lesson"
                   deleteLabel="Delete Lesson"
+                  onView={() => onViewLesson(lesson)}
                   onEdit={() => onEditLesson(lesson)}
                   onDelete={() => onDeleteLesson(lesson)}
                 />

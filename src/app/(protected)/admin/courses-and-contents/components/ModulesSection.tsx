@@ -18,6 +18,7 @@ export interface ModulesSectionProps {
   onDeleteModule: (module: CourseModule) => void;
   onMoveModule: (module: CourseModule, direction: 'up' | 'down') => void;
   onAddLesson: (module: CourseModule) => void;
+  onViewLesson: (module: CourseModule, lesson: Lesson) => void;
   onEditLesson: (module: CourseModule, lesson: Lesson) => void;
   onDeleteLesson: (module: CourseModule, lesson: Lesson) => void;
   onMoveLesson: (
@@ -36,6 +37,7 @@ export default function ModulesSection({
   onDeleteModule,
   onMoveModule,
   onAddLesson,
+  onViewLesson,
   onEditLesson,
   onDeleteLesson,
   onMoveLesson,
@@ -92,6 +94,7 @@ export default function ModulesSection({
           onDeleteModule={() => onDeleteModule(module)}
           onMoveModule={(direction) => onMoveModule(module, direction)}
           onAddLesson={() => onAddLesson(module)}
+          onViewLesson={(lesson) => onViewLesson(module, lesson)}
           onEditLesson={(lesson) => onEditLesson(module, lesson)}
           onDeleteLesson={(lesson) => onDeleteLesson(module, lesson)}
           onMoveLesson={(lesson, direction) =>
