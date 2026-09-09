@@ -179,12 +179,7 @@ export function useCourseContent(courseId: number | null | undefined) {
     toastOverride?: ToastOverride,
   ) => {
     const effectiveType = data.contentType ?? 'article';
-    let contentBody: string | undefined = data.description;
-    if (effectiveType === 'article' && data.articleContent) {
-      contentBody = data.description
-        ? `${data.description}\n\n${data.articleContent}`
-        : data.articleContent;
-    }
+    const contentBody: string | undefined = data.description;
 
     // Step 1: Create lesson
     const created = await lessonsApi.createLesson({
@@ -252,12 +247,7 @@ export function useCourseContent(courseId: number | null | undefined) {
     toastOverride?: ToastOverride,
   ) => {
     const effectiveType = data.contentType ?? 'article';
-    let contentBody: string | undefined = data.description;
-    if (effectiveType === 'article' && data.articleContent) {
-      contentBody = data.description
-        ? `${data.description}\n\n${data.articleContent}`
-        : data.articleContent;
-    }
+    const contentBody: string | undefined = data.description;
 
     const updated = await lessonsApi.updateLesson(lessonId, {
       title: data.title,
