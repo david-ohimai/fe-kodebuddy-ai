@@ -254,7 +254,6 @@ export async function apiFetch<TResponse = unknown>(
   }
 
   if (!response.ok) {
-    console.error(`[apiFetch ${response.status}] ${path}:`, payload);
     throw new ApiError(
       extractErrorMessage(payload, response.status),
       response.status,

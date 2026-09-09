@@ -18,6 +18,7 @@ export interface LearnerResource {
   type: ResourceType;
   rawType: string;
   url: string | null;
+  content?: string | null;
   isActive: boolean;
   createdAt: string;
   moduleTitle: string;

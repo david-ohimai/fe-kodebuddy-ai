@@ -45,6 +45,7 @@ function mapResource(
     type: normaliseResourceType(dto.type),
     rawType: dto.type,
     url: dto.url,
+    content: dto.content,
     isActive: dto.is_active,
     createdAt: dto.created_at,
     moduleTitle: module.title,

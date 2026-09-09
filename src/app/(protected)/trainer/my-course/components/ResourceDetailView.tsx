@@ -119,6 +119,14 @@ export default function ResourceDetailView({
                     </a>
                   </>
                 )}
+                {resource.content && (
+                  <div className="mt-4 rounded-lg border border-disabled bg-surface-raised p-4">
+                    <p className="f1-r mb-1 text-muted">Article Content:</p>
+                    <p className="b2-r whitespace-pre-wrap text-text">
+                      {resource.content}
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </div>

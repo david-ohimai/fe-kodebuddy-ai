@@ -167,6 +167,15 @@ export default function ResourceDetails({ resourceId }: ResourceDetailsProps) {
                 'No further details have been added to this resource yet.'}
             </p>
 
+            {resource.content && (
+              <div className="mt-6 rounded-card border border-disabled bg-surface-raised p-5">
+                <h3 className="b1-b mb-2 text-text">Content</h3>
+                <div className="b2-r whitespace-pre-wrap leading-relaxed text-text-secondary">
+                  {resource.content}
+                </div>
+              </div>
+            )}
+
             <div className="mt-8 flex flex-col gap-4 border-t border-disabled pt-5 sm:flex-row sm:items-center sm:justify-between">
               {resourceUsed ? (
                 <>
