@@ -153,10 +153,15 @@ async function fetchWithRetry(
 }
 
 function extractErrorMessage(payload: unknown, status: number): string {
+  if (typeof payload === 'string' && payload.trim()) {
+    return payload;
+  }
   if (payload && typeof payload === 'object') {
     const record = payload as Record<string, unknown>;
     if (typeof record.message === 'string') return record.message;
     if (typeof record.detail === 'string') return record.detail;
+    if (typeof record.error === 'string') return record.error;
+    if (typeof record.msg === 'string') return record.msg;
     if (Array.isArray(record.detail) && record.detail.length > 0) {
       const first = record.detail[0] as { msg?: string };
       if (first?.msg) return first.msg;
@@ -183,7 +188,7 @@ export async function apiFetch<TResponse = unknown>(
     }
 
     try {
-      const baseUrl = isFormData ? DIRECT_API_BASE_URL : API_BASE_URL;
+      const baseUrl = API_BASE_URL;
       return await fetchWithRetry(`${baseUrl}${path}`, {
         ...rest,
         headers: requestHeaders,
@@ -240,12 +245,16 @@ export async function apiFetch<TResponse = unknown>(
     }
   }
 
-  const isJson = response.headers
-    .get('content-type')
-    ?.includes('application/json');
-  const payload = isJson ? await response.json().catch(() => null) : null;
+  const contentType = response.headers.get('content-type') ?? '';
+  let payload: unknown = null;
+  if (contentType.includes('application/json')) {
+    payload = await response.json().catch(() => null);
+  } else {
+    payload = await response.text().catch(() => null);
+  }
 
   if (!response.ok) {
+    console.error(`[apiFetch ${response.status}] ${path}:`, payload);
     throw new ApiError(
       extractErrorMessage(payload, response.status),
       response.status,

@@ -311,14 +311,27 @@ export async function updateLessonResource(
   input: LessonResourceUpdateInput,
 ): Promise<CourseResource> {
   const formData = new FormData();
-  if (input.title !== undefined) formData.append('title', input.title);
-  if (input.type !== undefined) formData.append('type', input.type);
-  if (input.description !== undefined)
+  if (input.title !== undefined && input.title.trim()) {
+    formData.append('title', input.title.trim());
+  }
+  if (input.description !== undefined) {
     formData.append('description', input.description ?? '');
-  if (input.url !== undefined) formData.append('url', input.url ?? '');
-  if (input.content !== undefined)
-    formData.append('content', input.content ?? '');
-  if (input.file) formData.append('file', input.file);
+  }
+
+  if (input.file) {
+    formData.append('file', input.file);
+    formData.append('type', 'file');
+  } else if (input.type === 'link') {
+    formData.append('type', 'link');
+    if (input.url !== undefined && input.url.trim()) {
+      formData.append('url', input.url.trim());
+    }
+  } else if (input.type === 'article') {
+    formData.append('type', 'article');
+    if (input.content !== undefined) {
+      formData.append('content', input.content ?? '');
+    }
+  }
 
   const dto = await apiFetch<ResourceResponseDto>(
     `/lessons/${lessonId}/resources/${resourceId}`,

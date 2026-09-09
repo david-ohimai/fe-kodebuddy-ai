@@ -260,28 +260,51 @@ export function useCourseContent(courseId: number | null | undefined) {
     try {
       const existingResources =
         await resourcesApi.listLessonResources(lessonId);
-      if (existingResources.length > 0) {
-        const primary = existingResources[0];
-        await resourcesApi.updateLessonResource(lessonId, primary.id, {
-          title: data.title,
-          description: data.description,
-          type: backendType,
-          file: data.file,
-          url: data.resourceUrl,
-          content: data.articleContent,
-        });
+      const primary = existingResources[0];
+
+      if (primary) {
+        const isDocumentWithNewFile =
+          effectiveType === 'document' && Boolean(data.file);
+        const isLinkUpdate =
+          effectiveType === 'link' &&
+          Boolean(data.resourceUrl) &&
+          data.resourceUrl?.trim() !== (primary.url ?? '').trim();
+        const isArticleUpdate =
+          effectiveType === 'article' &&
+          data.articleContent !== undefined &&
+          data.articleContent?.trim() !== (primary.content ?? '').trim();
+        const isTypeChange =
+          primary.type.toLowerCase() !== backendType;
+
+        if (
+          isDocumentWithNewFile ||
+          isLinkUpdate ||
+          isArticleUpdate ||
+          isTypeChange
+        ) {
+          await resourcesApi.updateLessonResource(lessonId, primary.id, {
+            title: data.title,
+            description: data.description,
+            type: backendType,
+            file: data.file,
+            url: effectiveType === 'link' ? data.resourceUrl : undefined,
+            content:
+              effectiveType === 'article' ? data.articleContent : undefined,
+          });
+        }
       } else if (
         data.file ||
-        data.resourceUrl ||
-        data.articleContent
+        (effectiveType === 'link' && data.resourceUrl) ||
+        (effectiveType === 'article' && data.articleContent)
       ) {
         await resourcesApi.createLessonResource(lessonId, {
           title: data.title,
           description: data.description,
           type: backendType,
           file: data.file,
-          url: data.resourceUrl,
-          content: data.articleContent,
+          url: effectiveType === 'link' ? data.resourceUrl : undefined,
+          content:
+            effectiveType === 'article' ? data.articleContent : undefined,
         });
       }
     } catch (err) {

@@ -133,13 +133,22 @@ const CourseDetailsView: React.FC<CourseDetailsViewProps> = ({
               id: String(lesson.id),
               title: lesson.title,
               description:
-                existingResource?.description ??
                 lesson.contentBody ??
+                existingResource?.description ??
                 undefined,
               contentType,
-              fileName: existingResource?.fileName ?? lesson.resourceFileName,
-              resourceUrl: existingResource?.url ?? undefined,
-              articleContent: existingResource?.content ?? undefined,
+              fileName:
+                contentType === 'document'
+                  ? (existingResource?.fileName ?? lesson.resourceFileName)
+                  : undefined,
+              resourceUrl:
+                contentType === 'link'
+                  ? (existingResource?.url ?? undefined)
+                  : undefined,
+              articleContent:
+                contentType === 'article'
+                  ? (existingResource?.content ?? undefined)
+                  : undefined,
             },
           });
         }}
