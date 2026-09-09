@@ -209,6 +209,7 @@ export interface CourseResourceUpdateInput {
   description?: string;
   content?: string;
   file?: File;
+  isActive?: boolean;
 }
 
 export async function updateModuleResource(
@@ -218,13 +219,17 @@ export async function updateModuleResource(
 ): Promise<CourseResource> {
   const formData = new FormData();
   if (input.title !== undefined) formData.append('title', input.title);
-  if (input.type !== undefined) formData.append('type', input.type);
+  if (input.type !== undefined) {
+    const normType = input.type === 'document' ? 'file' : input.type;
+    formData.append('type', normType);
+  }
   if (input.description !== undefined)
     formData.append('description', input.description ?? '');
   if (input.url !== undefined) formData.append('url', input.url ?? '');
   if (input.content !== undefined)
     formData.append('content', input.content ?? '');
   if (input.file) formData.append('file', input.file);
+  formData.append('is_active', String(input.isActive ?? true));
 
   const dto = await apiFetch<ResourceResponseDto>(
     `/modules/${moduleId}/resources/${resourceId}`,
@@ -337,7 +342,11 @@ export async function updateLessonResource(
     if (input.content !== undefined) {
       formData.append('content', input.content ?? '');
     }
+  } else if (input.type === 'file' || input.type === 'document') {
+    formData.append('type', 'file');
   }
+
+  formData.append('is_active', 'true');
 
   const dto = await apiFetch<ResourceResponseDto>(
     `/lessons/${lessonId}/resources/${resourceId}`,
