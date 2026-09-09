@@ -9,6 +9,10 @@ import {
   getModuleProgress,
   toggleLessonCompletion,
 } from '@/lib/api/progress.api';
+import {
+  listLessonResources,
+  type CourseResource,
+} from '@/lib/api/resources.api';
 import { getErrorMessage } from '@/lib/api/client';
 
 export function useLessonDetail(lessonId: number) {
@@ -17,6 +21,7 @@ export function useLessonDetail(lessonId: number) {
   const [course, setCourse] = useState<Course | null>(null);
   const [siblingLessons, setSiblingLessons] = useState<Lesson[]>([]);
   const [completedIds, setCompletedIds] = useState<Set<number>>(new Set());
+  const [resource, setResource] = useState<CourseResource | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [toggling, setToggling] = useState(false);
@@ -34,10 +39,11 @@ export function useLessonDetail(lessonId: number) {
       setError(null);
       try {
         const lessonData = await getLesson(lessonId);
-        const [moduleData, lessons, progress] = await Promise.all([
+        const [moduleData, lessons, progress, resourceList] = await Promise.all([
           getModule(lessonData.moduleId),
           listModuleLessons(lessonData.moduleId),
           getModuleProgress(lessonData.moduleId).catch(() => null),
+          listLessonResources(lessonId).catch(() => []),
         ]);
         const courseData = await getCourse(moduleData.courseId);
 
@@ -46,6 +52,7 @@ export function useLessonDetail(lessonId: number) {
           setModule(moduleData);
           setCourse(courseData);
           setSiblingLessons(lessons);
+          setResource(resourceList[0] ?? null);
           setCompletedIds(
             new Set(
               (progress?.lessons ?? [])
@@ -107,6 +114,7 @@ export function useLessonDetail(lessonId: number) {
     module,
     course,
     siblingLessons,
+    resource,
     isCompleted,
     completedCount: completedIds.size,
     totalLessons: siblingLessons.length,
