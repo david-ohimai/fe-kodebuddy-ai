@@ -18,23 +18,21 @@ interface ModuleResponseDto {
 interface ResourceResponseDto {
   id: number;
   module_id: number;
-  lesson_id: number | null;
+  lesson_id?: number | null;
   title: string;
   description: string | null;
   type: string;
   url: string | null;
-  content: string | null;
-
-  // Set when the resource was created by uploading a file.
-  file_name: string | null;
-  mime_type: string | null;
+  content?: string | null;
+  file_name?: string | null;
+  mime_type?: string | null;
 
   // Written by the backend's background ingestion task
   // (app/agent/ingestion.py::sync_resource_embeddings) once it has tried to
   // turn this resource into embeddable text. Null until that task has run,
   // which is why the UI treats "no status yet" as pending rather than failed.
-  content_extract_status: string | null;
-  content_extract_error: string | null;
+  content_extract_status?: string | null;
+  content_extract_error?: string | null;
 
   created_by: number;
   created_at: string;
@@ -52,15 +50,10 @@ function mapResource(
     moduleId: dto.module_id,
     title: dto.title,
     description: dto.description,
-    type: normaliseResourceType(dto.type, {
-      url: dto.url,
-      mimeType: dto.mime_type,
-      fileName: dto.file_name,
-    }),
+    type: normaliseResourceType(dto.type),
     rawType: dto.type,
     url: dto.url,
-    fileName: dto.file_name ?? null,
-    mimeType: dto.mime_type ?? null,
+    content: dto.content,
     isActive: dto.is_active,
     createdAt: dto.created_at,
     moduleTitle: module.title,
@@ -86,11 +79,41 @@ export async function listLearnerResources(): Promise<LearnerResource[]> {
   const resourceGroups = await Promise.all(
     moduleGroups.flatMap(({ course, modules }) =>
       modules.map(async (module) => {
-        const resources = await apiFetch<ResourceResponseDto[]>(
-          `/modules/${module.id}/resources`,
-          { method: 'GET', auth: true },
+        const [moduleResources, moduleLessons] = await Promise.all([
+          apiFetch<ResourceResponseDto[]>(`/modules/${module.id}/resources`, {
+            method: 'GET',
+            auth: true,
+          }).catch(() => []),
+          apiFetch<{ id: number }[]>(`/lessons/module/${module.id}`, {
+            method: 'GET',
+            auth: true,
+          }).catch(() => []),
+        ]);
+
+        const lessonResources = await Promise.all(
+          (moduleLessons ?? []).map((lesson) =>
+            apiFetch<ResourceResponseDto[]>(
+              `/lessons/${lesson.id}/resources`,
+              { method: 'GET', auth: true },
+            ).catch(() => []),
+          ),
         );
-        return (resources ?? []).map((dto) => mapResource(dto, module, course));
+
+        const allDtos = [
+          ...(moduleResources ?? []),
+          ...lessonResources.flat(),
+        ];
+
+        const seen = new Set<number>();
+        const uniqueDtos: ResourceResponseDto[] = [];
+        for (const dto of allDtos) {
+          if (!seen.has(dto.id)) {
+            seen.add(dto.id);
+            uniqueDtos.push(dto);
+          }
+        }
+
+        return uniqueDtos.map((dto) => mapResource(dto, module, course));
       }),
     ),
   );
@@ -123,14 +146,14 @@ function mapExtractionStatus(raw: string | null | undefined): ExtractionStatus {
 export interface CourseResource {
   id: number;
   moduleId: number;
-  lessonId: number | null;
+  lessonId?: number | null;
   title: string;
   description: string | null;
   type: string;
   url: string | null;
-  content: string | null;
-  fileName: string | null;
-  mimeType: string | null;
+  content?: string | null;
+  fileName?: string | null;
+  mimeType?: string | null;
   extractionStatus: ExtractionStatus;
   extractionError: string | null;
   createdBy: number;
@@ -143,14 +166,14 @@ function mapCourseResource(dto: ResourceResponseDto): CourseResource {
   return {
     id: dto.id,
     moduleId: dto.module_id,
-    lessonId: dto.lesson_id ?? null,
+    lessonId: dto.lesson_id,
     title: dto.title,
     description: dto.description,
     type: dto.type,
     url: dto.url,
-    content: dto.content ?? null,
-    fileName: dto.file_name ?? null,
-    mimeType: dto.mime_type ?? null,
+    content: dto.content,
+    fileName: dto.file_name,
+    mimeType: dto.mime_type,
     extractionStatus: mapExtractionStatus(dto.content_extract_status),
     extractionError: dto.content_extract_error ?? null,
     createdBy: dto.created_by,
@@ -174,51 +197,31 @@ export async function listModuleResourcesFull(
 
 export interface CourseResourceInput {
   title: string;
-  /** One of the backend enum values: 'article' | 'link' | 'file'. */
   type: string;
   url?: string;
   description?: string;
-  /** Body text for `article` resources — this is what gets embedded. */
   content?: string;
-  /** The upload for `file` resources. */
-  file?: File | null;
-}
-
-/**
- * The resource endpoints take multipart/form-data (every field is a FastAPI
- * `Form(...)`, plus an optional `UploadFile`), so these bodies are FormData
- * rather than JSON — see the isFormData branch in client.ts.
- *
- * Only fields that are actually set are appended. On PATCH every field is
- * `Form(default=None)`, so an omitted key means "leave unchanged", whereas
- * appending an empty string would overwrite the stored value with "" and, for
- * `type`, fail enum validation outright.
- */
-function buildResourceFormData(
-  input: CourseResourceInput | CourseResourceUpdateInput,
-): FormData {
-  const form = new FormData();
-
-  if (input.title !== undefined) form.append('title', input.title);
-  if (input.type) form.append('type', input.type);
-  if (input.url) form.append('url', input.url);
-  if (input.description) form.append('description', input.description);
-  if (input.content) form.append('content', input.content);
-  if (input.file) form.append('file', input.file);
-
-  return form;
+  file?: File;
 }
 
 export async function createModuleResource(
   moduleId: number,
   input: CourseResourceInput,
 ): Promise<CourseResource> {
+  const formData = new FormData();
+  formData.append('title', input.title);
+  formData.append('type', input.type);
+  if (input.description) formData.append('description', input.description);
+  if (input.url) formData.append('url', input.url);
+  if (input.content) formData.append('content', input.content);
+  if (input.file) formData.append('file', input.file);
+
   const dto = await apiFetch<ResourceResponseDto>(
     `/modules/${moduleId}/resources`,
     {
       method: 'POST',
       auth: true,
-      body: buildResourceFormData(input),
+      body: formData,
     },
   );
   return mapCourseResource(dto);
@@ -230,7 +233,8 @@ export interface CourseResourceUpdateInput {
   url?: string;
   description?: string;
   content?: string;
-  file?: File | null;
+  file?: File;
+  isActive?: boolean;
 }
 
 export async function updateModuleResource(
@@ -238,12 +242,26 @@ export async function updateModuleResource(
   resourceId: number,
   input: CourseResourceUpdateInput,
 ): Promise<CourseResource> {
+  const formData = new FormData();
+  if (input.title !== undefined) formData.append('title', input.title);
+  if (input.type !== undefined) {
+    const normType = input.type === 'document' ? 'file' : input.type;
+    formData.append('type', normType);
+  }
+  if (input.description !== undefined)
+    formData.append('description', input.description ?? '');
+  if (input.url !== undefined) formData.append('url', input.url ?? '');
+  if (input.content !== undefined)
+    formData.append('content', input.content ?? '');
+  if (input.file) formData.append('file', input.file);
+  formData.append('is_active', String(input.isActive ?? true));
+
   const dto = await apiFetch<ResourceResponseDto>(
     `/modules/${moduleId}/resources/${resourceId}`,
     {
       method: 'PATCH',
       auth: true,
-      body: buildResourceFormData(input),
+      body: formData,
     },
   );
   return mapCourseResource(dto);
@@ -258,3 +276,121 @@ export async function deleteModuleResource(
     auth: true,
   });
 }
+
+export interface LessonResourceInput {
+  title: string;
+  type: string;
+  description?: string;
+  url?: string;
+  content?: string;
+  file?: File;
+}
+
+export async function listLessonResources(
+  lessonId: number,
+): Promise<CourseResource[]> {
+  const dtos = await apiFetch<ResourceResponseDto[]>(
+    `/lessons/${lessonId}/resources`,
+    { method: 'GET', auth: true },
+  );
+  return (dtos ?? [])
+    .filter((dto) => !isFaqResourceType(dto.type))
+    .map(mapCourseResource);
+}
+
+export async function getLessonResource(
+  lessonId: number,
+  resourceId: number,
+): Promise<CourseResource> {
+  const dto = await apiFetch<ResourceResponseDto>(
+    `/lessons/${lessonId}/resources/${resourceId}`,
+    { method: 'GET', auth: true },
+  );
+  return mapCourseResource(dto);
+}
+
+export async function createLessonResource(
+  lessonId: number,
+  input: LessonResourceInput,
+): Promise<CourseResource> {
+  const formData = new FormData();
+  formData.append('title', input.title);
+  formData.append('type', input.type);
+  if (input.description) formData.append('description', input.description);
+  if (input.url) formData.append('url', input.url);
+  if (input.content) formData.append('content', input.content);
+  if (input.file) formData.append('file', input.file);
+
+  const dto = await apiFetch<ResourceResponseDto>(
+    `/lessons/${lessonId}/resources`,
+    {
+      method: 'POST',
+      auth: true,
+      body: formData,
+    },
+  );
+  return mapCourseResource(dto);
+}
+
+export interface LessonResourceUpdateInput {
+  title?: string;
+  type?: string;
+  description?: string;
+  url?: string;
+  content?: string;
+  file?: File;
+}
+
+export async function updateLessonResource(
+  lessonId: number,
+  resourceId: number,
+  input: LessonResourceUpdateInput,
+): Promise<CourseResource> {
+  const formData = new FormData();
+  if (input.title !== undefined && input.title.trim()) {
+    formData.append('title', input.title.trim());
+  }
+  if (input.description !== undefined) {
+    formData.append('description', input.description ?? '');
+  }
+
+  if (input.file) {
+    formData.append('file', input.file);
+    formData.append('type', 'file');
+  } else if (input.type === 'link') {
+    formData.append('type', 'link');
+    if (input.url !== undefined && input.url.trim()) {
+      formData.append('url', input.url.trim());
+    }
+  } else if (input.type === 'article') {
+    formData.append('type', 'article');
+    if (input.content !== undefined) {
+      formData.append('content', input.content ?? '');
+    }
+  } else if (input.type === 'file' || input.type === 'document') {
+    formData.append('type', 'file');
+  }
+
+  formData.append('is_active', 'true');
+
+  const dto = await apiFetch<ResourceResponseDto>(
+    `/lessons/${lessonId}/resources/${resourceId}`,
+    {
+      method: 'PATCH',
+      auth: true,
+      body: formData,
+    },
+  );
+  return mapCourseResource(dto);
+}
+
+export async function deleteLessonResource(
+  lessonId: number,
+  resourceId: number,
+): Promise<void> {
+  await apiFetch<void>(`/lessons/${lessonId}/resources/${resourceId}`, {
+    method: 'DELETE',
+    auth: true,
+  });
+}
+

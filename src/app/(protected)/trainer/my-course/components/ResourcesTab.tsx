@@ -1,18 +1,23 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ChevronRight, Plus } from 'lucide-react';
 import AppButton from '@/components/ui/AppButton';
 import AppEmptyState from '@/components/ui/AppEmptyState';
+import AppPagination from '@/components/ui/AppPagination';
 import AppSpinner from '@/components/ui/AppSpinner';
 import { useToast } from '@/components/ui/ToastProvider';
 import { getErrorMessage } from '@/lib/api/client';
-import { getResourceDisplayMeta } from '@/lib/trainer/resourceTypeMeta';
+import { getResourceTypeMeta } from '@/lib/trainer/resourceTypeMeta';
 import ResourceExtractionBadge from '@/components/trainer/ResourceExtractionBadge';
-import ResourceModal from './ResourceModal';
+import ResourceModal, {
+  type ResourceModalSubmitData,
+} from './ResourceModal';
 import noResources from '@/assets/images/empty state res.webp';
 import type { CourseResource } from '@/lib/api/resources.api';
 import type { ResourceFormInput } from '@/lib/trainer/useCourseResources';
+
+const PAGE_SIZE = 7;
 
 export interface ResourcesTabProps {
   resources: CourseResource[];
@@ -33,11 +38,28 @@ export default function ResourcesTab({
 }: ResourcesTabProps) {
   const { showError } = useToast();
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [page, setPage] = useState(1);
 
-  const handleAdd = async (data: ResourceFormInput) => {
+  const totalPages = Math.max(1, Math.ceil(resources.length / PAGE_SIZE));
+  const rangeStart = resources.length === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
+  const rangeEnd = Math.min(page * PAGE_SIZE, resources.length);
+
+  const pagedResources = useMemo(
+    () => resources.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+    [resources, page],
+  );
+
+  useEffect(() => {
+    if (page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [page, totalPages]);
+
+  const handleAdd = async (data: ResourceModalSubmitData) => {
     try {
       await addResource(data);
       setIsAddOpen(false);
+      setPage(1);
     } catch (err) {
       showError(
         'Could not add resource',
@@ -48,7 +70,7 @@ export default function ResourcesTab({
 
   if (loading) {
     return (
-      <div className="flex min-h-[300px] items-center justify-center">
+      <div className="flex min-h-75 items-center justify-center">
         <AppSpinner size={40} />
       </div>
     );
@@ -99,13 +121,8 @@ export default function ResourcesTab({
       </div>
 
       <ul className="divide-y divide-disabled rounded-input border border-disabled">
-        {resources.map((resource) => {
-          const meta = getResourceDisplayMeta({
-            type: resource.type,
-            mimeType: resource.mimeType,
-            url: resource.url,
-            fileName: resource.fileName,
-          });
+        {pagedResources.map((resource) => {
+          const meta = getResourceTypeMeta(resource.type);
           const Icon = meta.icon;
           return (
             <li key={resource.id}>
@@ -130,6 +147,18 @@ export default function ResourcesTab({
           );
         })}
       </ul>
+
+      <div className="mt-4 flex flex-col gap-3 pt-2 sm:flex-row sm:items-center sm:justify-between">
+        <p className="b2-r text-text-secondary">
+          Showing {rangeStart}–{rangeEnd} of {resources.length} resources
+        </p>
+        <AppPagination
+          currentPage={page}
+          totalPages={totalPages}
+          onChange={setPage}
+          className="flex-wrap my-0!"
+        />
+      </div>
 
       <ResourceModal
         open={isAddOpen}

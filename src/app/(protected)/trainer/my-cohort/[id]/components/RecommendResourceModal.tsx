@@ -8,7 +8,7 @@ import AppButton from '@/components/ui/AppButton';
 import AppTextarea from '@/components/ui/AppTextarea';
 import { useToast } from '@/components/ui/ToastProvider';
 import { getErrorMessage } from '@/lib/api/client';
-import { getResourceDisplayMeta } from '@/lib/trainer/resourceTypeMeta';
+import { getResourceTypeMeta } from '@/lib/trainer/resourceTypeMeta';
 import type { CourseResource } from '@/lib/api/resources.api';
 
 export interface RecommendResourceModalProps {
@@ -58,12 +58,7 @@ export default function RecommendResourceModal({
   };
 
   if (!resource) return null;
-  const meta = getResourceDisplayMeta({
-    type: resource.type,
-    mimeType: resource.mimeType,
-    url: resource.url,
-    fileName: resource.fileName,
-  });
+  const meta = getResourceTypeMeta(resource.type);
   const Icon = meta.icon;
   const subtitle = `${meta.label}${moduleOrder ? ` · Module ${moduleOrder} live session` : ''}`;
 

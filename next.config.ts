@@ -7,6 +7,9 @@ const API_ORIGIN = (
 ).replace(/\/$/, '');
 
 const nextConfig: NextConfig = {
+  experimental: {
+    proxyClientMaxBodySize: '100mb',
+  },
   async rewrites() {
     return [
       {
@@ -16,6 +19,10 @@ const nextConfig: NextConfig = {
       {
         source: '/api/backend/:path*',
         destination: `${API_ORIGIN}/:path*`,
+      },
+      {
+        source: '/uploads/:path*',
+        destination: `${API_ORIGIN}/uploads/:path*`,
       },
     ];
   },

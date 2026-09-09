@@ -153,10 +153,15 @@ async function fetchWithRetry(
 }
 
 function extractErrorMessage(payload: unknown, status: number): string {
+  if (typeof payload === 'string' && payload.trim()) {
+    return payload;
+  }
   if (payload && typeof payload === 'object') {
     const record = payload as Record<string, unknown>;
     if (typeof record.message === 'string') return record.message;
     if (typeof record.detail === 'string') return record.detail;
+    if (typeof record.error === 'string') return record.error;
+    if (typeof record.msg === 'string') return record.msg;
     if (Array.isArray(record.detail) && record.detail.length > 0) {
       const first = record.detail[0] as { msg?: string };
       if (first?.msg) return first.msg;
@@ -169,17 +174,16 @@ export async function apiFetch<TResponse = unknown>(
   path: string,
   { body, auth = false, headers, ...rest }: ApiFetchOptions = {},
 ): Promise<TResponse> {
-  // The resource endpoints (POST/PATCH /modules/{id}/resources and the
-  // lesson equivalents) take multipart/form-data, not JSON, because they
-  // accept an uploaded file alongside the text fields. Passing a FormData
-  // body here opts into that: the Content-Type header is deliberately left
-  // unset so the browser can generate it *with* the multipart boundary —
-  // setting it by hand produces a boundary-less header and the backend
-  // fails to parse any field at all.
-  const isFormData =
-    typeof FormData !== 'undefined' && body instanceof FormData;
-
   const doFetch = async (): Promise<Response> => {
+    // The resource endpoints (POST/PATCH /modules/{id}/resources and the
+    // lesson equivalents) take multipart/form-data, not JSON, because they
+    // accept an uploaded file alongside the text fields. Passing a FormData
+    // body here opts into that: the Content-Type header is deliberately left
+    // unset so the browser can generate it *with* the multipart boundary —
+    // setting it by hand produces a boundary-less header and the backend
+    // fails to parse any field at all.
+    const isFormData =
+      typeof FormData !== 'undefined' && body instanceof FormData;
     const requestHeaders = new Headers(headers);
     if (!isFormData) {
       requestHeaders.set('Content-Type', 'application/json');
@@ -191,7 +195,8 @@ export async function apiFetch<TResponse = unknown>(
     }
 
     try {
-      return await fetchWithRetry(`${API_BASE_URL}${path}`, {
+      const baseUrl = API_BASE_URL;
+      return await fetchWithRetry(`${baseUrl}${path}`, {
         ...rest,
         headers: requestHeaders,
         body: isFormData
@@ -247,10 +252,13 @@ export async function apiFetch<TResponse = unknown>(
     }
   }
 
-  const isJson = response.headers
-    .get('content-type')
-    ?.includes('application/json');
-  const payload = isJson ? await response.json().catch(() => null) : null;
+  const contentType = response.headers.get('content-type') ?? '';
+  let payload: unknown = null;
+  if (contentType.includes('application/json')) {
+    payload = await response.json().catch(() => null);
+  } else {
+    payload = await response.text().catch(() => null);
+  }
 
   if (!response.ok) {
     throw new ApiError(

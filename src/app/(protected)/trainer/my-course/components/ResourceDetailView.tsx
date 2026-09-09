@@ -8,11 +8,13 @@ import AppPill from '@/components/ui/AppPill';
 import AppConfirmModal from '@/components/ui/AppConfirmModal';
 import { useToast } from '@/components/ui/ToastProvider';
 import { getErrorMessage } from '@/lib/api/client';
-import { getResourceDisplayMeta } from '@/lib/trainer/resourceTypeMeta';
+import { getResourceTypeMeta } from '@/lib/trainer/resourceTypeMeta';
 import ResourceExtractionBadge, {
   getExtractionHint,
 } from '@/components/trainer/ResourceExtractionBadge';
-import ResourceModal from './ResourceModal';
+import ResourceModal, {
+  type ResourceModalSubmitData,
+} from './ResourceModal';
 import type { CourseResource } from '@/lib/api/resources.api';
 import type { ResourceFormInput } from '@/lib/trainer/useCourseResources';
 
@@ -42,15 +44,10 @@ export default function ResourceDetailView({
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
 
-  const meta = getResourceDisplayMeta({
-    type: resource.type,
-    mimeType: resource.mimeType,
-    url: resource.url,
-    fileName: resource.fileName,
-  });
+  const meta = getResourceTypeMeta(resource.type);
   const Icon = meta.icon;
 
-  const handleEdit = async (data: ResourceFormInput) => {
+  const handleEdit = async (data: ResourceModalSubmitData) => {
     try {
       await editResource(resource, data);
       setIsEditOpen(false);
@@ -107,13 +104,18 @@ export default function ResourceDetailView({
             </span>
             <div className="min-w-0 flex-1">
               <p className="b1-b text-text">{resource.title}</p>
+              {resource.description && (
+                <p className="b2-r mt-1 text-text-secondary">
+                  {resource.description}
+                </p>
+              )}
               <div className="mt-1.5 flex flex-wrap items-center gap-2">
                 <span className="f1-r text-muted">Type:</span>
                 <AppPill label={meta.label} color="primary" />
                 {resource.fileName && (
                   <>
                     <span className="f1-r ml-2 text-muted">File:</span>
-                    <span className="f1-r break-all text-text">
+                    <span className="f1-r font-medium text-text">
                       {resource.fileName}
                     </span>
                   </>
@@ -130,6 +132,14 @@ export default function ResourceDetailView({
                       {resource.url}
                     </a>
                   </>
+                )}
+                {resource.content && (
+                  <div className="mt-4 w-full rounded-lg border border-disabled bg-surface-raised p-4">
+                    <p className="f1-r mb-1 text-muted">Article Content:</p>
+                    <p className="b2-r whitespace-pre-wrap text-text">
+                      {resource.content}
+                    </p>
+                  </div>
                 )}
               </div>
             </div>
@@ -179,21 +189,15 @@ export default function ResourceDetailView({
       </AppCard>
 
       <ResourceModal
-        // Remount when the underlying resource changes so the form re-seeds
-        // from the new values — the fields are useState-initialised, so a
-        // long-lived instance would keep showing the previously edited row.
-        key={`${resource.id}:${resource.updatedAt}`}
         open={isEditOpen}
         saving={saving}
         initial={{
           title: resource.title,
-          url: resource.url ?? '',
-          // The stored enum value, not `meta.label` — the label is a display
-          // string ("PDF", "Video") that the backend's type enum rejects.
-          type: resource.type,
           description: resource.description ?? '',
+          url: resource.url ?? '',
           content: resource.content ?? '',
-          fileName: resource.fileName,
+          type: resource.type,
+          fileName: resource.fileName ?? undefined,
         }}
         onClose={() => setIsEditOpen(false)}
         onSubmit={handleEdit}

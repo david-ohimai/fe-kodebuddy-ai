@@ -5,8 +5,10 @@ import AppButton from '@/components/ui/AppButton';
 import AppPill from '@/components/ui/AppPill';
 import AppEmptyState from '@/components/ui/AppEmptyState';
 import OptionsMenu from '@/components/course/OptionsMenu';
-import { CONTENT_TYPE_META } from '@/types/lesson-content.types';
-import { DEFAULT_LESSON_CONTENT_TYPE } from '@/lib/api/lessons.api';
+import {
+  CONTENT_TYPE_META,
+  type LessonContentType,
+} from '@/types/lesson-content.types';
 import noLessons from '@/assets/images/no-lessons.webp';
 import type { CourseModule } from '@/lib/api/modules.api';
 import type { Lesson } from '@/lib/api/lessons.api';
@@ -21,6 +23,7 @@ export interface ModuleCardProps {
   onDeleteModule: () => void;
   onMoveModule: (direction: 'up' | 'down') => void;
   onAddLesson: () => void;
+  onViewLesson: (lesson: Lesson) => void;
   onEditLesson: (lesson: Lesson) => void;
   onDeleteLesson: (lesson: Lesson) => void;
   onMoveLesson: (lesson: Lesson, direction: 'up' | 'down') => void;
@@ -73,12 +76,11 @@ export default function ModuleCard({
   onDeleteModule,
   onMoveModule,
   onAddLesson,
+  onViewLesson,
   onEditLesson,
   onDeleteLesson,
   onMoveLesson,
 }: ModuleCardProps) {
-  const meta = CONTENT_TYPE_META[DEFAULT_LESSON_CONTENT_TYPE];
-
   return (
     <AppCard padding="none">
       <div className="flex items-start justify-between gap-3 border-b border-disabled p-5 sm:p-6">
@@ -124,46 +126,58 @@ export default function ModuleCard({
         />
       ) : (
         <ul className="flex flex-col divide-y divide-disabled">
-          {lessons.map((lesson, lessonIndex) => (
-            <li
-              key={lesson.id}
-              className="flex items-center justify-between gap-3 px-5 py-3 sm:px-6"
-            >
-              <div className="flex items-start gap-2">
-                <ReorderButtons
-                  isFirst={lessonIndex === 0}
-                  isLast={lessonIndex === lessons.length - 1}
-                  onMoveUp={() => onMoveLesson(lesson, 'up')}
-                  onMoveDown={() => onMoveLesson(lesson, 'down')}
-                  label={lesson.title}
-                />
-                <div>
-                  <p className="b2-m text-text">
-                    {index + 1}.{lessonIndex + 1} {lesson.title}
-                  </p>
-                  <div className="mt-1 flex flex-col items-start gap-2">
-                    {lesson.contentBody && (
-                      <span className="f1-r text-muted">
-                        {lesson.contentBody}
-                      </span>
-                    )}
-                    <AppPill
-                      label={meta.label}
-                      color={meta.pillColor}
-                      icon={meta.icon as React.ReactElement}
-                    />
+          {lessons.map((lesson, lessonIndex) => {
+            const lessonMeta =
+              lesson.resourceType &&
+              CONTENT_TYPE_META[lesson.resourceType as LessonContentType]
+                ? CONTENT_TYPE_META[lesson.resourceType as LessonContentType]
+                : null;
+
+            return (
+              <li
+                key={lesson.id}
+                className="flex items-center justify-between gap-3 px-5 py-3 sm:px-6"
+              >
+                <div className="flex items-start gap-2">
+                  <ReorderButtons
+                    isFirst={lessonIndex === 0}
+                    isLast={lessonIndex === lessons.length - 1}
+                    onMoveUp={() => onMoveLesson(lesson, 'up')}
+                    onMoveDown={() => onMoveLesson(lesson, 'down')}
+                    label={lesson.title}
+                  />
+                  <div>
+                    <p className="b2-m text-text">
+                      {index + 1}.{lessonIndex + 1} {lesson.title}
+                    </p>
+                    <div className="mt-1 flex flex-col items-start gap-2">
+                      {lesson.contentBody && (
+                        <span className="f1-r text-muted">
+                          {lesson.contentBody}
+                        </span>
+                      )}
+                      {lessonMeta && (
+                        <AppPill
+                          label={lessonMeta.label}
+                          color={lessonMeta.pillColor}
+                          icon={lessonMeta.icon as React.ReactElement}
+                        />
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <OptionsMenu
-                editLabel="Edit Lesson"
-                deleteLabel="Delete Lesson"
-                onEdit={() => onEditLesson(lesson)}
-                onDelete={() => onDeleteLesson(lesson)}
-              />
-            </li>
-          ))}
+                <OptionsMenu
+                  viewLabel="View Lesson"
+                  editLabel="Edit Lesson"
+                  deleteLabel="Delete Lesson"
+                  onView={() => onViewLesson(lesson)}
+                  onEdit={() => onEditLesson(lesson)}
+                  onDelete={() => onDeleteLesson(lesson)}
+                />
+              </li>
+            );
+          })}
           <li className="px-5 py-3 sm:px-6">
             <AppButton
               variant="outlined"
