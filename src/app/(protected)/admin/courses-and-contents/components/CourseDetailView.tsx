@@ -15,7 +15,6 @@ import { useCourseContent } from '@/lib/courses/useCourseContent';
 import { useCourseActions } from '../hooks/useCourseActions';
 import { useToast } from '@/components/ui/ToastProvider';
 import { getErrorMessage } from '@/lib/api/client';
-import { DEFAULT_LESSON_CONTENT_TYPE } from '@/lib/api/lessons.api';
 import type { Lesson } from '@/lib/api/lessons.api';
 import * as resourcesApi from '@/lib/api/resources.api';
 import type { LessonContentType } from '@/types/lesson-content.types';
@@ -148,17 +147,19 @@ const CourseDetailsView: React.FC<CourseDetailsViewProps> = ({
             console.warn('Could not load lesson resource for editing:', err);
           }
 
+          const hasResource = Boolean(existingResource || lesson.resourceType);
           const rawType = (
             existingResource?.type ??
             lesson.resourceType ??
-            DEFAULT_LESSON_CONTENT_TYPE
+            ''
           ).toLowerCase();
-          const contentType: LessonContentType =
-            rawType === 'file' || rawType === 'document'
+          const contentType: LessonContentType | undefined = hasResource
+            ? rawType === 'file' || rawType === 'document'
               ? 'document'
               : rawType === 'link'
                 ? 'link'
-                : 'article';
+                : 'article'
+            : undefined;
 
           setEditingLesson({
             moduleId: module.id,

@@ -5,8 +5,10 @@ import AppButton from '@/components/ui/AppButton';
 import AppPill from '@/components/ui/AppPill';
 import AppEmptyState from '@/components/ui/AppEmptyState';
 import OptionsMenu from '@/components/course/OptionsMenu';
-import { CONTENT_TYPE_META } from '@/types/lesson-content.types';
-import { DEFAULT_LESSON_CONTENT_TYPE } from '@/lib/api/lessons.api';
+import {
+  CONTENT_TYPE_META,
+  type LessonContentType,
+} from '@/types/lesson-content.types';
 import noLessons from '@/assets/images/no-lessons.webp';
 import type { CourseModule } from '@/lib/api/modules.api';
 import type { Lesson } from '@/lib/api/lessons.api';
@@ -79,8 +81,6 @@ export default function ModuleCard({
   onDeleteLesson,
   onMoveLesson,
 }: ModuleCardProps) {
-  const meta = CONTENT_TYPE_META[DEFAULT_LESSON_CONTENT_TYPE];
-
   return (
     <AppCard padding="none">
       <div className="flex items-start justify-between gap-3 border-b border-disabled p-5 sm:p-6">
@@ -128,9 +128,10 @@ export default function ModuleCard({
         <ul className="flex flex-col divide-y divide-disabled">
           {lessons.map((lesson, lessonIndex) => {
             const lessonMeta =
-              lesson.resourceType && CONTENT_TYPE_META[lesson.resourceType]
-                ? CONTENT_TYPE_META[lesson.resourceType]
-                : meta;
+              lesson.resourceType &&
+              CONTENT_TYPE_META[lesson.resourceType as LessonContentType]
+                ? CONTENT_TYPE_META[lesson.resourceType as LessonContentType]
+                : null;
 
             return (
               <li
@@ -155,11 +156,13 @@ export default function ModuleCard({
                           {lesson.contentBody}
                         </span>
                       )}
-                      <AppPill
-                        label={lessonMeta.label}
-                        color={lessonMeta.pillColor}
-                        icon={lessonMeta.icon as React.ReactElement}
-                      />
+                      {lessonMeta && (
+                        <AppPill
+                          label={lessonMeta.label}
+                          color={lessonMeta.pillColor}
+                          icon={lessonMeta.icon as React.ReactElement}
+                        />
+                      )}
                     </div>
                   </div>
                 </div>

@@ -178,7 +178,7 @@ export function useCourseContent(courseId: number | null | undefined) {
     data: LessonFormInput,
     toastOverride?: ToastOverride,
   ) => {
-    const effectiveType = data.contentType ?? 'article';
+    const effectiveType = data.contentType;
     const contentBody: string | undefined = data.description;
 
     // Step 1: Create lesson
@@ -191,40 +191,44 @@ export function useCourseContent(courseId: number | null | undefined) {
 
     // Step 2: Create attached resource if data is provided
     let attachedResource: resourcesApi.CourseResource | null = null;
-    const backendType =
-      effectiveType === 'document' ? 'file' : effectiveType;
+    if (effectiveType) {
+      const backendType =
+        effectiveType === 'document' ? 'file' : effectiveType;
 
-    const hasResourceData =
-      (effectiveType === 'document' && (data.file || data.fileName)) ||
-      (effectiveType === 'link' && data.resourceUrl) ||
-      (effectiveType === 'article' && data.articleContent);
+      const hasResourceData =
+        (effectiveType === 'document' && (data.file || data.fileName)) ||
+        (effectiveType === 'link' && data.resourceUrl) ||
+        (effectiveType === 'article' && data.articleContent);
 
-    if (hasResourceData) {
-      try {
-        attachedResource = await resourcesApi.createLessonResource(created.id, {
-          title: data.title,
-          description: data.description,
-          type: backendType,
-          file: data.file,
-          url: data.resourceUrl,
-          content: data.articleContent,
-        });
-      } catch (resourceErr) {
-        console.error('Failed to create lesson resource:', resourceErr);
+      if (hasResourceData) {
         try {
-          await lessonsApi.deleteLesson(created.id);
-        } catch (cleanupErr) {
-          console.warn('Could not clean up orphan lesson:', cleanupErr);
+          attachedResource = await resourcesApi.createLessonResource(created.id, {
+            title: data.title,
+            description: data.description,
+            type: backendType,
+            file: data.file,
+            url: data.resourceUrl,
+            content: data.articleContent,
+          });
+        } catch (resourceErr) {
+          console.error('Failed to create lesson resource:', resourceErr);
+          try {
+            await lessonsApi.deleteLesson(created.id);
+          } catch (cleanupErr) {
+            console.warn('Could not clean up orphan lesson:', cleanupErr);
+          }
+          throw resourceErr;
         }
-        throw resourceErr;
       }
     }
 
     const lessonWithResource: Lesson = {
       ...created,
-      resourceType: effectiveType,
+      resourceType: attachedResource ? effectiveType : undefined,
       resourceFileName:
-        data.fileName ?? attachedResource?.fileName ?? undefined,
+        attachedResource
+          ? (data.fileName ?? attachedResource.fileName ?? undefined)
+          : undefined,
     };
 
     setLessonsByModule((prev) => ({
@@ -246,7 +250,7 @@ export function useCourseContent(courseId: number | null | undefined) {
     data: LessonFormInput,
     toastOverride?: ToastOverride,
   ) => {
-    const effectiveType = data.contentType ?? 'article';
+    const effectiveType = data.contentType;
     const contentBody: string | undefined = data.description;
 
     const updated = await lessonsApi.updateLesson(lessonId, {
@@ -254,49 +258,61 @@ export function useCourseContent(courseId: number | null | undefined) {
       contentBody,
     });
 
-    const backendType =
-      effectiveType === 'document' ? 'file' : effectiveType;
-
+    let hasResource = false;
     try {
       const existingResources =
         await resourcesApi.listLessonResources(lessonId);
       const primary = existingResources[0];
 
       if (primary) {
-        const isDocumentWithNewFile =
-          effectiveType === 'document' && Boolean(data.file);
-        const isLinkUpdate =
-          effectiveType === 'link' &&
-          Boolean(data.resourceUrl) &&
-          data.resourceUrl?.trim() !== (primary.url ?? '').trim();
-        const isArticleUpdate =
-          effectiveType === 'article' &&
-          data.articleContent !== undefined &&
-          data.articleContent?.trim() !== (primary.content ?? '').trim();
-        const isTypeChange =
-          primary.type.toLowerCase() !== backendType;
+        if (!effectiveType) {
+          try {
+            await resourcesApi.deleteLessonResource(lessonId, primary.id);
+          } catch (delErr) {
+            console.warn('[editLesson] Could not delete removed resource:', delErr);
+          }
+        } else {
+          const backendType =
+            effectiveType === 'document' ? 'file' : effectiveType;
+          const isDocumentWithNewFile =
+            effectiveType === 'document' && Boolean(data.file);
+          const isLinkUpdate =
+            effectiveType === 'link' &&
+            Boolean(data.resourceUrl) &&
+            data.resourceUrl?.trim() !== (primary.url ?? '').trim();
+          const isArticleUpdate =
+            effectiveType === 'article' &&
+            data.articleContent !== undefined &&
+            data.articleContent?.trim() !== (primary.content ?? '').trim();
+          const isTypeChange =
+            primary.type.toLowerCase() !== backendType;
 
-        if (
-          isDocumentWithNewFile ||
-          isLinkUpdate ||
-          isArticleUpdate ||
-          isTypeChange
-        ) {
-          await resourcesApi.updateLessonResource(lessonId, primary.id, {
-            title: data.title,
-            description: data.description,
-            type: backendType,
-            file: data.file,
-            url: effectiveType === 'link' ? data.resourceUrl : undefined,
-            content:
-              effectiveType === 'article' ? data.articleContent : undefined,
-          });
+          if (
+            isDocumentWithNewFile ||
+            isLinkUpdate ||
+            isArticleUpdate ||
+            isTypeChange
+          ) {
+            await resourcesApi.updateLessonResource(lessonId, primary.id, {
+              title: data.title,
+              description: data.description,
+              type: backendType,
+              file: data.file,
+              url: effectiveType === 'link' ? data.resourceUrl : undefined,
+              content:
+                effectiveType === 'article' ? data.articleContent : undefined,
+            });
+          }
+          hasResource = true;
         }
       } else if (
-        data.file ||
-        (effectiveType === 'link' && data.resourceUrl) ||
-        (effectiveType === 'article' && data.articleContent)
+        effectiveType &&
+        (data.file ||
+          (effectiveType === 'link' && data.resourceUrl) ||
+          (effectiveType === 'article' && data.articleContent))
       ) {
+        const backendType =
+          effectiveType === 'document' ? 'file' : effectiveType;
         await resourcesApi.createLessonResource(lessonId, {
           title: data.title,
           description: data.description,
@@ -306,6 +322,7 @@ export function useCourseContent(courseId: number | null | undefined) {
           content:
             effectiveType === 'article' ? data.articleContent : undefined,
         });
+        hasResource = true;
       }
     } catch (err) {
       console.warn('[editLesson] Could not sync lesson resource:', err);
@@ -313,8 +330,9 @@ export function useCourseContent(courseId: number | null | undefined) {
 
     const lessonWithResource: Lesson = {
       ...updated,
-      resourceType: effectiveType,
-      resourceFileName: data.fileName,
+      resourceType: hasResource && effectiveType ? effectiveType : undefined,
+      resourceFileName:
+        hasResource && effectiveType === 'document' ? data.fileName : undefined,
     };
 
     setLessonsByModule((prev) => ({
