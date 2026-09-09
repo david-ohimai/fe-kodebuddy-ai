@@ -48,7 +48,7 @@ export function useCourseContent(courseId: number | null | undefined) {
       .listCourseModules(courseId)
       .then(async (moduleList) => {
         setModules(moduleList);
-        const [lessonLists, resourceLists] = await Promise.all([
+        const [lessonLists, moduleResourceLists] = await Promise.all([
           Promise.all(moduleList.map((m) => lessonsApi.listModuleLessons(m.id))),
           Promise.all(
             moduleList.map((m) =>
@@ -57,24 +57,34 @@ export function useCourseContent(courseId: number | null | undefined) {
           ),
         ]);
 
+        const allLessons = lessonLists.flat();
+        const lessonResourceLists = await Promise.all(
+          allLessons.map((l) =>
+            resourcesApi.listLessonResources(l.id).catch(() => []),
+          ),
+        );
+
+        const resourceByLessonId = new Map<
+          number,
+          resourcesApi.CourseResource
+        >();
+        moduleResourceLists.flat().forEach((r) => {
+          if (r.lessonId) resourceByLessonId.set(r.lessonId, r);
+        });
+        allLessons.forEach((l, idx) => {
+          const res = lessonResourceLists[idx]?.[0];
+          if (res) resourceByLessonId.set(l.id, res);
+        });
+
         const map: Record<number, Lesson[]> = {};
         moduleList.forEach((m, i) => {
           const lessons = lessonLists[i];
-          const resources = resourceLists[i] ?? [];
-          const resourceByLessonId = new Map<
-            number,
-            resourcesApi.CourseResource
-          >();
-          resources.forEach((r) => {
-            if (r.lessonId) resourceByLessonId.set(r.lessonId, r);
-          });
-
           map[m.id] = lessons.map((l) => {
             const res = resourceByLessonId.get(l.id);
             if (!res) return l;
             const resType = res.type.toLowerCase();
             const contentType: LessonContentType =
-              resType === 'file'
+              resType === 'file' || resType === 'document'
                 ? 'document'
                 : resType === 'link'
                   ? 'link'
@@ -206,10 +216,12 @@ export function useCourseContent(courseId: number | null | undefined) {
         });
       } catch (resourceErr) {
         console.error('Failed to create lesson resource:', resourceErr);
-        showError(
-          'Lesson created, but resource upload failed',
-          getErrorMessage(resourceErr, 'Please try re-uploading the file.'),
-        );
+        try {
+          await lessonsApi.deleteLesson(created.id);
+        } catch (cleanupErr) {
+          console.warn('Could not clean up orphan lesson:', cleanupErr);
+        }
+        throw resourceErr;
       }
     }
 

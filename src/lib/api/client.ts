@@ -183,7 +183,8 @@ export async function apiFetch<TResponse = unknown>(
     }
 
     try {
-      return await fetchWithRetry(`${API_BASE_URL}${path}`, {
+      const baseUrl = isFormData ? DIRECT_API_BASE_URL : API_BASE_URL;
+      return await fetchWithRetry(`${baseUrl}${path}`, {
         ...rest,
         headers: requestHeaders,
         body: isFormData

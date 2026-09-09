@@ -37,7 +37,7 @@ export interface LessonModalProps {
     fileSize?: string;
     resourceUrl?: string;
     articleContent?: string;
-  }) => void;
+  }) => Promise<void> | void;
 }
 
 const formatFileSize = (bytes: number) =>
@@ -52,6 +52,7 @@ const LessonModal: React.FC<LessonModalProps> = ({
 }) => {
   const isEdit = !!lesson;
 
+  const [submitting, setSubmitting] = useState(false);
   const [title, setTitle] = useState(lesson?.title ?? '');
   const [description, setDescription] = useState(lesson?.description ?? '');
   const [contentType, setContentType] = useState<LessonContentType>(
@@ -90,6 +91,7 @@ const LessonModal: React.FC<LessonModalProps> = ({
   };
 
   const handleClose = () => {
+    if (submitting) return;
     reset();
     onClose();
   };
@@ -120,25 +122,32 @@ const LessonModal: React.FC<LessonModalProps> = ({
     resourceUrl.trim() !== (initialResourceUrl ?? '') ||
     articleContent.trim() !== (initialArticleContent ?? '');
 
-  const handleSubmit = () => {
-    if (isSubmitDisabled) return;
+  const handleSubmit = async () => {
+    if (isSubmitDisabled || submitting) return;
 
     if (isEdit && !isDirty) {
       onClose();
       return;
     }
 
-    onSubmit({
-      title: title.trim(),
-      description: description.trim() || undefined,
-      contentType,
-      file,
-      fileName,
-      fileSize,
-      resourceUrl: resourceUrl.trim() || undefined,
-      articleContent: articleContent.trim() || undefined,
-    });
-    reset();
+    setSubmitting(true);
+    try {
+      await onSubmit({
+        title: title.trim(),
+        description: description.trim() || undefined,
+        contentType,
+        file,
+        fileName,
+        fileSize,
+        resourceUrl: resourceUrl.trim() || undefined,
+        articleContent: articleContent.trim() || undefined,
+      });
+      reset();
+    } catch {
+      // Do not clear inputs on error so user can retry or adjust
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const activeMeta = CONTENT_TYPE_META[contentType];
@@ -157,6 +166,7 @@ const LessonModal: React.FC<LessonModalProps> = ({
             size="medium"
             radius="full"
             className="min-w-28"
+            disabled={submitting}
             onClick={handleClose}
           >
             Cancel
@@ -167,7 +177,8 @@ const LessonModal: React.FC<LessonModalProps> = ({
             size="medium"
             radius="full"
             className="min-w-28"
-            disabled={isSubmitDisabled}
+            disabled={isSubmitDisabled || submitting}
+            loading={submitting}
             onClick={handleSubmit}
           >
             {isEdit ? 'Save changes' : 'Add lesson'}
@@ -213,6 +224,7 @@ const LessonModal: React.FC<LessonModalProps> = ({
             value={title}
             maxLength={100}
             showCharCount
+            disabled={submitting}
             onChange={(e) => setTitle(e.target.value)}
           />
 
@@ -229,6 +241,7 @@ const LessonModal: React.FC<LessonModalProps> = ({
             value={description}
             maxLength={100}
             showCharCount
+            disabled={submitting}
             onChange={(e) => setDescription(e.target.value)}
           />
 
@@ -249,6 +262,7 @@ const LessonModal: React.FC<LessonModalProps> = ({
                   <button
                     key={option.type}
                     type="button"
+                    disabled={submitting}
                     onClick={() => {
                       setContentType(option.type);
                       setFile(undefined);
@@ -261,7 +275,8 @@ const LessonModal: React.FC<LessonModalProps> = ({
                       'relative flex items-start gap-3 rounded-input border p-3.5 text-left transition-colors ' +
                       (isSelected
                         ? 'border-primary bg-primary-light'
-                        : 'border-disabled hover:border-muted')
+                        : 'border-disabled hover:border-muted') +
+                      (submitting ? ' opacity-60 cursor-not-allowed' : '')
                     }
                   >
                     <span
@@ -303,6 +318,7 @@ const LessonModal: React.FC<LessonModalProps> = ({
                 type="file"
                 accept="application/pdf,.doc,.docx,.ppt,.pptx"
                 className="hidden"
+                disabled={submitting}
                 onChange={handleFileChange}
               />
               <AppButton
@@ -311,6 +327,7 @@ const LessonModal: React.FC<LessonModalProps> = ({
                 radius="full"
                 startIcon={<Upload size={14} />}
                 className="w-fit"
+                disabled={submitting}
                 onClick={() => fileInputRef.current?.click()}
               >
                 {fileName ? 'Replace document' : 'Upload document'}
@@ -332,13 +349,14 @@ const LessonModal: React.FC<LessonModalProps> = ({
                   </div>
                   <button
                     type="button"
+                    disabled={submitting}
                     onClick={() => {
                       setFileName(undefined);
                       setFileSize(undefined);
                       setFile(undefined);
                     }}
                     aria-label="Remove file"
-                    className="shrink-0 text-muted hover:text-text"
+                    className="shrink-0 text-muted hover:text-text disabled:opacity-50"
                   >
                     <X size={16} />
                   </button>
@@ -357,6 +375,7 @@ const LessonModal: React.FC<LessonModalProps> = ({
               placeholder="https://example.com/resource"
               type="url"
               value={resourceUrl}
+              disabled={submitting}
               onChange={(e) => setResourceUrl(e.target.value)}
             />
           ) : (
@@ -366,6 +385,7 @@ const LessonModal: React.FC<LessonModalProps> = ({
               value={articleContent}
               maxLength={5000}
               showCharCount
+              disabled={submitting}
               onChange={(e) => setArticleContent(e.target.value)}
             />
           )}

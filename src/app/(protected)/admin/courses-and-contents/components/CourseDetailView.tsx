@@ -221,6 +221,7 @@ const CourseDetailsView: React.FC<CourseDetailsViewProps> = ({
                 : 'Could not add lesson',
               getErrorMessage(err, 'Please try again.'),
             );
+            throw err;
           }
         }}
       />
