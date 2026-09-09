@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { ChevronRight, Plus } from 'lucide-react';
 import AppButton from '@/components/ui/AppButton';
 import AppEmptyState from '@/components/ui/AppEmptyState';
@@ -41,19 +41,22 @@ export default function ResourcesTab({
   const [page, setPage] = useState(1);
 
   const totalPages = Math.max(1, Math.ceil(resources.length / PAGE_SIZE));
-  const rangeStart = resources.length === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
-  const rangeEnd = Math.min(page * PAGE_SIZE, resources.length);
+
+  // `page` can fall out of range when the list shrinks under it — deleting
+  // the last resource on the final page. Clamping on read rather than
+  // correcting it in an effect means the first render is already right:
+  // no second render, and no flash of an empty page before it corrects.
+  const currentPage = Math.min(page, totalPages);
+
+  const rangeStart =
+    resources.length === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
+  const rangeEnd = Math.min(currentPage * PAGE_SIZE, resources.length);
 
   const pagedResources = useMemo(
-    () => resources.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
-    [resources, page],
+    () =>
+      resources.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
+    [resources, currentPage],
   );
-
-  useEffect(() => {
-    if (page > totalPages) {
-      setPage(totalPages);
-    }
-  }, [page, totalPages]);
 
   const handleAdd = async (data: ResourceModalSubmitData) => {
     try {
@@ -153,7 +156,7 @@ export default function ResourcesTab({
           Showing {rangeStart}–{rangeEnd} of {resources.length} resources
         </p>
         <AppPagination
-          currentPage={page}
+          currentPage={currentPage}
           totalPages={totalPages}
           onChange={setPage}
           className="flex-wrap my-0!"

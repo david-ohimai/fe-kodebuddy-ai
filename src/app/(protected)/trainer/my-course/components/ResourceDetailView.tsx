@@ -159,7 +159,7 @@ export default function ResourceDetailView({
               {getExtractionHint(resource.extractionStatus)}
             </p>
             {resource.extractionError && (
-              <p className="f1-r mt-1.5 break-words text-error">
+              <p className="f1-r mt-1.5 wrap-break-word text-error">
                 {resource.extractionError}
               </p>
             )}
