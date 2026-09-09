@@ -23,10 +23,9 @@ const RESOURCES_SUGGESTIONS = [
 const filters: Array<{ label: string; value: 'All Resources' | ResourceType }> =
   [
     { label: 'All Resources', value: 'All Resources' },
-    { label: 'Video', value: 'Video' },
-    { label: 'Articles', value: 'Article' },
     { label: 'Documents', value: 'Document' },
-    { label: 'Interactive', value: 'Interactive' },
+    { label: 'Links', value: 'Link' },
+    { label: 'Articles', value: 'Article' },
   ];
 
 export default function ResourcesPage() {
