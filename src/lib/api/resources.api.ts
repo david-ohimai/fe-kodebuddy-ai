@@ -26,6 +26,14 @@ interface ResourceResponseDto {
   content?: string | null;
   file_name?: string | null;
   mime_type?: string | null;
+
+  // Written by the backend's background ingestion task
+  // (app/agent/ingestion.py::sync_resource_embeddings) once it has tried to
+  // turn this resource into embeddable text. Null until that task has run,
+  // which is why the UI treats "no status yet" as pending rather than failed.
+  content_extract_status?: string | null;
+  content_extract_error?: string | null;
+
   created_by: number;
   created_at: string;
   updated_at: string;
@@ -122,6 +130,19 @@ export async function getLearnerResource(
   return all.find((r) => r.id === id) ?? null;
 }
 
+export type ExtractionStatus = 'ok' | 'partial' | 'failed' | 'pending';
+
+/**
+ * `content_extract_status` is null until the backend's background ingestion
+ * task has run for this resource, so a freshly created row legitimately has
+ * no status yet — that reads as "pending", not as a failure.
+ */
+function mapExtractionStatus(raw: string | null | undefined): ExtractionStatus {
+  const value = (raw ?? '').trim().toLowerCase();
+  if (value === 'ok' || value === 'partial' || value === 'failed') return value;
+  return 'pending';
+}
+
 export interface CourseResource {
   id: number;
   moduleId: number;
@@ -133,6 +154,8 @@ export interface CourseResource {
   content?: string | null;
   fileName?: string | null;
   mimeType?: string | null;
+  extractionStatus: ExtractionStatus;
+  extractionError: string | null;
   createdBy: number;
   createdAt: string;
   updatedAt: string;
@@ -151,6 +174,8 @@ function mapCourseResource(dto: ResourceResponseDto): CourseResource {
     content: dto.content,
     fileName: dto.file_name,
     mimeType: dto.mime_type,
+    extractionStatus: mapExtractionStatus(dto.content_extract_status),
+    extractionError: dto.content_extract_error ?? null,
     createdBy: dto.created_by,
     createdAt: dto.created_at,
     updatedAt: dto.updated_at,

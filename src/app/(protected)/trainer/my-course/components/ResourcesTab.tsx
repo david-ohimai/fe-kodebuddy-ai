@@ -9,6 +9,7 @@ import AppSpinner from '@/components/ui/AppSpinner';
 import { useToast } from '@/components/ui/ToastProvider';
 import { getErrorMessage } from '@/lib/api/client';
 import { getResourceTypeMeta } from '@/lib/trainer/resourceTypeMeta';
+import ResourceExtractionBadge from '@/components/trainer/ResourceExtractionBadge';
 import ResourceModal, { type ResourceModalSubmitData } from './ResourceModal';
 import noResources from '@/assets/images/empty state res.webp';
 import type { CourseResource } from '@/lib/api/resources.api';
@@ -68,7 +69,7 @@ export default function ResourcesTab({
 
   if (loading) {
     return (
-      <div className="flex min-h-[300px] items-center justify-center">
+      <div className="flex min-h-75 items-center justify-center">
         <AppSpinner size={40} />
       </div>
     );
@@ -138,6 +139,7 @@ export default function ResourcesTab({
                   <p className="b2-b text-text">{resource.title}</p>
                   <p className="f1-r text-muted">Type: {meta.label}</p>
                 </div>
+                <ResourceExtractionBadge status={resource.extractionStatus} />
                 <ChevronRight size={18} className="shrink-0 text-muted" />
               </button>
             </li>
@@ -153,7 +155,7 @@ export default function ResourcesTab({
           currentPage={currentPage}
           totalPages={totalPages}
           onChange={setPage}
-          className="flex-wrap !my-0"
+          className="flex-wrap my-0!"
         />
       </div>
 

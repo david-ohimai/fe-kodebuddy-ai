@@ -9,6 +9,9 @@ import AppConfirmModal from '@/components/ui/AppConfirmModal';
 import { useToast } from '@/components/ui/ToastProvider';
 import { getErrorMessage } from '@/lib/api/client';
 import { getResourceTypeMeta } from '@/lib/trainer/resourceTypeMeta';
+import ResourceExtractionBadge, {
+  getExtractionHint,
+} from '@/components/trainer/ResourceExtractionBadge';
 import ResourceModal, {
   type ResourceModalSubmitData,
 } from './ResourceModal';
@@ -140,6 +143,26 @@ export default function ResourceDetailView({
                 )}
               </div>
             </div>
+          </div>
+
+          {/*
+            The AI-indexing outcome, surfaced where the trainer can act on it.
+            A `failed` resource still looks perfectly saved otherwise — this is
+            the only place the reason it isn't grounding answers is visible.
+          */}
+          <div className="mt-5 rounded-input border border-disabled p-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="f1-r text-muted">KodeBuddy indexing:</span>
+              <ResourceExtractionBadge status={resource.extractionStatus} />
+            </div>
+            <p className="f1-r mt-1.5 text-text-secondary">
+              {getExtractionHint(resource.extractionStatus)}
+            </p>
+            {resource.extractionError && (
+              <p className="f1-r mt-1.5 wrap-break-word text-error">
+                {resource.extractionError}
+              </p>
+            )}
           </div>
 
           <div className="mt-5 flex justify-end gap-3 border-t border-disabled pt-5">
