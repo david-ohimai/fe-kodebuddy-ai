@@ -10,9 +10,7 @@ import { useToast } from '@/components/ui/ToastProvider';
 import { getErrorMessage } from '@/lib/api/client';
 import { getResourceTypeMeta } from '@/lib/trainer/resourceTypeMeta';
 import ResourceExtractionBadge from '@/components/trainer/ResourceExtractionBadge';
-import ResourceModal, {
-  type ResourceModalSubmitData,
-} from './ResourceModal';
+import ResourceModal, { type ResourceModalSubmitData } from './ResourceModal';
 import noResources from '@/assets/images/empty state res.webp';
 import type { CourseResource } from '@/lib/api/resources.api';
 import type { ResourceFormInput } from '@/lib/trainer/useCourseResources';
@@ -41,13 +39,11 @@ export default function ResourcesTab({
   const [page, setPage] = useState(1);
 
   const totalPages = Math.max(1, Math.ceil(resources.length / PAGE_SIZE));
-
-  // `page` can fall out of range when the list shrinks under it — deleting
-  // the last resource on the final page. Clamping on read rather than
-  // correcting it in an effect means the first render is already right:
-  // no second render, and no flash of an empty page before it corrects.
+  // Clamp at the point of use rather than syncing it back into state via an
+  // effect: if `resources` shrinks (e.g. after a delete) and `page` is now
+  // past the end, the paged/range values below just fall back to the last
+  // valid page for this render — no extra render cycle needed to correct it.
   const currentPage = Math.min(page, totalPages);
-
   const rangeStart =
     resources.length === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
   const rangeEnd = Math.min(currentPage * PAGE_SIZE, resources.length);

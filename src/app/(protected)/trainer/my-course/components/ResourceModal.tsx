@@ -60,9 +60,9 @@ function isValidLink(value: string): boolean {
     const url = new URL(urlToParse);
     return Boolean(
       url.hostname &&
-        url.hostname.includes('.') &&
-        url.hostname.length > 3 &&
-        !url.hostname.endsWith('.'),
+      url.hostname.includes('.') &&
+      url.hostname.length > 3 &&
+      !url.hostname.endsWith('.'),
     );
   } catch {
     return false;
@@ -107,20 +107,6 @@ export default function ResourceModal({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    if (open) {
-      setTitle(initial?.title ?? '');
-      setDescription(initial?.description ?? '');
-      setContentType(parseInitialType(initial?.type));
-      setFile(undefined);
-      setFileName(initial?.fileName);
-      setFileSize(initial?.fileSize);
-      setUrl(initial?.url ?? '');
-      setLinkError(null);
-      setContent(initial?.content ?? '');
-    }
-  }, [open, initial]);
-
   const reset = () => {
     setTitle(initial?.title ?? '');
     setDescription(initial?.description ?? '');
@@ -132,6 +118,12 @@ export default function ResourceModal({
     setLinkError(null);
     setContent(initial?.content ?? '');
   };
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (open) reset();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, initial]);
 
   const handleClose = () => {
     if (saving) return;
@@ -410,7 +402,8 @@ export default function ResourceModal({
                 )}
 
                 <p className="f1-r text-muted">
-                  Upload a PDF, Word document, or presentation for this resource.
+                  Upload a PDF, Word document, or presentation for this
+                  resource.
                 </p>
               </div>
             ) : contentType === 'link' ? (

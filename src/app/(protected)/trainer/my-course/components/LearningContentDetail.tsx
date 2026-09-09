@@ -1,5 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowLeft, Pencil, FileText, ExternalLink, AlignLeft } from 'lucide-react';
+import {
+  ArrowLeft,
+  Pencil,
+  FileText,
+  ExternalLink,
+  AlignLeft,
+} from 'lucide-react';
 import { AppCard } from '@/components/ui/AppCard';
 import AppButton from '@/components/ui/AppButton';
 import AppPill from '@/components/ui/AppPill';
@@ -8,7 +14,10 @@ import {
   CONTENT_TYPE_META,
   type LessonContentType,
 } from '@/types/lesson-content.types';
-import { listLessonResources, type CourseResource } from '@/lib/api/resources.api';
+import {
+  listLessonResources,
+  type CourseResource,
+} from '@/lib/api/resources.api';
 import type { CourseModule } from '@/lib/api/modules.api';
 import type { Lesson } from '@/lib/api/lessons.api';
 
@@ -32,17 +41,22 @@ export default function LearningContentDetail({
 
   useEffect(() => {
     let cancelled = false;
-    setLoadingResource(true);
-    listLessonResources(lesson.id)
-      .then((list) => {
-        if (!cancelled) setResource(list[0] ?? null);
-      })
-      .catch(() => {
-        if (!cancelled) setResource(null);
-      })
-      .finally(() => {
-        if (!cancelled) setLoadingResource(false);
-      });
+
+    function load() {
+      setLoadingResource(true);
+      listLessonResources(lesson.id)
+        .then((list) => {
+          if (!cancelled) setResource(list[0] ?? null);
+        })
+        .catch(() => {
+          if (!cancelled) setResource(null);
+        })
+        .finally(() => {
+          if (!cancelled) setLoadingResource(false);
+        });
+    }
+
+    load();
     return () => {
       cancelled = true;
     };
