@@ -66,6 +66,14 @@ export function useCourseResources(
             merged.push(r);
           }
         }
+        merged.sort((a, b) => {
+          if (a.createdAt && b.createdAt) {
+            const diff =
+              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+            if (diff !== 0) return diff;
+          }
+          return b.id - a.id;
+        });
         setResources(merged);
       })
       .catch((err) => {
@@ -101,7 +109,7 @@ export function useCourseResources(
           type: backendType,
         },
       );
-      setResources((prev) => [...prev, created]);
+      setResources((prev) => [created, ...prev]);
       showSuccess(
         'Resource added successfully.',
         `"${data.title}" was added to this course.`,
