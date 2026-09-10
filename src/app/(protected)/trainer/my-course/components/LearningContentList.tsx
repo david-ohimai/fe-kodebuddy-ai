@@ -1,9 +1,22 @@
 import React from 'react';
-import { ArrowLeft, ChevronRight, Pencil, Plus } from 'lucide-react';
+
+import {
+  ArrowLeft,
+  ChevronDown,
+  ChevronRight,
+  ChevronUp,
+  Pencil,
+  Plus,
+} from 'lucide-react';
 import { AppCard } from '@/components/ui/AppCard';
 import AppButton from '@/components/ui/AppButton';
+import AppPill from '@/components/ui/AppPill';
 import AppEmptyState from '@/components/ui/AppEmptyState';
 import AppSpinner from '@/components/ui/AppSpinner';
+import {
+  CONTENT_TYPE_META,
+  type LessonContentType,
+} from '@/types/lesson-content.types';
 import noLessons from '@/assets/images/no-lessons.webp';
 import type { CourseModule } from '@/lib/api/modules.api';
 import type { Lesson } from '@/lib/api/lessons.api';
@@ -18,6 +31,7 @@ export interface LearningContentListProps {
   onSelectLesson: (lesson: Lesson) => void;
   onAddContent: () => void;
   onEditModule: () => void;
+  onMoveLesson: (lesson: Lesson, direction: 'up' | 'down') => void;
 }
 
 export default function LearningContentList({
@@ -30,6 +44,7 @@ export default function LearningContentList({
   onSelectLesson,
   onAddContent,
   onEditModule,
+  onMoveLesson,
 }: LearningContentListProps) {
   return (
     <div className="flex flex-col gap-4 p-5 sm:p-6">
@@ -99,7 +114,27 @@ export default function LearningContentList({
         ) : (
           <ul className="divide-y divide-disabled">
             {lessons.map((lesson, index) => (
-              <li key={lesson.id}>
+              <li key={lesson.id} className="flex items-center">
+                <div className="flex shrink-0 flex-col pl-4">
+                  <button
+                    type="button"
+                    disabled={index === 0}
+                    onClick={() => onMoveLesson(lesson, 'up')}
+                    aria-label={`Move ${lesson.title} up`}
+                    className="rounded p-0.5 text-muted enabled:hover:bg-disabled enabled:hover:text-text disabled:opacity-30"
+                  >
+                    <ChevronUp size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    disabled={index === lessons.length - 1}
+                    onClick={() => onMoveLesson(lesson, 'down')}
+                    aria-label={`Move ${lesson.title} down`}
+                    className="rounded p-0.5 text-muted enabled:hover:bg-disabled enabled:hover:text-text disabled:opacity-30"
+                  >
+                    <ChevronDown size={16} />
+                  </button>
+                </div>
                 <button
                   type="button"
                   onClick={() => onSelectLesson(lesson)}
@@ -108,9 +143,23 @@ export default function LearningContentList({
                   <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-light b2-b text-primary">
                     {index + 1}
                   </span>
-                  <p className="b2-m min-w-0 flex-1 text-text">
-                    {lesson.title}
-                  </p>
+                  <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+                    <p className="b2-m text-text">{lesson.title}</p>
+                    {lesson.resourceType &&
+                      (() => {
+                        const meta =
+                          CONTENT_TYPE_META[
+                            lesson.resourceType as LessonContentType
+                          ];
+                        return meta ? (
+                          <AppPill
+                            label={meta.label}
+                            color={meta.pillColor}
+                            icon={meta.icon as React.ReactElement}
+                          />
+                        ) : null;
+                      })()}
+                  </div>
                   <ChevronRight size={18} className="shrink-0 text-muted" />
                 </button>
               </li>

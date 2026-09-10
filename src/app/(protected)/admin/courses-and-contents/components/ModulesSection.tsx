@@ -16,9 +16,16 @@ export interface ModulesSectionProps {
   onAddModule: () => void;
   onEditModule: (module: CourseModule) => void;
   onDeleteModule: (module: CourseModule) => void;
+  onMoveModule: (module: CourseModule, direction: 'up' | 'down') => void;
   onAddLesson: (module: CourseModule) => void;
+  onViewLesson: (module: CourseModule, lesson: Lesson) => void;
   onEditLesson: (module: CourseModule, lesson: Lesson) => void;
   onDeleteLesson: (module: CourseModule, lesson: Lesson) => void;
+  onMoveLesson: (
+    module: CourseModule,
+    lesson: Lesson,
+    direction: 'up' | 'down',
+  ) => void;
 }
 
 export default function ModulesSection({
@@ -28,9 +35,12 @@ export default function ModulesSection({
   onAddModule,
   onEditModule,
   onDeleteModule,
+  onMoveModule,
   onAddLesson,
+  onViewLesson,
   onEditLesson,
   onDeleteLesson,
+  onMoveLesson,
 }: ModulesSectionProps) {
   if (loading) {
     return (
@@ -77,12 +87,19 @@ export default function ModulesSection({
           key={module.id}
           module={module}
           index={index}
+          isFirst={index === 0}
+          isLast={index === modules.length - 1}
           lessons={lessonsByModule[module.id] ?? []}
           onEditModule={() => onEditModule(module)}
           onDeleteModule={() => onDeleteModule(module)}
+          onMoveModule={(direction) => onMoveModule(module, direction)}
           onAddLesson={() => onAddLesson(module)}
+          onViewLesson={(lesson) => onViewLesson(module, lesson)}
           onEditLesson={(lesson) => onEditLesson(module, lesson)}
           onDeleteLesson={(lesson) => onDeleteLesson(module, lesson)}
+          onMoveLesson={(lesson, direction) =>
+            onMoveLesson(module, lesson, direction)
+          }
         />
       ))}
     </div>

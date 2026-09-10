@@ -55,12 +55,7 @@ export default function LearnerDetailPage({
   );
   const content = useCourseContent(courseData?.course.id);
   const { identity, detail, loading, sending, sendCheckIn, recommendResource } =
-    useLearnerDetail(
-      courseData?.cohort.id,
-      courseData?.course.id,
-      content.modules,
-      learnerId,
-    );
+    useLearnerDetail(courseData?.course.id, content.modules, learnerId);
   const resourcesState = useCourseResources(content.modules);
 
   const [view, setView] = useState<'overview' | 'recommend'>('overview');

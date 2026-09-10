@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { cx } from '@/lib/utils/cx';
 import { useToast } from '@/components/ui/ToastProvider';
+import { getErrorMessage } from '@/lib/api/client';
 import {
   escalateToTrainer,
   isChatMocked,
@@ -31,14 +32,17 @@ import {
   type EscalationStage,
 } from '@/types/chat.types';
 
+export interface ChatCourseOption {
+  id: number;
+  title: string;
+}
+
 export interface KodeBuddyChatPanelProps {
   context: ChatContext;
   suggestions?: string[];
-  /**
-   * Asked automatically once, on mount. For entry points that collect the
-   * question before the panel opens, such as the dashboard's quick ask.
-   */
   initialQuestion?: string;
+  courseOptions?: ChatCourseOption[];
+  onCourseChange?: (courseId: number) => void;
   onClose?: () => void;
   className?: string;
 }
@@ -132,6 +136,8 @@ export default function KodeBuddyChatPanel({
   context,
   suggestions = [],
   initialQuestion,
+  courseOptions,
+  onCourseChange,
   onClose,
   className,
 }: KodeBuddyChatPanelProps) {
@@ -148,6 +154,14 @@ export default function KodeBuddyChatPanel({
   const [sendingEscalation, setSendingEscalation] = useState(false);
   const [escalationStage, setEscalationStage] =
     useState<EscalationStage | null>(null);
+
+  const [selectedCourseId, setSelectedCourseId] = useState<number | null>(null);
+  const canSwitchCourse = (courseOptions?.length ?? 0) > 1;
+  const activeCourseId = selectedCourseId ?? context.courseId;
+  const activeLabel = canSwitchCourse
+    ? (courseOptions?.find((c) => c.id === activeCourseId)?.title ??
+      context.label)
+    : context.label;
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -185,7 +199,7 @@ export default function KodeBuddyChatPanel({
         const answer = await streamKodeBuddy(
           {
             question,
-            courseId: context.courseId,
+            courseId: activeCourseId,
             moduleId: context.moduleId,
             assignmentId: context.assignmentId,
             queryType: context.assignmentId ? 'assignment_guidance' : 'chat',
@@ -209,11 +223,12 @@ export default function KodeBuddyChatPanel({
             escalationId: answer.escalationId,
             escalationReason: answer.escalationReason,
             escalationDetail: answer.escalationDetail,
+            draftResponse: answer.draftResponse,
             confidenceScore: answer.confidenceScore,
           },
         ]);
         setStreamingText('');
-      } catch {
+      } catch (err) {
         setStreamingText('');
         setMessages((prev) =>
           prev.map((m) =>
@@ -222,30 +237,24 @@ export default function KodeBuddyChatPanel({
         );
         showError(
           'Could not reach KodeBuddy',
-          'Your question was not sent. Check your connection and try again.',
+          getErrorMessage(
+            err,
+            'Your question was not sent. Check your connection and try again.',
+          ),
         );
       } finally {
         setThinking(false);
       }
     },
-    [context, thinking, showError],
+    [context, activeCourseId, thinking, showError],
   );
 
-  /**
-   * Asks the question the panel was opened with, exactly once.
-   *
-   * Deferred by a timeout rather than called straight from the effect: `send`
-   * updates state synchronously, and doing that during an effect's commit
-   * triggers a cascading render.
-   */
   const autoAskedRef = useRef(false);
   useEffect(() => {
     const question = initialQuestion?.trim();
     if (!question || autoAskedRef.current) return;
     autoAskedRef.current = true;
-
-    const timer = window.setTimeout(() => void send(question), 0);
-    return () => window.clearTimeout(timer);
+    void send(question);
   }, [initialQuestion, send]);
 
   const openEscalation = useCallback(() => {
@@ -259,34 +268,38 @@ export default function KodeBuddyChatPanel({
 
     setSendingEscalation(true);
     try {
-      // The agent's own reason, draft and confidence are carried over when it
-      // offered the handoff, so the trainer sees what the learner already got
-      // rather than a bare question. Absent when the learner asked outright.
       const lastAnswer = [...messages]
         .reverse()
         .find((m) => m.role === 'assistant');
 
       const receipt = await escalateToTrainer({
         question: note,
-        courseId: context.courseId,
+        courseId: activeCourseId,
         moduleId: context.moduleId,
         assignmentId: context.assignmentId,
         reason: lastAnswer?.escalationReason ?? null,
         detail: lastAnswer?.escalationDetail ?? null,
-        draftResponse: lastAnswer?.content ?? null,
+        draftResponse: lastAnswer?.draftResponse ?? null,
         confidenceScore: lastAnswer?.confidenceScore ?? null,
       });
       setEscalationStage(receipt.stage);
       setDraft('');
-    } catch {
+    } catch (err) {
       showError(
         'Could not reach your trainer',
-        'Please try again in a moment.',
+        getErrorMessage(err, 'Please try again in a moment.'),
       );
     } finally {
       setSendingEscalation(false);
     }
-  }, [escalationNote, sendingEscalation, context, messages, showError]);
+  }, [
+    escalationNote,
+    sendingEscalation,
+    context,
+    activeCourseId,
+    messages,
+    showError,
+  ]);
 
   const handleCopy = useCallback(
     (text: string) => {
@@ -308,6 +321,16 @@ export default function KodeBuddyChatPanel({
     setView('chat');
     inputRef.current?.focus();
   }, []);
+
+  const handleCourseChange = useCallback(
+    (courseId: number) => {
+      if (courseId === activeCourseId) return;
+      setSelectedCourseId(courseId);
+      onCourseChange?.(courseId);
+      startNewChat();
+    },
+    [activeCourseId, onCourseChange, startNewChat],
+  );
 
   const chatNotes =
     [...messages].reverse().find((m) => m.role === 'user')?.content ??
@@ -356,7 +379,7 @@ export default function KodeBuddyChatPanel({
                 HUMAN ESCALATION
               </p>
               <span className="shrink-0 rounded-full border border-primary px-2.5 py-1 f2-b tracking-wide text-primary">
-                {context.label}
+                {activeLabel}
               </span>
             </div>
 
@@ -431,13 +454,30 @@ export default function KodeBuddyChatPanel({
       ) : (
         <>
           <div className="px-5 pt-4">
-            <button
-              type="button"
-              className="inline-flex items-center gap-1.5 rounded-full border border-primary px-3 py-1.5 f1-b tracking-wide text-primary"
-            >
-              {context.label}
-              <ChevronDown size={14} />
-            </button>
+            {canSwitchCourse ? (
+              <div className="relative inline-flex items-center">
+                <select
+                  aria-label="Choose which course KodeBuddy should focus on"
+                  value={activeCourseId}
+                  onChange={(e) => handleCourseChange(Number(e.target.value))}
+                  className="appearance-none rounded-full border border-primary bg-transparent py-1.5 pr-7 pl-3 f1-b tracking-wide text-primary outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                >
+                  {courseOptions?.map((course) => (
+                    <option key={course.id} value={course.id}>
+                      {course.title}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown
+                  size={14}
+                  className="pointer-events-none absolute right-2.5 text-primary"
+                />
+              </div>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-primary px-3 py-1.5 f1-b tracking-wide text-primary">
+                {activeLabel}
+              </span>
+            )}
           </div>
 
           <div

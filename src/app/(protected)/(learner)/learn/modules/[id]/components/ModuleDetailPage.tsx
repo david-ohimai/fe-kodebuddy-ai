@@ -5,17 +5,22 @@ import Link from 'next/link';
 import { ArrowLeft, CheckCircle2, PlayCircle, Sparkles } from 'lucide-react';
 import { AppCard } from '@/components/ui/AppCard';
 import AppButton from '@/components/ui/AppButton';
+import AppPill from '@/components/ui/AppPill';
 import AppSpinner from '@/components/ui/AppSpinner';
 import AppProgressBar from '@/components/ui/AppProgressBar';
 import KodeBuddyChatPanel from '@/components/chat/KodeBuddyChatPanel';
 import { useModuleDetail } from '@/lib/learn/useModuleDetail';
+import {
+  CONTENT_TYPE_META,
+  type LessonContentType,
+} from '@/types/lesson-content.types';
 
 interface ModuleDetailPageProps {
   moduleId: number;
 }
 
 export default function ModuleDetailPage({ moduleId }: ModuleDetailPageProps) {
-  const { module, course, lessons, moduleProgress, loading, error } =
+  const { module, course, lessons, moduleProgress, loading, error, retry } =
     useModuleDetail(moduleId);
   const [chatOpen, setChatOpen] = useState(false);
 
@@ -32,6 +37,9 @@ export default function ModuleDetailPage({ moduleId }: ModuleDetailPageProps) {
       <AppCard padding="lg" className="text-center">
         <p className="b1-b text-text">Could not load this module</p>
         <p className="b2-r mt-1 text-muted">{error ?? 'Please try again.'}</p>
+        <AppButton className="mt-4" onClick={retry}>
+          Retry
+        </AppButton>
       </AppCard>
     );
   }
@@ -62,7 +70,9 @@ export default function ModuleDetailPage({ moduleId }: ModuleDetailPageProps) {
             <p className="f1-m uppercase text-muted">Module {module.order}</p>
             <h1 className="h4-b mt-1 text-text">{module.title}</h1>
             <div className="mt-3 flex max-w-64 items-center gap-3">
-              <AppProgressBar percent={moduleProgress?.completionPercentage ?? 0} />
+              <AppProgressBar
+                percent={moduleProgress?.completionPercentage ?? 0}
+              />
               <span className="b2-m shrink-0 text-text-secondary">
                 {completed} of {total} lessons completed
               </span>
@@ -83,6 +93,12 @@ export default function ModuleDetailPage({ moduleId }: ModuleDetailPageProps) {
 
       <div className="flex flex-col divide-y divide-disabled rounded-card border border-disabled bg-background">
         {rows.map(({ lesson, isCurrent, isLocked }, index) => {
+          const lessonMeta =
+            lesson.resourceType &&
+            CONTENT_TYPE_META[lesson.resourceType as LessonContentType]
+              ? CONTENT_TYPE_META[lesson.resourceType as LessonContentType]
+              : null;
+
           const content = (
             <div className="flex items-center gap-4 px-5 py-4">
               <span
@@ -105,9 +121,20 @@ export default function ModuleDetailPage({ moduleId }: ModuleDetailPageProps) {
               </span>
 
               <div className="min-w-0 flex-1">
-                <p className={'b1-b ' + (isLocked ? 'text-muted' : 'text-text')}>
-                  {index + 1}. {lesson.title}
-                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <p
+                    className={'b1-b ' + (isLocked ? 'text-muted' : 'text-text')}
+                  >
+                    {index + 1}. {lesson.title}
+                  </p>
+                  {lessonMeta && (
+                    <AppPill
+                      label={lessonMeta.label}
+                      color={lessonMeta.pillColor}
+                      icon={lessonMeta.icon as React.ReactElement}
+                    />
+                  )}
+                </div>
                 <p
                   className={
                     'f1-m mt-0.5 uppercase ' +

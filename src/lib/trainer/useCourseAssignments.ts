@@ -8,20 +8,14 @@ import type { CourseAssignment } from '@/lib/api/assignments.api';
 import type { AssignmentItem } from '@/types/assignment.types';
 import type { CourseModule } from '@/lib/api/modules.api';
 
-const DEFAULT_MAXIMUM_SCORE = 100;
-
-function defaultDueDate(cohortEndDate?: string | null): string {
-  if (cohortEndDate) return `${cohortEndDate}T23:59:59.000Z`;
-  const fallback = new Date();
-  fallback.setDate(fallback.getDate() + 14);
-  return fallback.toISOString();
-}
-
 export interface AssignmentFormInput {
   title: string;
   description?: string;
   instructions?: AssignmentItem[];
   requirements?: AssignmentItem[];
+  startDate: string;
+  dueDate: string;
+  maximumScore: number;
 }
 
 export function useCourseAssignments(
@@ -78,8 +72,9 @@ export function useCourseAssignments(
           description: data.description,
           instructions: data.instructions,
           requirements: data.requirements,
-          dueDate: defaultDueDate(cohortEndDate),
-          maximumScore: DEFAULT_MAXIMUM_SCORE,
+          startDate: data.startDate,
+          dueDate: data.dueDate,
+          maximumScore: data.maximumScore,
         },
       );
       setAssignments((prev) => [...prev, created]);
@@ -107,6 +102,9 @@ export function useCourseAssignments(
           description: data.description,
           instructions: data.instructions,
           requirements: data.requirements,
+          startDate: data.startDate,
+          dueDate: data.dueDate,
+          maximumScore: data.maximumScore,
         },
       );
       setAssignments((prev) =>
@@ -141,6 +139,7 @@ export function useCourseAssignments(
     loading,
     saving,
     hasModules: modules.length > 0,
+    suggestedDueDate: cohortEndDate ?? null,
     addAssignment,
     editAssignment,
     deleteAssignment,

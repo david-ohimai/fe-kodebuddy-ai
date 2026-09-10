@@ -15,6 +15,16 @@ import emptyStateAssign from '@/assets/images/empty state assign.webp';
 import type { CourseAssignment } from '@/lib/api/assignments.api';
 import type { AssignmentFormInput } from '@/lib/trainer/useCourseAssignments';
 
+function toDateInputValue(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toISOString().split('T')[0];
+}
+
+function today() {
+  return new Date().toISOString().split('T')[0];
+}
+
 export interface AssignmentsTabProps {
   courseName: string;
   cohortName: string;
@@ -22,6 +32,7 @@ export interface AssignmentsTabProps {
   loading: boolean;
   saving: boolean;
   hasModules: boolean;
+  suggestedDueDate?: string | null;
   addAssignment: (data: AssignmentFormInput) => Promise<CourseAssignment>;
   editAssignment: (
     assignment: CourseAssignment,
@@ -51,6 +62,7 @@ export default function AssignmentsTab({
   loading,
   saving,
   hasModules,
+  suggestedDueDate,
   addAssignment,
   editAssignment,
   deleteAssignment,
@@ -69,7 +81,13 @@ export default function AssignmentsTab({
 
   const handleAdd = async (data: AssignmentModalSubmit) => {
     try {
-      await addAssignment({ title: data.title, description: data.description });
+      await addAssignment({
+        title: data.title,
+        description: data.description,
+        startDate: data.startDate,
+        dueDate: data.dueDate,
+        maximumScore: data.maximumScore,
+      });
       setIsAddOpen(false);
     } catch (err) {
       showError(
@@ -87,6 +105,9 @@ export default function AssignmentsTab({
         description: data.description,
         instructions: toInstructionItems(data.instructionsText ?? ''),
         requirements: toRequirementItems(data.requirementsText ?? ''),
+        startDate: data.startDate,
+        dueDate: data.dueDate,
+        maximumScore: data.maximumScore,
       });
       setEditingAssignment(null);
     } catch (err) {
@@ -137,6 +158,9 @@ export default function AssignmentsTab({
                   requirementsText: editingAssignment.requirements
                     .map((r) => r.title)
                     .join('\n'),
+                  startDate: toDateInputValue(editingAssignment.startDate),
+                  dueDate: toDateInputValue(editingAssignment.dueDate),
+                  maximumScore: editingAssignment.maximumScore,
                 }
               : undefined
           }
@@ -252,9 +276,19 @@ export default function AssignmentsTab({
       </AppCard>
 
       <AssignmentModal
+        key={isAddOpen ? 'add-open' : 'add-closed'}
         open={isAddOpen}
         mode="add"
         saving={saving}
+        initial={{
+          title: '',
+          description: '',
+          instructionsText: '',
+          requirementsText: '',
+          startDate: today(),
+          dueDate: suggestedDueDate ?? '',
+          maximumScore: 100,
+        }}
         onClose={() => setIsAddOpen(false)}
         onSubmit={handleAdd}
       />

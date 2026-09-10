@@ -1,6 +1,6 @@
-import { PlayCircle, FileText, File, Code2 } from 'lucide-react';
+import { PlayCircle, FileText, File, Code2, ExternalLink } from 'lucide-react';
 import { AppCard } from '@/components/ui/AppCard';
-import type { LearnerResource } from '@/types/resource.types';
+import type { LearnerResource, ResourceType } from '@/types/resource.types';
 
 interface ResourceCardProps {
   resource: LearnerResource;
@@ -8,15 +8,23 @@ interface ResourceCardProps {
 
 const PLACEHOLDER_LEVEL = 'Beginner';
 
-const TYPE_META = {
-  Video: { icon: PlayCircle, variant: 'primary' as const },
-  Article: { icon: FileText, variant: 'warning' as const },
-  Document: { icon: File, variant: 'error' as const },
-  Interactive: { icon: Code2, variant: 'success' as const },
+const TYPE_META: Record<
+  ResourceType,
+  {
+    icon: React.ComponentType<{ className?: string }>;
+    variant: 'primary' | 'warning' | 'error' | 'success';
+  }
+> = {
+  Document: { icon: File, variant: 'error' },
+  Link: { icon: ExternalLink, variant: 'primary' },
+  Article: { icon: FileText, variant: 'warning' },
+  Video: { icon: PlayCircle, variant: 'primary' },
+  Interactive: { icon: Code2, variant: 'success' },
 };
 
 export default function ResourceCard({ resource }: ResourceCardProps) {
-  const { icon: Icon, variant } = TYPE_META[resource.type];
+  const meta = TYPE_META[resource.type] ?? TYPE_META.Document;
+  const { icon: Icon, variant } = meta;
 
   return (
     <AppCard

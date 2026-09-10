@@ -1,7 +1,14 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { Bell, CheckCheck, ChevronRight, Flag, Users } from 'lucide-react';
+import {
+  Bell,
+  CheckCheck,
+  ChevronRight,
+  Flag,
+  RotateCcw,
+  Users,
+} from 'lucide-react';
 import PageHeader from '@/components/ui/AppPageHeader';
 import { AppCard } from '@/components/ui/AppCard';
 import AppButton from '@/components/ui/AppButton';
@@ -68,8 +75,15 @@ export default function MyCohortPage() {
     cohortWithoutCourse,
     loading: loadingCourse,
   } = useMyAssignedCourse(user?.id);
-  const { roster, loading, stats, sendingReminder, sendReminder } =
-    useCohortRoster(data?.cohort.id, data?.course.id);
+  const {
+    roster,
+    loading,
+    error,
+    retry,
+    stats,
+    sendingReminder,
+    sendReminder,
+  } = useCohortRoster(data?.course.id);
 
   const [activeTab, setActiveTab] = useState<RosterTab>('all');
   const [page, setPage] = useState(1);
@@ -257,6 +271,14 @@ export default function MyCohortPage() {
           <div className="flex min-h-[300px] items-center justify-center">
             <AppSpinner size={40} />
           </div>
+        ) : error ? (
+          <AppEmptyState
+            title="Could not load your cohort"
+            description={error}
+            actionLabel="Retry"
+            actionIcon={<RotateCcw size={16} />}
+            onAction={retry}
+          />
         ) : filtered.length === 0 ? (
           <AppEmptyState
             title="No learners here yet"

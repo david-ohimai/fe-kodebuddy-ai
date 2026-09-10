@@ -13,6 +13,8 @@ export interface Lesson {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+  resourceType?: LessonContentType;
+  resourceFileName?: string;
 }
 
 interface LessonResponseDto {
@@ -46,6 +48,21 @@ export async function listModuleLessons(moduleId: number): Promise<Lesson[]> {
     `/lessons/module/${moduleId}`,
     { method: 'GET', auth: true },
   );
+  return dtos.map(mapLesson).sort((a, b) => a.order - b.order);
+}
+
+export async function reorderLessons(
+  moduleId: number,
+  lessons: { id: number; order: number }[],
+): Promise<Lesson[]> {
+  const dtos = await apiFetch<LessonResponseDto[]>('/lessons/reorder', {
+    method: 'PATCH',
+    auth: true,
+    body: {
+      module_id: moduleId,
+      lessons: lessons.map((l) => ({ id: l.id, order: l.order })),
+    },
+  });
   return dtos.map(mapLesson).sort((a, b) => a.order - b.order);
 }
 

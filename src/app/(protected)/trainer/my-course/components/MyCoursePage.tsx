@@ -64,7 +64,10 @@ export default function MyCoursePage() {
     data?.cohort.endDate,
   );
   const faqsState = useCourseFaqs(content.modules);
-  const resourcesState = useCourseResources(content.modules);
+  const resourcesState = useCourseResources(
+    content.modules,
+    content.lessonsByModule,
+  );
 
   const [activeTab, setActiveTab] = useState('overview');
   const [selectedModuleId, setSelectedModuleId] = useState<number | null>(null);
@@ -165,6 +168,7 @@ export default function MyCoursePage() {
             loading={assignmentsState.loading}
             saving={assignmentsState.saving}
             hasModules={assignmentsState.hasModules}
+            suggestedDueDate={assignmentsState.suggestedDueDate}
             addAssignment={assignmentsState.addAssignment}
             editAssignment={assignmentsState.editAssignment}
             deleteAssignment={assignmentsState.deleteAssignment}
@@ -196,6 +200,9 @@ export default function MyCoursePage() {
               onSelectLesson={(lesson) => setSelectedLessonId(lesson.id)}
               onAddContent={() => setIsAddContentOpen(true)}
               onEditModule={() => setEditingModule(selectedModule)}
+              onMoveLesson={(lesson, direction) =>
+                content.moveLesson(selectedModule.id, lesson.id, direction)
+              }
             />
           ))}
 
@@ -357,6 +364,9 @@ export default function MyCoursePage() {
             loading={content.loading}
             onAddModule={() => setIsAddModuleOpen(true)}
             onSelectModule={handleSelectModule}
+            onMoveModule={(module, direction) =>
+              content.moveModule(module.id, direction)
+            }
           />
         )}
 

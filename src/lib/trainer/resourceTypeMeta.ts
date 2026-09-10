@@ -45,6 +45,12 @@ const KNOWN_TYPES: Record<string, ResourceTypeMeta> = {
     bgClass: 'bg-success-light',
     textClass: 'text-success-dark',
   },
+  file: {
+    label: 'Document',
+    icon: Folder,
+    bgClass: 'bg-success-light',
+    textClass: 'text-success-dark',
+  },
 };
 
 const DEFAULT_META: ResourceTypeMeta = {

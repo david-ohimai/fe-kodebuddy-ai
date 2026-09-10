@@ -44,21 +44,10 @@ export interface AssignmentDetailsProps {
   assignmentId: number;
 }
 
-/**
- * Requirement ticks are a self-assessment aid with no backend field, so they
- * live in the learner's own browser. Keyed per assignment so two assignments
- * never share ticks.
- */
 function requirementsStorageKey(assignmentId: number) {
   return `kodebuddy_assignment_${assignmentId}_requirements`;
 }
 
-/**
- * Previously-saved ticks for this assignment, sized to its current
- * requirements. Reading storage can throw in a private window, and the
- * requirement list may have changed since the ticks were written, so anything
- * unexpected falls back to all-unticked.
- */
 function restoreRequirementTicks(assignment: LearnerAssignment): boolean[] {
   const empty = new Array<boolean>(assignment.requirements.length).fill(false);
   try {
@@ -90,7 +79,6 @@ function DetailSection({
   );
 }
 
-/** "Part A - Card Component" banner followed by its numbered steps. */
 function InstructionPart({
   item,
   steps,
@@ -174,9 +162,6 @@ export default function AssignmentDetails({
     );
   }, []);
 
-  // Persisted here rather than inside the updater above: a state updater must
-  // be pure, and writing to storage from one runs the write before React has
-  // committed the render.
   useEffect(() => {
     if (!assignment) return;
     try {
@@ -184,9 +169,7 @@ export default function AssignmentDetails({
         requirementsStorageKey(assignment.id),
         JSON.stringify(checked),
       );
-    } catch {
-      // Storage unavailable — ticks still work for this session.
-    }
+    } catch {}
   }, [assignment, checked]);
 
   const completion = useMemo(() => {
@@ -331,17 +314,6 @@ export default function AssignmentDetails({
     );
   }
 
-  /*
-   * An assignment that has not opened yet shows only when it opens — never the
-   * brief, the instructions or the submission form, however the learner got to
-   * the URL.
-   *
-   * This is the client half of the rule. The API still returns the full record
-   * to anyone who asks, so the brief is readable from the network tab and
-   * `POST /submissions` still accepts early work. Enforcing it properly means
-   * the server withholding unopened assignments and rejecting submissions
-   * against them.
-   */
   if (isNotYetOpen(assignment.startDate)) {
     return (
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
@@ -386,17 +358,11 @@ export default function AssignmentDetails({
     .map((p) => p.trim())
     .filter(Boolean);
 
-  // The first paragraph is the summary on the overview card, so the Description
-  // section shows what follows it. A single-paragraph description therefore has
-  // no separate body to repeat.
   const summary = paragraphs[0] ?? null;
   const bodyParagraphs = paragraphs.slice(1);
 
   return (
     <>
-      {/* items-start keeps the docked panel from stretching the row, so the
-          brief below it flows to its natural length instead of being padded
-          out to the panel's height. */}
       <div className="mx-auto flex w-full max-w-7xl items-start gap-6">
         <div className="flex min-w-0 flex-1 flex-col gap-6 pb-2">
           <Link
@@ -437,8 +403,6 @@ export default function AssignmentDetails({
                 <h2 className="h4-b mt-3 text-text">{assignment.title}</h2>
               </div>
 
-              {/* Hidden entirely when the trainer has set no full name, rather
-                  than rendering an empty avatar row. */}
               {assignment.createdByName && (
                 <div className="flex shrink-0 items-center gap-3">
                   <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-light b2-b text-primary">
@@ -509,8 +473,6 @@ export default function AssignmentDetails({
                   <InstructionPart
                     key={item.title}
                     item={item}
-                    // Steps are newline-separated inside one description on the
-                    // backend; a single-line description renders as one step.
                     steps={item.description
                       .split(/\n+/)
                       .map((line) => line.replace(/^\s*\d+[.)]\s*/, '').trim())
@@ -690,19 +652,14 @@ export default function AssignmentDetails({
           </DetailSection>
         </div>
 
-        {/* Assistant panel — docked beside the brief so the learner keeps context */}
         {chatOpen && (
           <>
-            {/* Below lg the panel takes over the screen instead of vanishing. */}
             <div
               role="presentation"
               onClick={() => setChatOpen(false)}
               className="fixed inset-0 z-40 bg-black/40 lg:hidden"
             />
-            {/* From lg the panel is a top-aligned card, not a pinned column:
-                it ends with its own content and the brief scrolls on past it,
-                which is how the design lays the page out. Below lg it takes
-                over the screen instead of being squeezed into a sidebar. */}
+
             <aside className="fixed inset-x-4 top-4 bottom-4 z-50 lg:relative lg:inset-auto lg:z-auto lg:h-160 lg:w-100 lg:shrink-0">
               <KodeBuddyChatPanel
                 context={{
@@ -712,8 +669,8 @@ export default function AssignmentDetails({
                   label: moduleLabel,
                 }}
                 suggestions={[
-                  'Explain Auto-layout in simple terms',
-                  "I'm not sure where to start with Part A",
+                  `Explain "${assignment.title}" in simple terms`,
+                  "I'm not sure where to start",
                 ]}
                 onClose={() => setChatOpen(false)}
               />

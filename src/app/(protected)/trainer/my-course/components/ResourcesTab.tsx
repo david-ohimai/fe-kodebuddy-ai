@@ -1,17 +1,21 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { ChevronRight, Plus } from 'lucide-react';
 import AppButton from '@/components/ui/AppButton';
 import AppEmptyState from '@/components/ui/AppEmptyState';
+import AppPagination from '@/components/ui/AppPagination';
 import AppSpinner from '@/components/ui/AppSpinner';
 import { useToast } from '@/components/ui/ToastProvider';
 import { getErrorMessage } from '@/lib/api/client';
 import { getResourceTypeMeta } from '@/lib/trainer/resourceTypeMeta';
-import ResourceModal from './ResourceModal';
+import ResourceExtractionBadge from '@/components/trainer/ResourceExtractionBadge';
+import ResourceModal, { type ResourceModalSubmitData } from './ResourceModal';
 import noResources from '@/assets/images/empty state res.webp';
 import type { CourseResource } from '@/lib/api/resources.api';
 import type { ResourceFormInput } from '@/lib/trainer/useCourseResources';
+
+const PAGE_SIZE = 7;
 
 export interface ResourcesTabProps {
   resources: CourseResource[];
@@ -32,15 +36,29 @@ export default function ResourcesTab({
 }: ResourcesTabProps) {
   const { showError } = useToast();
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [page, setPage] = useState(1);
 
-  const handleAdd = async (data: {
-    title: string;
-    url: string;
-    type: string;
-  }) => {
+  const totalPages = Math.max(1, Math.ceil(resources.length / PAGE_SIZE));
+  // Clamp at the point of use rather than syncing it back into state via an
+  // effect: if `resources` shrinks (e.g. after a delete) and `page` is now
+  // past the end, the paged/range values below just fall back to the last
+  // valid page for this render — no extra render cycle needed to correct it.
+  const currentPage = Math.min(page, totalPages);
+  const rangeStart =
+    resources.length === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
+  const rangeEnd = Math.min(currentPage * PAGE_SIZE, resources.length);
+
+  const pagedResources = useMemo(
+    () =>
+      resources.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
+    [resources, currentPage],
+  );
+
+  const handleAdd = async (data: ResourceModalSubmitData) => {
     try {
       await addResource(data);
       setIsAddOpen(false);
+      setPage(1);
     } catch (err) {
       showError(
         'Could not add resource',
@@ -51,7 +69,7 @@ export default function ResourcesTab({
 
   if (loading) {
     return (
-      <div className="flex min-h-[300px] items-center justify-center">
+      <div className="flex min-h-75 items-center justify-center">
         <AppSpinner size={40} />
       </div>
     );
@@ -102,7 +120,7 @@ export default function ResourcesTab({
       </div>
 
       <ul className="divide-y divide-disabled rounded-input border border-disabled">
-        {resources.map((resource) => {
+        {pagedResources.map((resource) => {
           const meta = getResourceTypeMeta(resource.type);
           const Icon = meta.icon;
           return (
@@ -121,12 +139,25 @@ export default function ResourcesTab({
                   <p className="b2-b text-text">{resource.title}</p>
                   <p className="f1-r text-muted">Type: {meta.label}</p>
                 </div>
+                <ResourceExtractionBadge status={resource.extractionStatus} />
                 <ChevronRight size={18} className="shrink-0 text-muted" />
               </button>
             </li>
           );
         })}
       </ul>
+
+      <div className="mt-4 flex flex-col gap-3 pt-2 sm:flex-row sm:items-center sm:justify-between">
+        <p className="b2-r text-text-secondary">
+          Showing {rangeStart}–{rangeEnd} of {resources.length} resources
+        </p>
+        <AppPagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onChange={setPage}
+          className="flex-wrap my-0!"
+        />
+      </div>
 
       <ResourceModal
         open={isAddOpen}

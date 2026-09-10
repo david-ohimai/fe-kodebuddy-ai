@@ -18,6 +18,7 @@ import {
 import { AppCard } from '@/components/ui/AppCard';
 import AppInfoCard from '@/components/ui/AppInfoCard';
 import AppActionsCard from '@/components/ui/AppActionsCard';
+import AppButton from '@/components/ui/AppButton';
 import AppDropdown from '@/components/ui/AppDropdown';
 import AppPill from '@/components/ui/AppPill';
 import AppSpinner from '@/components/ui/AppSpinner';
@@ -26,6 +27,7 @@ import { useToast } from '@/components/ui/ToastProvider';
 import { useCurrentUserContext } from '@/lib/auth/CurrentUserContext';
 import * as profileApi from '@/lib/api/profile.api';
 import { getCourse } from '@/lib/api/courses.api';
+import { assignLearnerToMentor } from '@/lib/api/mentors.api';
 import { getErrorMessage } from '@/lib/api/client';
 import type { AuthUser, UserRole } from '@/types/auth.types';
 
@@ -90,6 +92,13 @@ export default function UserDetails({ userId }: UserDetailsProps) {
     null,
   );
 
+  const [mentors, setMentors] = useState<AuthUser[]>([]);
+  const [mentorsLoading, setMentorsLoading] = useState(false);
+  const [mentorsError, setMentorsError] = useState<string | null>(null);
+  const [selectedMentorId, setSelectedMentorId] = useState<number | null>(null);
+  const [assigningMentor, setAssigningMentor] = useState(false);
+  const [mentorConfirmOpen, setMentorConfirmOpen] = useState(false);
+
   useEffect(() => {
     let cancelled = false;
     profileApi
@@ -117,6 +126,63 @@ export default function UserDetails({ userId }: UserDetailsProps) {
       cancelled = true;
     };
   }, [userId]);
+
+  const loadMentors = () => {
+    let cancelled = false;
+    setMentorsLoading(true);
+    setMentorsError(null);
+    profileApi
+      .listUsers()
+      .then((users) => {
+        if (!cancelled) {
+          setMentors(users.filter((u) => u.role === 'mentor'));
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setMentorsError(
+            getErrorMessage(err, 'Could not load the list of mentors.'),
+          );
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setMentorsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  };
+
+  useEffect(() => {
+    if (user?.role !== 'learner') return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadMentors();
+  }, [user?.role]);
+
+  const handleAssignMentor = async () => {
+    if (!selectedMentorId || !user) return;
+    setAssigningMentor(true);
+    try {
+      await assignLearnerToMentor(selectedMentorId, user.id);
+      const mentorName =
+        mentors.find((m) => m.id === selectedMentorId)?.fullName ||
+        mentors.find((m) => m.id === selectedMentorId)?.email ||
+        'the selected mentor';
+      showSuccess(
+        'Mentor assigned successfully.',
+        `${user.fullName || user.email} is now assigned to ${mentorName}.`,
+      );
+      setMentorConfirmOpen(false);
+      setSelectedMentorId(null);
+    } catch (err) {
+      showError(
+        'Could not assign mentor',
+        getErrorMessage(err, 'Please try again.'),
+      );
+    } finally {
+      setAssigningMentor(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -356,6 +422,67 @@ export default function UserDetails({ userId }: UserDetailsProps) {
                 </>
               ),
             },
+            ...(user.role === 'learner'
+              ? [
+                  {
+                    icon: UserIcon,
+                    iconVariant: 'primary' as const,
+                    title: 'Assign to mentor',
+                    description:
+                      'Pair this learner with a mentor for check-ins and progress support.',
+                    control: mentorsLoading ? (
+                      <p className="f1-r text-muted">Loading mentors...</p>
+                    ) : mentorsError ? (
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="f1-r text-error">{mentorsError}</p>
+                        <button
+                          type="button"
+                          onClick={loadMentors}
+                          className="f1-b text-primary hover:underline"
+                        >
+                          Retry
+                        </button>
+                      </div>
+                    ) : mentors.length === 0 ? (
+                      <p className="f1-r text-muted">
+                        No mentors exist yet — promote a user to the mentor role
+                        first.
+                      </p>
+                    ) : (
+                      <>
+                        <label className="f1-m mb-1.5 block text-text-secondary">
+                          Select mentor
+                        </label>
+                        <div className="flex flex-col gap-2 sm:flex-row">
+                          <AppDropdown
+                            value={
+                              selectedMentorId ? String(selectedMentorId) : ''
+                            }
+                            options={mentors.map((m) => ({
+                              label: m.fullName || m.email,
+                              value: String(m.id),
+                            }))}
+                            onChange={(value) =>
+                              setSelectedMentorId(Number(value))
+                            }
+                            ariaLabel="Select mentor"
+                            placeholder="Choose a mentor"
+                            className="w-full flex-1"
+                          />
+                          <AppButton
+                            size="small"
+                            radius="full"
+                            disabled={!selectedMentorId || assigningMentor}
+                            onClick={() => setMentorConfirmOpen(true)}
+                          >
+                            Assign
+                          </AppButton>
+                        </div>
+                      </>
+                    ),
+                  },
+                ]
+              : []),
           ]}
           hint="You can review your changes before confirming. Suspended users cannot log in or access the platform until reactivated."
           showFooterActions={!isSelf && isDirty}
@@ -434,6 +561,31 @@ export default function UserDetails({ userId }: UserDetailsProps) {
           label: 'Confirm changes',
           loading: saving,
           onClick: applyChanges,
+        }}
+      />
+
+      <AppConfirmModal
+        open={mentorConfirmOpen}
+        onClose={() => setMentorConfirmOpen(false)}
+        icon={
+          <span className="flex h-16 w-16 items-center justify-center rounded-full bg-primary-light">
+            <UserIcon size={28} className="text-primary" />
+          </span>
+        }
+        title="Assign mentor?"
+        description={`This will assign ${displayName} to ${
+          mentors.find((m) => m.id === selectedMentorId)?.fullName ||
+          mentors.find((m) => m.id === selectedMentorId)?.email ||
+          'the selected mentor'
+        }.`}
+        secondaryButton={{
+          label: 'Cancel',
+          onClick: () => setMentorConfirmOpen(false),
+        }}
+        primaryButton={{
+          label: 'Assign mentor',
+          loading: assigningMentor,
+          onClick: handleAssignMentor,
         }}
       />
     </div>

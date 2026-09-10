@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { getCourse, type Course } from '@/lib/api/courses.api';
 import { listCourseModules, type CourseModule } from '@/lib/api/modules.api';
 import {
@@ -9,6 +9,7 @@ import {
   type CourseProgress,
   type ModuleProgress,
 } from '@/lib/api/progress.api';
+import { getErrorMessage } from '@/lib/api/client';
 
 export interface ModuleWithProgress extends CourseModule {
   progress: ModuleProgress | null;
@@ -22,11 +23,15 @@ export function useCourseCurriculum(courseId: number) {
   );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
+  const retry = useCallback(() => setReloadKey((key) => key + 1), []);
 
   useEffect(() => {
     let cancelled = false;
 
     async function load() {
+      setLoading(true);
+      setError(null);
       try {
         const [courseData, moduleList, progress] = await Promise.all([
           getCourse(courseId),
@@ -46,9 +51,14 @@ export function useCourseCurriculum(courseId: number) {
           setModules(withProgress);
           setCourseProgress(progress);
         }
-      } catch {
+      } catch (err) {
         if (!cancelled) {
-          setError('Could not load this course. Please try again.');
+          setError(
+            getErrorMessage(
+              err,
+              'Could not load this course. Please try again.',
+            ),
+          );
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -59,7 +69,7 @@ export function useCourseCurriculum(courseId: number) {
     return () => {
       cancelled = true;
     };
-  }, [courseId]);
+  }, [courseId, reloadKey]);
 
-  return { course, modules, courseProgress, loading, error };
+  return { course, modules, courseProgress, loading, error, retry };
 }

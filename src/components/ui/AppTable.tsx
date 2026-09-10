@@ -4,6 +4,7 @@ export interface AppTableColumn<T> {
   key: string;
   header: string;
   align?: 'left' | 'right' | 'center';
+  width?: number;
   render: (row: T) => React.ReactNode;
 }
 
@@ -13,6 +14,7 @@ export interface AppTableProps<T> {
   getRowKey: (row: T) => string | number;
   minWidth?: number;
   className?: string;
+  onRowClick?: (row: T) => void;
 }
 
 function cx(...classes: Array<string | false | undefined>) {
@@ -31,6 +33,7 @@ export default function AppTable<T>({
   getRowKey,
   minWidth = 720,
   className,
+  onRowClick,
 }: AppTableProps<T>) {
   return (
     <div className={cx('overflow-x-auto', className)}>
@@ -40,6 +43,7 @@ export default function AppTable<T>({
             {columns.map((column) => (
               <th
                 key={column.key}
+                style={column.width ? { width: column.width } : undefined}
                 className={cx(
                   'f1-m px-4 py-3 text-muted',
                   ALIGN_CLASS[column.align ?? 'left'],
@@ -55,10 +59,12 @@ export default function AppTable<T>({
             <tr
               key={getRowKey(row)}
               className="border-b border-disabled last:border-b-0"
+              onClick={() => onRowClick?.(row)}
             >
               {columns.map((column) => (
                 <td
                   key={column.key}
+                  style={column.width ? { width: column.width } : undefined}
                   className={cx(
                     'px-4 py-3',
                     ALIGN_CLASS[column.align ?? 'left'],

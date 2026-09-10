@@ -38,6 +38,46 @@ function mapCourse(dto: CourseResponseDto): Course {
   };
 }
 
+export interface CourseLearner {
+  learnerId: number;
+  fullName: string | null;
+  email: string;
+}
+
+interface CourseLearnerResponseDto {
+  learner_id: number;
+  full_name: string | null;
+  email: string;
+}
+
+function mapCourseLearner(dto: CourseLearnerResponseDto): CourseLearner {
+  return {
+    learnerId: dto.learner_id,
+    fullName: dto.full_name,
+    email: dto.email,
+  };
+}
+
+export async function listCourseLearners(
+  courseId: number,
+): Promise<CourseLearner[]> {
+  const dtos = await apiFetch<CourseLearnerResponseDto[]>(
+    `/courses/${courseId}/learners`,
+    { method: 'GET', auth: true },
+  );
+  return dtos.map(mapCourseLearner);
+}
+
+export async function listTrainerLearners(
+  trainerId: number,
+): Promise<CourseLearner[]> {
+  const dtos = await apiFetch<CourseLearnerResponseDto[]>(
+    `/courses/trainers/${trainerId}/learners`,
+    { method: 'GET', auth: true },
+  );
+  return dtos.map(mapCourseLearner);
+}
+
 export async function listCourses(): Promise<Course[]> {
   const dtos = await apiFetch<CourseResponseDto[]>('/courses', {
     method: 'GET',

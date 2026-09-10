@@ -9,7 +9,7 @@ import AppCheckboxCard from '@/components/ui/AppCheckboxCard';
 import AppSearchSelect from '@/components/ui/AppSearchSelect';
 import AppSpinner from '@/components/ui/AppSpinner';
 import { useToast } from '@/components/ui/ToastProvider';
-import { getErrorMessage } from '@/lib/api/client';
+import { ApiError, getErrorMessage } from '@/lib/api/client';
 import * as cohortsApi from '@/lib/api/cohorts.api';
 import * as coursesApi from '@/lib/api/courses.api';
 import * as profileApi from '@/lib/api/profile.api';
@@ -75,10 +75,21 @@ export default function ChangeTrainerPage({
   }, [cohortId, showError]);
 
   const currentTrainers = trainers.filter((t) => assignedIds.has(t.id));
-  const selectableTrainers = trainers.filter((t) => !assignedIds.has(t.id));
-  const newlySelected = selectableTrainers.filter((t) => selectedIds.has(t.id));
+
+  /*
+   * Every trainer is selectable, including ones already on the cohort.
+   *
+   * `assignedIds` reflects cohort membership (cohort_trainers). Course access
+   * is a separate table (course_trainers), and the trainer dashboard reads
+   * *that* one. Filtering the selectable list by cohort membership meant a
+   * trainer already on the cohort could never be given course access — the
+   * assign call below only ran over the filtered list — so they were assigned
+   * in the UI's eyes but invisible to the trainer, with no error anywhere.
+   */
+  const selectableTrainers = trainers;
+  const selected = trainers.filter((t) => selectedIds.has(t.id));
   const selectedCourse = courses.find((c) => c.id === selectedCourseId);
-  const canAssign = newlySelected.length > 0 && !!selectedCourseId;
+  const canAssign = selected.length > 0 && !!selectedCourseId;
 
   const toggleTrainer = (id: number, checked: boolean) => {
     setSelectedIds((prev) => {
@@ -90,28 +101,61 @@ export default function ChangeTrainerPage({
   };
 
   const assignTrainers = async () => {
-    if (newlySelected.length === 0 || !selectedCourseId) return;
+    if (selected.length === 0 || !selectedCourseId) return;
     setSaving(true);
     try {
+      /*
+       * Cohort and course assignment are independent writes, so they are no
+       * longer driven off the same filtered list.
+       *
+       * A 409 means the pair already exists, which is the state we were
+       * asking for — so it is swallowed rather than failing the whole
+       * operation. Any other error still surfaces. There is no
+       * GET /courses/{id}/trainers yet, so the client cannot know in advance
+       * which pairs exist; once that lands this can skip them instead.
+       */
+      const assignIgnoringConflict = async (call: Promise<unknown>) => {
+        try {
+          await call;
+        } catch (err) {
+          if (err instanceof ApiError && err.status === 409) return;
+          throw err;
+        }
+      };
+
+      // Only trainers not already on the cohort need the cohort write.
       await Promise.all(
-        newlySelected.map((t) =>
-          cohortsApi.assignCohortTrainer(cohortId, t.id),
+        selected
+          .filter((t) => !assignedIds.has(t.id))
+          .map((t) =>
+            assignIgnoringConflict(
+              cohortsApi.assignCohortTrainer(cohortId, t.id),
+            ),
+          ),
+      );
+
+      // Everyone selected gets the course write — this is the one the
+      // trainer dashboard actually reads.
+      await Promise.all(
+        selected.map((t) =>
+          assignIgnoringConflict(
+            coursesApi.assignCourseTrainer(selectedCourseId, t.id),
+          ),
         ),
       );
-      await Promise.all(
-        newlySelected.map((t) =>
-          coursesApi.assignCourseTrainer(selectedCourseId, t.id),
-        ),
-      );
-      const allAssigned = [...currentTrainers, ...newlySelected];
+
+      const allAssigned = [
+        ...currentTrainers,
+        ...selected.filter((t) => !assignedIds.has(t.id)),
+      ];
       onAssigned(allAssigned);
       showSuccess(
-        newlySelected.length === 1
+        selected.length === 1
           ? 'Trainer assigned successfully.'
           : 'Trainers assigned successfully.',
-        `${newlySelected.map((t) => t.fullName || t.email).join(', ')} ${
-          newlySelected.length === 1 ? 'is' : 'are'
-        } now assigned to ${cohort.name} and ${selectedCourse?.title}.`,
+        `${selected.map((t) => t.fullName || t.email).join(', ')} ${
+          selected.length === 1 ? 'is' : 'are'
+        } now assigned to ${selectedCourse?.title}.`,
       );
       onBack();
     } catch (error) {
@@ -245,7 +289,7 @@ export default function ChangeTrainerPage({
               loading={saving}
               onClick={() => setConfirmOpen(true)}
             >
-              Assign trainer{newlySelected.length !== 1 ? 's' : ''}
+              Assign trainer{selected.length !== 1 ? 's' : ''}
             </AppButton>
           </div>
 
@@ -253,13 +297,13 @@ export default function ChangeTrainerPage({
             <div className="border-b border-disabled px-6 py-5">
               <h2 className="h6-b text-text">Select trainers</h2>
               <p className="f1-r mt-1 text-muted">
-                Already-assigned trainers are shown above and don&apos;t appear
-                here.
+                Trainers already on this cohort can still be selected — course
+                access is assigned separately.
               </p>
             </div>
             {selectableTrainers.length === 0 ? (
               <p className="b2-r px-6 py-8 text-center text-muted">
-                Every trainer is already assigned to this cohort.
+                No trainers exist yet.
               </p>
             ) : (
               <div className="flex flex-col gap-2.5 px-3 py-3">
@@ -289,8 +333,8 @@ export default function ChangeTrainerPage({
             <AlertTriangle size={30} className="text-warning" />
           </span>
         }
-        title={`Assign ${newlySelected.length} trainer${newlySelected.length !== 1 ? 's' : ''}?`}
-        description={`${newlySelected
+        title={`Assign ${selected.length} trainer${selected.length !== 1 ? 's' : ''}?`}
+        description={`${selected
           .map((t) => t.fullName || t.email)
           .join(
             ', ',

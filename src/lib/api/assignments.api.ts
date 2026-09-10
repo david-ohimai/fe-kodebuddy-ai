@@ -5,7 +5,6 @@ import {
   type AssignmentItem,
   type LearnerAssignment,
 } from '@/types/assignment.types';
-import { DEMO_ASSIGNMENTS } from '@/lib/mocks/assignment.mocks';
 import { listMySubmissions, type Submission } from './submissions.api';
 
 export interface Assignment {
@@ -42,16 +41,10 @@ interface AssignmentDetailDto {
   description: string | null;
   instructions: AssignmentItem[] | null;
   requirements: AssignmentItem[] | null;
-  /**
-   * When the assignment opens. Required by the API, but read as optional here:
-   * rows created before the column existed can still come back without it, and
-   * a missing release date means "already open".
-   */
   start_date?: string | null;
   due_date: string;
   maximum_score: number;
   created_by: number;
-  /** Resolved server-side; null when the trainer has set no full name. */
   created_by_name?: string | null;
   created_at: string;
   updated_at: string;
@@ -67,38 +60,15 @@ interface ModuleResponseDto {
   is_active: boolean;
 }
 
-function fallbackEnabled(): boolean {
-  return process.env.NEXT_PUBLIC_DEMO_FALLBACK !== 'false';
-}
-
-function withFallback(
-  live: LearnerAssignment[],
-  context: string,
-): LearnerAssignment[] {
-  if (live.length > 0) return live;
-  if (!fallbackEnabled()) return live;
-  console.warn(
-    `[assignments] ${context} — serving demo fixtures. ` +
-      'Set NEXT_PUBLIC_DEMO_FALLBACK=false to disable.',
-  );
-  return DEMO_ASSIGNMENTS;
-}
-
 function mapLearnerAssignment(
   dto: AssignmentDetailDto,
   module: ModuleResponseDto,
   course: MyCourseRef,
   submission: Submission | undefined,
 ): LearnerAssignment {
-  // Derived from the learner's own submission. These previously came from the
-  // learner dashboard payload; that source went away when this switched to
-  // listMyCourses, and the three `status?.…` reads it left behind resolved to
-  // the global `window.status` string rather than failing loudly.
   const submitted = submission !== undefined;
   const graded = submission?.score != null;
 
-  // Past the due date and nothing handed in. The dashboard used to compute
-  // this server-side; there is no other source for it now.
   const isOverdue = !submitted && new Date(dto.due_date).getTime() < Date.now();
 
   const startDate = dto.start_date ?? null;
@@ -141,66 +111,56 @@ function mapLearnerAssignment(
 }
 
 export async function listLearnerAssignments(): Promise<LearnerAssignment[]> {
-  try {
-    const [courses, submissions] = await Promise.all([
-      listMyCourses(),
-      listMySubmissions().catch(() => [] as Submission[]),
-    ]);
+  const [courses, submissions] = await Promise.all([
+    listMyCourses(),
+    listMySubmissions().catch(() => [] as Submission[]),
+  ]);
 
-    const submissionByAssignment = new Map<number, Submission>();
-    for (const submission of submissions) {
-      const existing = submissionByAssignment.get(submission.assignmentId);
-      if (
-        !existing ||
-        new Date(submission.submittedAt) > new Date(existing.submittedAt)
-      ) {
-        submissionByAssignment.set(submission.assignmentId, submission);
-      }
+  const submissionByAssignment = new Map<number, Submission>();
+  for (const submission of submissions) {
+    const existing = submissionByAssignment.get(submission.assignmentId);
+    if (
+      !existing ||
+      new Date(submission.submittedAt) > new Date(existing.submittedAt)
+    ) {
+      submissionByAssignment.set(submission.assignmentId, submission);
     }
+  }
 
-    if (courses.length === 0) {
-      return withFallback([], 'learner has no enrolled courses');
-    }
+  if (courses.length === 0) return [];
 
-    const moduleGroups = await Promise.all(
-      courses.map(async (course) => {
-        const modules = await apiFetch<ModuleResponseDto[]>(
-          `/modules/course/${course.courseId}`,
+  const moduleGroups = await Promise.all(
+    courses.map(async (course) => {
+      const modules = await apiFetch<ModuleResponseDto[]>(
+        `/modules/course/${course.courseId}`,
+        { method: 'GET', auth: true },
+      );
+      return { course, modules: modules ?? [] };
+    }),
+  );
+
+  const assignmentGroups = await Promise.all(
+    moduleGroups.flatMap(({ course, modules }) =>
+      modules.map(async (module) => {
+        const assignments = await apiFetch<AssignmentDetailDto[]>(
+          `/modules/${module.id}/assignments`,
           { method: 'GET', auth: true },
         );
-        return { course, modules: modules ?? [] };
+        return (assignments ?? []).map((dto) =>
+          mapLearnerAssignment(
+            dto,
+            module,
+            course,
+            submissionByAssignment.get(dto.id),
+          ),
+        );
       }),
-    );
+    ),
+  );
 
-    const assignmentGroups = await Promise.all(
-      moduleGroups.flatMap(({ course, modules }) =>
-        modules.map(async (module) => {
-          const assignments = await apiFetch<AssignmentDetailDto[]>(
-            `/modules/${module.id}/assignments`,
-            { method: 'GET', auth: true },
-          );
-          return (assignments ?? []).map((dto) =>
-            mapLearnerAssignment(
-              dto,
-              module,
-              course,
-              submissionByAssignment.get(dto.id),
-            ),
-          );
-        }),
-      ),
-    );
-
-    const live = assignmentGroups
-      .flat()
-      .sort((a, b) => a.moduleOrder - b.moduleOrder || a.id - b.id);
-
-    return withFallback(live, 'API returned no assignments');
-  } catch (err) {
-    if (!fallbackEnabled()) throw err;
-    console.warn('[assignments] request failed, serving demo fixtures:', err);
-    return DEMO_ASSIGNMENTS;
-  }
+  return assignmentGroups
+    .flat()
+    .sort((a, b) => a.moduleOrder - b.moduleOrder || a.id - b.id);
 }
 
 export async function getLearnerAssignment(
@@ -217,6 +177,7 @@ export interface CourseAssignment {
   description: string | null;
   instructions: AssignmentItem[];
   requirements: AssignmentItem[];
+  startDate: string;
   dueDate: string;
   maximumScore: number;
   createdBy: number;
@@ -233,6 +194,7 @@ function mapCourseAssignment(dto: AssignmentDetailDto): CourseAssignment {
     description: dto.description,
     instructions: dto.instructions ?? [],
     requirements: dto.requirements ?? [],
+    startDate: dto.start_date ?? dto.created_at,
     dueDate: dto.due_date,
     maximumScore: dto.maximum_score,
     createdBy: dto.created_by,
@@ -268,6 +230,7 @@ export interface CourseAssignmentInput {
   description?: string;
   instructions?: AssignmentItem[];
   requirements?: AssignmentItem[];
+  startDate: string;
   dueDate: string;
   maximumScore: number;
 }
@@ -286,6 +249,7 @@ export async function createModuleAssignment(
         description: input.description,
         instructions: input.instructions,
         requirements: input.requirements,
+        start_date: input.startDate,
         due_date: input.dueDate,
         maximum_score: input.maximumScore,
       },
@@ -299,6 +263,7 @@ export interface CourseAssignmentUpdateInput {
   description?: string;
   instructions?: AssignmentItem[];
   requirements?: AssignmentItem[];
+  startDate?: string;
   dueDate?: string;
   maximumScore?: number;
 }
@@ -318,6 +283,7 @@ export async function updateModuleAssignment(
         description: input.description,
         instructions: input.instructions,
         requirements: input.requirements,
+        start_date: input.startDate,
         due_date: input.dueDate,
         maximum_score: input.maximumScore,
       },

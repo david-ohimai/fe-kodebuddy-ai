@@ -1,7 +1,23 @@
-import React from 'react';
-import { ArrowLeft, Pencil } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import {
+  ArrowLeft,
+  Pencil,
+  FileText,
+  ExternalLink,
+  AlignLeft,
+} from 'lucide-react';
 import { AppCard } from '@/components/ui/AppCard';
 import AppButton from '@/components/ui/AppButton';
+import AppPill from '@/components/ui/AppPill';
+import AppSpinner from '@/components/ui/AppSpinner';
+import {
+  CONTENT_TYPE_META,
+  type LessonContentType,
+} from '@/types/lesson-content.types';
+import {
+  listLessonResources,
+  type CourseResource,
+} from '@/lib/api/resources.api';
 import type { CourseModule } from '@/lib/api/modules.api';
 import type { Lesson } from '@/lib/api/lessons.api';
 
@@ -20,6 +36,44 @@ export default function LearningContentDetail({
   onBack,
   onEditContent,
 }: LearningContentDetailProps) {
+  const [resource, setResource] = useState<CourseResource | null>(null);
+  const [loadingResource, setLoadingResource] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    function load() {
+      setLoadingResource(true);
+      listLessonResources(lesson.id)
+        .then((list) => {
+          if (!cancelled) setResource(list[0] ?? null);
+        })
+        .catch(() => {
+          if (!cancelled) setResource(null);
+        })
+        .finally(() => {
+          if (!cancelled) setLoadingResource(false);
+        });
+    }
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [lesson.id]);
+
+  const rawType = resource?.type?.toLowerCase();
+  const contentType: LessonContentType | null =
+    rawType === 'file' || rawType === 'document'
+      ? 'document'
+      : rawType === 'link'
+        ? 'link'
+        : rawType === 'article'
+          ? 'article'
+          : null;
+
+  const resourceMeta = contentType ? CONTENT_TYPE_META[contentType] : null;
+
   return (
     <div className="flex flex-col gap-4 p-5 sm:p-6">
       <button
@@ -32,7 +86,16 @@ export default function LearningContentDetail({
 
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="h5-b text-text">{lesson.title}</h2>
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="h5-b text-text">{lesson.title}</h2>
+            {resourceMeta && (
+              <AppPill
+                label={resourceMeta.label}
+                color={resourceMeta.pillColor}
+                icon={resourceMeta.icon as React.ReactElement}
+              />
+            )}
+          </div>
           <p className="b2-r mt-1 text-muted">
             Learning content in {module.title}.
           </p>
@@ -70,6 +133,129 @@ export default function LearningContentDetail({
           <p className="b2-r text-muted">No content added yet.</p>
         )}
       </AppCard>
+
+      {/* Resource section */}
+      {loadingResource ? (
+        <div className="flex items-center justify-center py-4">
+          <AppSpinner size={28} />
+        </div>
+      ) : resource && contentType && resourceMeta ? (
+        <AppCard padding="lg">
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-wrap items-center gap-2.5 border-b border-disabled pb-4">
+              <h2 className="b1-b text-text">Lesson Resource</h2>
+              <AppPill
+                label={resourceMeta.label}
+                color={resourceMeta.pillColor}
+                icon={resourceMeta.icon as React.ReactElement}
+              />
+            </div>
+
+            <div>
+              <p className="b2-m text-text">{resource.title}</p>
+              {resource.description && (
+                <p className="b2-r mt-1 text-text-secondary">
+                  {resource.description}
+                </p>
+              )}
+            </div>
+
+            {/* Document */}
+            {contentType === 'document' && (
+              <div className="flex flex-col gap-2">
+                <p className="f1-r text-muted">Document</p>
+                <div className="flex items-center gap-3 rounded-input border border-disabled bg-disabled/10 px-4 py-3">
+                  <span
+                    className={
+                      'flex h-10 w-10 shrink-0 items-center justify-center rounded ' +
+                      resourceMeta.tint
+                    }
+                  >
+                    <FileText size={18} />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="b2-m truncate text-text">
+                      {resource.fileName ?? 'Uploaded document'}
+                    </p>
+                    {resource.url ? (
+                      <a
+                        href={resource.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="f1-r inline-flex items-center gap-1 text-primary hover:underline"
+                      >
+                        Open file <ExternalLink size={11} />
+                      </a>
+                    ) : (
+                      <p className="f1-r text-muted">No file URL available</p>
+                    )}
+                  </div>
+                  {resource.url && (
+                    <AppButton
+                      variant="outlined"
+                      size="small"
+                      radius="full"
+                      startIcon={<ExternalLink size={13} />}
+                      onClick={() => window.open(resource.url!, '_blank')}
+                    >
+                      View
+                    </AppButton>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Link */}
+            {contentType === 'link' && resource.url && (
+              <div className="flex flex-col gap-2">
+                <p className="f1-r text-muted">Resource link</p>
+                <div className="flex items-center gap-3 rounded-input border border-disabled bg-disabled/10 px-4 py-3">
+                  <span
+                    className={
+                      'flex h-10 w-10 shrink-0 items-center justify-center rounded ' +
+                      resourceMeta.tint
+                    }
+                  >
+                    <ExternalLink size={18} />
+                  </span>
+                  <a
+                    href={resource.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="b2-r min-w-0 flex-1 truncate text-primary hover:underline"
+                  >
+                    {resource.url}
+                  </a>
+                  <AppButton
+                    variant="outlined"
+                    size="small"
+                    radius="full"
+                    startIcon={<ExternalLink size={13} />}
+                    onClick={() => window.open(resource.url!, '_blank')}
+                  >
+                    Open
+                  </AppButton>
+                </div>
+              </div>
+            )}
+
+            {/* Article */}
+            {contentType === 'article' && resource.content && (
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-1.5 text-muted">
+                  <AlignLeft size={14} />
+                  <p className="f1-r">Article content</p>
+                </div>
+                <div className="rounded-input border border-disabled bg-disabled/5 p-4">
+                  <p className="b2-r whitespace-pre-wrap leading-relaxed text-text">
+                    {resource.content}
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        </AppCard>
+      ) : null}
     </div>
   );
 }

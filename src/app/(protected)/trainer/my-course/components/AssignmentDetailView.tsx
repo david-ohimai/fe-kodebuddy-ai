@@ -108,6 +108,25 @@ export default function AssignmentDetailView({
         <h2 className="h5-b mt-1 text-text">{assignment.title}</h2>
         <p className="f1-b mt-4 text-muted">COURSE</p>
         <h3 className="h6-b mt-1 text-text">{courseName}</h3>
+
+        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div>
+            <p className="f1-b text-muted">START DATE</p>
+            <p className="b2-m mt-1 text-text">
+              {formatDate(assignment.startDate)}
+            </p>
+          </div>
+          <div>
+            <p className="f1-b text-muted">DUE DATE</p>
+            <p className="b2-m mt-1 text-text">
+              {formatDate(assignment.dueDate)}
+            </p>
+          </div>
+          <div>
+            <p className="f1-b text-muted">MAXIMUM SCORE</p>
+            <p className="b2-m mt-1 text-text">{assignment.maximumScore}</p>
+          </div>
+        </div>
       </AppCard>
 
       <AppCard padding="lg">

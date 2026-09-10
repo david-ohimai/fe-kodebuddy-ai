@@ -34,6 +34,24 @@ export async function listMyAssignedLearners(): Promise<AssignedLearner[]> {
   return (dtos ?? []).map(mapAssignedLearner);
 }
 
+interface MentorLearnerResponseDto {
+  id: number;
+  mentor_id: number;
+  learner_id: number;
+  assigned_at: string;
+}
+
+export async function assignLearnerToMentor(
+  mentorId: number,
+  learnerId: number,
+): Promise<void> {
+  await apiFetch<MentorLearnerResponseDto>(`/mentors/${mentorId}/learners`, {
+    method: 'POST',
+    auth: true,
+    body: { learner_id: learnerId },
+  });
+}
+
 export interface LearnerCourseProgress {
   courseId: number;
   totalModules: number;

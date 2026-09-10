@@ -84,7 +84,7 @@ export default function RecommendResourcePicker({
       />
 
       {loading ? (
-        <div className="flex min-h-[200px] items-center justify-center">
+        <div className="flex min-h-50 items-center justify-center">
           <AppSpinner size={32} />
         </div>
       ) : filtered.length === 0 ? (

@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { getEscalation, respondToEscalation } from '@/lib/api/chat.api';
-import * as profileApi from '@/lib/api/profile.api';
 import { getErrorMessage } from '@/lib/api/client';
 import type { Escalation } from '@/types/chat.types';
 
@@ -17,19 +16,12 @@ export function useEscalationDetail(escalationId: number) {
     setLoading(true);
     setNotFound(false);
     getEscalation(escalationId)
-      .then(async (result) => {
+      .then((result) => {
         if (!result) {
           setNotFound(true);
           return;
         }
-        // Same name-resolution gap as the list view — see useEscalations.ts.
-        const learner = await profileApi
-          .getUserById(result.learnerId)
-          .catch(() => null);
-        setEscalation({
-          ...result,
-          learnerName: learner?.fullName || learner?.email || null,
-        });
+        setEscalation(result);
       })
       .catch(() => setNotFound(true))
       .finally(() => setLoading(false));
@@ -47,9 +39,7 @@ export function useEscalationDetail(escalationId: number) {
     setSendError(null);
     try {
       await respondToEscalation({ escalationId, message: message.trim() });
-      // EscalationResponse doesn't echo the reply back (see chat.types.ts),
-      // so this is set optimistically for the rest of this session rather
-      // than read back from the server.
+
       setEscalation((prev) =>
         prev
           ? {

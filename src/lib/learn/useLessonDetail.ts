@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { getLesson, type Lesson } from '@/lib/api/lessons.api';
 import { getModule, type CourseModule } from '@/lib/api/modules.api';
 import { getCourse, type Course } from '@/lib/api/courses.api';
@@ -9,6 +9,11 @@ import {
   getModuleProgress,
   toggleLessonCompletion,
 } from '@/lib/api/progress.api';
+import {
+  listLessonResources,
+  type CourseResource,
+} from '@/lib/api/resources.api';
+import { getErrorMessage } from '@/lib/api/client';
 
 export function useLessonDetail(lessonId: number) {
   const [lesson, setLesson] = useState<Lesson | null>(null);
@@ -16,10 +21,13 @@ export function useLessonDetail(lessonId: number) {
   const [course, setCourse] = useState<Course | null>(null);
   const [siblingLessons, setSiblingLessons] = useState<Lesson[]>([]);
   const [completedIds, setCompletedIds] = useState<Set<number>>(new Set());
+  const [resource, setResource] = useState<CourseResource | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [toggling, setToggling] = useState(false);
   const [justCompleted, setJustCompleted] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
+  const retry = useCallback(() => setReloadKey((key) => key + 1), []);
 
   useEffect(() => {
     let cancelled = false;
@@ -27,12 +35,15 @@ export function useLessonDetail(lessonId: number) {
     setJustCompleted(false);
 
     async function load() {
+      setLoading(true);
+      setError(null);
       try {
         const lessonData = await getLesson(lessonId);
-        const [moduleData, lessons, progress] = await Promise.all([
+        const [moduleData, lessons, progress, resourceList] = await Promise.all([
           getModule(lessonData.moduleId),
           listModuleLessons(lessonData.moduleId),
           getModuleProgress(lessonData.moduleId).catch(() => null),
+          listLessonResources(lessonId).catch(() => []),
         ]);
         const courseData = await getCourse(moduleData.courseId);
 
@@ -41,6 +52,7 @@ export function useLessonDetail(lessonId: number) {
           setModule(moduleData);
           setCourse(courseData);
           setSiblingLessons(lessons);
+          setResource(resourceList[0] ?? null);
           setCompletedIds(
             new Set(
               (progress?.lessons ?? [])
@@ -49,9 +61,14 @@ export function useLessonDetail(lessonId: number) {
             ),
           );
         }
-      } catch {
+      } catch (err) {
         if (!cancelled) {
-          setError('Could not load this lesson. Please try again.');
+          setError(
+            getErrorMessage(
+              err,
+              'Could not load this lesson. Please try again.',
+            ),
+          );
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -62,13 +79,14 @@ export function useLessonDetail(lessonId: number) {
     return () => {
       cancelled = true;
     };
-  }, [lessonId]);
+  }, [lessonId, reloadKey]);
 
   const isCompleted = lesson ? completedIds.has(lesson.id) : false;
   const currentIndex = lesson
     ? siblingLessons.findIndex((l) => l.id === lesson.id)
     : -1;
-  const previousLesson = currentIndex > 0 ? siblingLessons[currentIndex - 1] : null;
+  const previousLesson =
+    currentIndex > 0 ? siblingLessons[currentIndex - 1] : null;
   const nextLesson =
     currentIndex >= 0 && currentIndex < siblingLessons.length - 1
       ? siblingLessons[currentIndex + 1]
@@ -96,6 +114,7 @@ export function useLessonDetail(lessonId: number) {
     module,
     course,
     siblingLessons,
+    resource,
     isCompleted,
     completedCount: completedIds.size,
     totalLessons: siblingLessons.length,
@@ -103,6 +122,7 @@ export function useLessonDetail(lessonId: number) {
     nextLesson,
     loading,
     error,
+    retry,
     toggling,
     justCompleted,
     markComplete,
