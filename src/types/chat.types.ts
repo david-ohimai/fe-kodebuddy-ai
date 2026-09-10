@@ -168,6 +168,7 @@ export interface ChatMessage {
 
   escalationReason?: string | null;
   escalationDetail?: string | null;
+  draftResponse?: string | null;
   confidenceScore?: number | null;
 }
 
@@ -195,6 +196,8 @@ export interface EscalationDto {
   status: string;
   created_at: string;
   updated_at: string;
+  learner_full_name?: string | null;
+  learner_email?: string | null;
 }
 
 export interface Escalation {

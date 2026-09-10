@@ -223,6 +223,7 @@ export default function KodeBuddyChatPanel({
             escalationId: answer.escalationId,
             escalationReason: answer.escalationReason,
             escalationDetail: answer.escalationDetail,
+            draftResponse: answer.draftResponse,
             confidenceScore: answer.confidenceScore,
           },
         ]);
@@ -278,7 +279,7 @@ export default function KodeBuddyChatPanel({
         assignmentId: context.assignmentId,
         reason: lastAnswer?.escalationReason ?? null,
         detail: lastAnswer?.escalationDetail ?? null,
-        draftResponse: lastAnswer?.content ?? null,
+        draftResponse: lastAnswer?.draftResponse ?? null,
         confidenceScore: lastAnswer?.confidenceScore ?? null,
       });
       setEscalationStage(receipt.stage);

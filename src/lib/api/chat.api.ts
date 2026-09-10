@@ -143,7 +143,7 @@ function mapEscalation(dto: EscalationDto): Escalation {
   return {
     id: dto.id,
     learnerId: dto.learner_id,
-    learnerName: null,
+    learnerName: dto.learner_full_name || dto.learner_email || null,
     question: dto.question,
     reason: dto.reason,
     detail: dto.detail,
