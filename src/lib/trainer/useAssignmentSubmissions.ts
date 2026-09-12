@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useToast } from '@/components/ui/ToastProvider';
 import * as submissionsApi from '@/lib/api/submissions.api';
-import * as profileApi from '@/lib/api/profile.api';
+import * as coursesApi from '@/lib/api/courses.api';
 import { getErrorMessage } from '@/lib/api/client';
 import type { Submission } from '@/lib/api/submissions.api';
 
@@ -12,7 +12,10 @@ export interface SubmissionWithLearner extends Submission {
   learnerEmail: string | null;
 }
 
-export function useAssignmentSubmissions(assignmentId: number) {
+export function useAssignmentSubmissions(
+  assignmentId: number,
+  courseId: number,
+) {
   const { showError, showSuccess } = useToast();
   const [submissions, setSubmissions] = useState<SubmissionWithLearner[]>([]);
   const [loading, setLoading] = useState(true);
@@ -22,14 +25,14 @@ export function useAssignmentSubmissions(assignmentId: number) {
     setLoading(true);
     Promise.all([
       submissionsApi.listAssignmentSubmissions(assignmentId),
-      profileApi.listUsers().catch(() => []),
+      coursesApi.listCourseLearners(courseId).catch(() => []),
     ])
-      .then(([subs, users]) => {
-        const usersById = new Map(users.map((u) => [u.id, u]));
+      .then(([subs, learners]) => {
+        const learnerById = new Map(learners.map((l) => [l.learnerId, l]));
         setSubmissions(
           subs
             .map((s) => {
-              const learner = usersById.get(s.learnerId);
+              const learner = learnerById.get(s.learnerId);
               return {
                 ...s,
                 learnerName: learner?.fullName ?? null,
@@ -56,7 +59,7 @@ export function useAssignmentSubmissions(assignmentId: number) {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [assignmentId]);
+  }, [assignmentId, courseId]);
 
   const gradeSubmission = async (
     submission: SubmissionWithLearner,

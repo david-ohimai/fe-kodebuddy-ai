@@ -162,6 +162,7 @@ export default function MyCoursePage() {
       <div className="flex flex-col gap-4">
         {activeTab === 'assignments' && (
           <AssignmentsTab
+            courseId={data.course.id}
             courseName={data.course.title}
             cohortName={data.cohort.name}
             assignments={assignmentsState.assignments}
