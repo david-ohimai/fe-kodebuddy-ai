@@ -199,7 +199,7 @@ export default function ResourceDetails({ resourceId }: ResourceDetailsProps) {
         >
           <ArrowLeft size={16} /> Back to Resources
         </Link>
-        <div className="rounded-2xl border border-disabled bg-white p-8 text-center shadow-sm">
+        <div className="rounded-2xl border border-disabled bg-background p-8 text-center shadow-sm">
           <p className="b1-b text-text">Resource not found</p>
           <p className="b2-r mt-1 text-muted">
             This resource may have been removed, or the link is incorrect.
@@ -373,7 +373,7 @@ export default function ResourceDetails({ resourceId }: ResourceDetailsProps) {
         {/* Right Column: Sidebar */}
         <aside className="flex flex-col gap-6">
           {/* Resources Information Card */}
-          <div className="rounded-2xl border border-disabled bg-white p-5 shadow-xs">
+          <div className="rounded-2xl border border-disabled bg-background p-5 shadow-xs">
             <p className="text-[11px] font-bold uppercase tracking-wider text-muted">
               Resources Information
             </p>
@@ -398,9 +398,7 @@ export default function ResourceDetails({ resourceId }: ResourceDetailsProps) {
               <p className="text-[10px] font-bold uppercase tracking-wider text-muted">
                 Level
               </p>
-              <p className="mt-0.5 text-sm font-semibold text-text">
-                Beginner
-              </p>
+              <p className="mt-0.5 text-sm font-semibold text-text">Beginner</p>
             </div>
 
             <div className="mt-3.5">

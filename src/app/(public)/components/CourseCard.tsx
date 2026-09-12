@@ -17,7 +17,7 @@ export default function CourseCard({
   title,
 }: CourseCardProps) {
   return (
-    <article className="overflow-hidden rounded-lg border border-disabled bg-white p-4 text-left shadow-[0_12px_30px_rgba(17,24,39,0.06)]">
+    <article className="overflow-hidden rounded-lg border border-disabled bg-background p-4 text-left shadow-[0_12px_30px_rgba(17,24,39,0.06)]">
       <Image
         src={image}
         alt={`${title} course`}

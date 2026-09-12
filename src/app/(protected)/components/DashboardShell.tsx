@@ -26,16 +26,6 @@ export default function DashboardShell({
   const [mobileOpen, setMobileOpen] = useState(false);
   const { logout } = useLogout();
 
-  /**
-   * The shell is exactly one viewport tall and `main` does the scrolling. If
-   * the document is even slightly taller than the viewport it gains a second
-   * scrollbar, and scrolling there drags the whole 100vh shell upward — the
-   * content appears to be cut off with blank page beneath it.
-   *
-   * Pinning the document while the dashboard is mounted leaves `main` as the
-   * only scroller. Scoped here rather than in globals.css because the auth and
-   * onboarding screens are taller than the viewport and must still scroll.
-   */
   useEffect(() => {
     const root = document.documentElement;
     const previousRoot = root.style.overflow;
@@ -50,10 +40,8 @@ export default function DashboardShell({
     };
   }, []);
 
-  // h-dvh, not h-screen: on mobile browsers 100vh is taller than the visible
-  // area, which is one way the document ends up scrollable behind the shell.
   return (
-    <div className="flex h-dvh w-full overflow-hidden bg-gray-50">
+    <div className="flex h-dvh w-full overflow-hidden bg-disabled">
       <AppSidebar
         role={role}
         collapsed={collapsed}

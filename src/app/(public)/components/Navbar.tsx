@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Menu, X } from 'lucide-react';
 import AppLogo from '@/components/layout/AppLogo';
 import AppButton from '@/components/ui/AppButton';
+import ThemeToggle from '@/components/ui/ThemeToggle';
 import LandingOutlineButton from './LandingOutlineButton';
 
 const NAV_LINKS = [
@@ -52,6 +53,7 @@ export default function Navbar() {
         </nav>
 
         <div className="hidden items-center gap-2 sm:gap-3 lg:flex">
+          <ThemeToggle />
           <LandingOutlineButton href="/sign-in" size="small" className="!px-5">
             Log In
           </LandingOutlineButton>

@@ -59,13 +59,12 @@ export default function LearnPage() {
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
           {courses.map((course) => {
             const isCompleted = course.completionPercentage === 100;
-            const inProgress =
-              course.completionPercentage > 0 && !isCompleted;
+            const inProgress = course.completionPercentage > 0 && !isCompleted;
 
             return (
               <div
                 key={course.courseId}
-                className="group flex flex-col justify-between overflow-hidden rounded-2xl border border-disabled bg-white shadow-xs transition-all hover:border-primary/40 hover:shadow-md"
+                className="group flex flex-col justify-between overflow-hidden rounded-2xl border border-disabled bg-background shadow-xs transition-all hover:border-primary/40 hover:shadow-md"
               >
                 {/* Visual Gradient Header */}
                 <div className="relative flex h-36 w-full flex-col justify-between overflow-hidden bg-gradient-to-br from-[#0F172A] via-[#1E3A8A] to-primary p-5">

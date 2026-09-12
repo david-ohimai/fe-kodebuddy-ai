@@ -58,9 +58,9 @@ const COLOR_VARIANT_CLASSES: Record<
     text: 'text-[#8a5b00] hover:bg-warning/10',
   },
   neutral: {
-    contained: 'bg-gray-100 text-gray-800 hover:bg-gray-200',
-    outlined: 'border border-gray-300 text-gray-700 hover:bg-gray-50',
-    text: 'text-gray-700 hover:bg-gray-50',
+    contained: 'bg-disabled text-text hover:bg-border',
+    outlined: 'border border-border text-text-secondary hover:bg-disabled',
+    text: 'text-text-secondary hover:bg-disabled',
   },
 };
 

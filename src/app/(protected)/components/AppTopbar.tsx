@@ -12,6 +12,7 @@ import {
   LogOut,
 } from 'lucide-react';
 import AppButton from '@/components/ui/AppButton';
+import ThemeToggle from '@/components/ui/ThemeToggle';
 import NotificationsMenu from '@/components/notifications/NotificationsMenu';
 
 export interface AppTopbarProps {
@@ -115,6 +116,8 @@ const AppTopbar: React.FC<AppTopbarProps> = ({
         </div>
 
         <NotificationsMenu />
+
+        <ThemeToggle />
 
         <div className="relative">
           <button

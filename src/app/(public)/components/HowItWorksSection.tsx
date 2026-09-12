@@ -44,7 +44,7 @@ export default function HowItWorksSection() {
             {STEPS.map(({ title, description, icon: Icon }, index) => (
               <div
                 key={title}
-                className="rounded-lg border border-disabled bg-white p-5 text-left"
+                className="rounded-lg border border-disabled bg-background p-5 text-left"
               >
                 <div className="mb-3 flex items-center gap-3">
                   <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary-light f1-b text-primary">

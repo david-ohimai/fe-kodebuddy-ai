@@ -100,7 +100,7 @@ const AddModuleModal: React.FC<AddModuleModalProps> = ({
           <button
             type="button"
             onClick={handleClose}
-            className="rounded-full p-1 text-text-secondary transition-colors hover:bg-gray-100 hover:text-text"
+            className="rounded-full p-1 text-text-secondary transition-colors hover:bg-disabled hover:text-text"
             aria-label="Close modal"
           >
             <X size={20} />
