@@ -15,6 +15,7 @@ import type { CourseAssignment } from '@/lib/api/assignments.api';
 import type { SubmissionWithLearner } from '@/lib/trainer/useAssignmentSubmissions';
 
 export interface AssignmentDetailViewProps {
+  courseId: number;
   courseName: string;
   assignment: CourseAssignment;
   onBack: () => void;
@@ -33,6 +34,7 @@ function formatDate(iso: string) {
 }
 
 export default function AssignmentDetailView({
+  courseId,
   courseName,
   assignment,
   onBack,
@@ -41,7 +43,7 @@ export default function AssignmentDetailView({
 }: AssignmentDetailViewProps) {
   const { showError } = useToast();
   const { submissions, loading, grading, gradeSubmission } =
-    useAssignmentSubmissions(assignment.id);
+    useAssignmentSubmissions(assignment.id, courseId);
   const [gradingSubmission, setGradingSubmission] =
     useState<SubmissionWithLearner | null>(null);
 

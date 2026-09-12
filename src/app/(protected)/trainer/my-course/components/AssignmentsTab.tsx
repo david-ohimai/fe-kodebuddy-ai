@@ -26,6 +26,7 @@ function today() {
 }
 
 export interface AssignmentsTabProps {
+  courseId: number;
   courseName: string;
   cohortName: string;
   assignments: CourseAssignment[];
@@ -56,6 +57,7 @@ function toRequirementItems(text: string) {
 }
 
 export default function AssignmentsTab({
+  courseId,
   courseName,
   cohortName,
   assignments,
@@ -136,6 +138,7 @@ export default function AssignmentsTab({
     return (
       <>
         <AssignmentDetailView
+          courseId={courseId}
           courseName={courseName}
           assignment={selected}
           onBack={() => setSelectedId(null)}

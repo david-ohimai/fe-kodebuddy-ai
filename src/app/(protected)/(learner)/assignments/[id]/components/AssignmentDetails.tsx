@@ -601,11 +601,12 @@ export default function AssignmentDetails({
             ) : (
               <>
                 <AppInput
-                  label="Drop your Figma link below"
+                  label="Submission link"
+                  hint="Paste a link to your work — Figma, GitHub, Google Docs, a deployed site, or any other platform."
                   icon={Link2}
                   type="url"
                   inputMode="url"
-                  placeholder="www.figma.com"
+                  placeholder="https://"
                   value={submissionLink}
                   error={linkError ?? undefined}
                   maxLength={SUBMISSION_CONTENT_MAX_LENGTH}

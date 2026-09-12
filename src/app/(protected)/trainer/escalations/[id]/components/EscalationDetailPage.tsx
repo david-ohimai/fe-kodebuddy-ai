@@ -102,45 +102,6 @@ export default function EscalationDetailPage({
           <div className="mt-2 rounded-input bg-primary-light px-4 py-3">
             <p className="b2-r text-primary-dark">{escalation.question}</p>
           </div>
-
-          {(escalation.reason ||
-            escalation.detail ||
-            escalation.draftResponse) && (
-            <>
-              <p className="b2-b mt-5 text-text">Why the agent escalated</p>
-              <div className="mt-2 flex flex-col gap-3 rounded-input border border-disabled px-4 py-3">
-                <div className="flex flex-wrap items-center gap-2">
-                  {escalation.reason && (
-                    <span className="f1-m rounded-full bg-warning-light px-2.5 py-1 text-warning-dark">
-                      {escalation.reason.replace(/_/g, ' ')}
-                    </span>
-                  )}
-                  {escalation.confidenceScore !== null &&
-                    escalation.confidenceScore !== undefined && (
-                      <span className="f1-r text-muted">
-                        Confidence:{' '}
-                        {Math.round(escalation.confidenceScore * 100)}%
-                      </span>
-                    )}
-                </div>
-                {escalation.detail && (
-                  <p className="b2-r text-text-secondary">
-                    {escalation.detail}
-                  </p>
-                )}
-                {escalation.draftResponse && (
-                  <div>
-                    <p className="f1-m text-muted">
-                      The agent&apos;s own attempt at an answer:
-                    </p>
-                    <p className="b2-r mt-1 text-text-secondary">
-                      {escalation.draftResponse}
-                    </p>
-                  </div>
-                )}
-              </div>
-            </>
-          )}
         </div>
       </AppCard>
 
